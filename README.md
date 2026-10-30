@@ -1,144 +1,69 @@
-# Legado 阅读书源合集
+# Legado 阅读书源仓库
 
-适用于 [Legado 阅读](https://github.com/gedoor/legado)（开源阅读 App）的书源仓库。
+## 📖 项目介绍
+这是一个开源阅读（Legado）书源整理仓库，持续更新维护。
 
-## 书源统计
+## 📊 当前版本
+- **版本**: v2.8
+- **更新日期**: 2026-10-30
+- **书源总数**: 612 个（纯小说）
 
+## 🏷️ 分组统计
 | 分组 | 数量 | 说明 |
-|---|---:|---|
-| 头部大厂 | 15 | 起点、番茄、七猫、QQ阅读、晋江等 |
-| 精品小说站 | 75 | 知名第三方大站，稳定可用 |
-| 免费小说站 | 32 | 免费盗版小说站 |
-| 笔趣阁备用 | 20 | 各类笔趣阁镜像 |
-| **合计** | **142** | |
+|------|------|------|
+| 大厂正版 | 12 | 正版大站，需登录使用 |
+| 笔趣阁类 | 70 | 笔趣阁镜像站 |
+| 玄幻武侠 | 13 | 玄幻/武侠类 |
+| 言情女频 | 7 | 言情/女频类 |
+| 综合其他 | 510 | 其他各类小说站 |
 
-## 两种书源命名
+## 🏢 大厂正版列表（共12个）
+按优先级排序，导入后排在最前面：
 
-| 名称 | 文件 | 说明 |
-|---|---|---|
-| **精选版** | `books.json` | 经过校验、去重、规则补全、净化的142个可用源，直接导入用 |
-| **采集池** | `raw/pool.json` | 从 yckceo 自动抓取的4000+个原始源，未筛选未整理，供挖掘新源用 |
+| 序号 | 名称 | 需要登录 | 说明 |
+|------|------|----------|------|
+| 1 | 起点中文 | ✅ 是 | https://www.qidian.com |
+| 2 | 番茄小说 | ✅ 是 | https://fanqie.shrtxs.cn/ |
+| 3 | 创世中文 | ❌ 否 | http://chuangshi.qq.com |
+| 4 | 红袖添香 | ✅ 是 | https://hongxiua.com |
+| 5 | 书旗小说 | ✅ 是 | https://www.shuqi.com/ |
+| 6 | QQ阅读 | ✅ 是 | https://ubook.reader.qq.com/?g_f=4000001 |
+| 7 | 纵横中文 | ❌ 否 | https://m.zongheng.com |
+| 8 | 潇湘书院 | ✅ 是 | https://www.xxsy.net |
+| 9 | 晋江文学 | ✅ 是 | https://www.jjwxc.net |
+| 10 | 磨铁中文 | ❌ 否 | http://api.motie.com |
+| 11 | 黑岩阅读 | ✅ 是 | https://www.heiyan.com |
+| 12 | 刺猬猫 | ✅ 是 | https://mm.sfacg.com |
 
-## 快速导入
+## 📥 导入方法
+1. 下载最新版 books.json
+2. 打开阅读APP → 我的 → 书源管理 → 本地导入
+3. 选择下载的 books.json 文件即可
 
-在阅读 App 中粘贴以下 URL 直接导入精选版：
+## 🔍 校验流程
+所有书源都经过以下四阶段校验：
+1. **基础结构校验**：必填字段、URL格式、域名去重
+2. **网站存活校验**：首页可达性检测
+3. **搜索接口校验**：3个关键词实测搜索
+4. **规则完整性校验**：详情/目录/正文规则完整性
 
-```
-https://raw.githubusercontent.com/luanmuc/legado-book-sources/main/books.json
-```
+## ✏️ 命名规范
+- 全部为四字纯汉字
+- 去掉表情符号和特殊字符
+- 按分组+搜索通过率排序
+- customOrder字段控制导入后顺序
 
-或手动下载 JSON 文件后在 App 内导入本地。
+## 📝 更新日志
+- v2.8 (2026-10-30): 删除微信读书/17K，大厂剩12个
+- v2.7 (2026-10-30): 大厂源扩充到14个，带登录配置
+- v2.6 (2026-10-30): 设置customOrder排序字段
+- v2.5 (2026-10-30): 重新按分组排序
+- v2.4 (2026-10-30): 删除吾爱破解/豆瓣读书等非小说站
+- v2.3 (2026-10-30): 删除漫画/听书/影视，纯小说版
+- v2.2 (2026-10-30): 新增nyasama星辰整理书源包
+- v2.1 (2026-10-30): 合并全网大佬书源
+- v2.0 (2026-10-30): 初始版本，9-10月合集采集
 
-## 书源格式说明
-
-书源为 JSON 数组，每个对象是一个书源，核心字段：
-
-```json
-{
-  "bookSourceName": "书源名称",
-  "bookSourceUrl": "书源主页URL",
-  "bookSourceGroup": "分组（头部大厂/精品小说站/免费小说站/笔趣阁备用）",
-  "bookSourceType": 0,
-  "customOrder": 9999,
-  "enabled": true,
-  "searchUrl": "/搜索路径?keyword={{key}}&page={{page}}",
-  "ruleSearch": {
-    "bookList": "搜索结果列表选择器",
-    "name": "书名选择器",
-    "author": "作者选择器",
-    "bookUrl": "书籍链接选择器",
-    "coverUrl": "封面图选择器",
-    "intro": "简介选择器",
-    "lastChapter": "最新章节选择器"
-  },
-  "ruleBookInfo": {
-    "name": "书名",
-    "author": "作者",
-    "coverUrl": "封面",
-    "intro": "简介",
-    "kind": "分类",
-    "lastChapter": "最新章节",
-    "tocUrl": "目录页URL（留空则用详情页）"
-  },
-  "ruleToc": {
-    "chapterList": "章节列表选择器",
-    "chapterName": "章节名选择器",
-    "chapterUrl": "章节链接选择器"
-  },
-  "ruleContent": {
-    "content": "正文内容选择器",
-    "replaceRegex": "净化规则（每行一条）",
-    "nextContentUrl": "下一页链接（分页正文用）"
-  }
-}
-```
-
-### 规则选择器语法
-
-- CSS 选择器：`div.class a@href` 表示 div.class 下的 a 标签的 href 属性
-- `@text` 取文本，`@html` 取 HTML，`@属性名` 取属性
-- `||` 或关系（多个选择器按顺序尝试）
-- `&&` 且关系（拼接多个字段）
-- `##` 分隔正则替换：`匹配##替换值`（删除则只写匹配）
-- `{{key}}` 搜索关键词占位符，`{{page}}` 页码占位符
-
-### 净化规则示例
-
-`ruleContent.replaceRegex` 每行一条：
-
-```
-<script>.*?</script>
-本章未完.*请翻页
-http[s]?://[^\s<]+
-旳##的
-嚿##会
-國##国
-```
-
-无 `##` 后接替换值的规则表示删除该行/该匹配内容。
-
-## 仓库结构
-
-```
-legado-book-sources/
-├── books.json          # ⭐ 手动整理后的书源（直接导入用）
-├── README.md                 # 本文件
-├── pipeline.py               # 全自动流水线（抓取→校验→补全→合并）
-├── crawler.py               # 自动抓取脚本
-├── validate.py              # 书源校验脚本
-├── raw/                     # 自动抓取的原始书源（未整理）
-│   ├── 采集池.json           # 4000+ 去重后的原始书源库
-│   ├── shuyuan_list.json    # 书源列表元数据
-│   ├── shuyuans_list.json   # 合集列表元数据
-│   └── sources_alive.json   # 域名存活的源
-└── .github/workflows/
-    └── auto-update.yml      # 每周自动更新
-```
-
-**说明**：`raw/` 里是从 yckceo 自动抓取的原始数据（4000+ 个源，未筛选、未去重、规则未补全），供后续挖掘新源用；根目录的 `books.json` 是经过校验、去重、规则补全、净化后的可用源，直接导入即可。
-
-## 自动抓取
-
-```bash
-# 抓取全部书源列表（59页）-> raw/shuyuan_list.json
-python3 crawler.py --fetch-list
-
-# 下载全部书源JSON并去重 -> raw/采集池.json
-python3 crawler.py --fetch-all
-
-# 下载指定合集 -> raw/collection_<id>.json
-python3 crawler.py --fetch-collection <id>
-
-# 校验精选版书源
-python3 validate.py --test books.json
-```
-
-## 全自动流水线
-
-```bash
-python3 pipeline.py
-```
-
-一键完成：抓取新书源 → 域名探活 → 搜索测试 → 自动补全规则 → 过滤成人漫画 → 去重合并 → 排序分组。
-
-GitHub Actions 每周一凌晨2点自动运行，有新书源自动提交。
+## 🔗 相关链接
+- 仓库地址：https://github.com/luanmuc/legado-book-sources
+- 最新下载：https://github.com/luanmuc/legado-book-sources/releases/latest
