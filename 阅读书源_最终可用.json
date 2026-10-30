@@ -65,7 +65,7 @@
     "bookSourceGroup": "头部大厂",
     "bookSourceName": "七猫小说",
     "bookSourceType": 0,
-    "bookSourceUrl": "https://api-bc.wtzw.com＃妍希",
+    "bookSourceUrl": "https://api-bc.wtzw.com#妍希",
     "customButton": false,
     "customOrder": 9900,
     "enabled": true,
@@ -1273,7 +1273,7 @@
   {
     "bookSourceComment": "//By情无羁修复25.03.05\n女生，耽美有发现，从发现看",
     "bookSourceGroup": "精品小说站",
-    "bookSourceName": "久久小说",
+    "bookSourceName": "久久小说(jjjj)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://www.jjjjxs.com",
     "bookUrlPattern": "https://www.jjjjxs.com/txt/\\d+.htm",
@@ -1822,7 +1822,7 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "精品小说站",
-    "bookSourceName": "奇书网",
+    "bookSourceName": "奇书网(kank)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://www.kankezw.com",
     "customOrder": 7000,
@@ -1880,7 +1880,7 @@
   {
     "bookSourceComment": "\"error:Unable to resolve host \"www.qsw.la\": No address associated with hostname\n\"",
     "bookSourceGroup": "精品小说站",
-    "bookSourceName": "奇书网",
+    "bookSourceName": "奇书网(qsw)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://www.qsw.la",
     "bookUrlPattern": "",
@@ -2414,7 +2414,7 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "精品小说站",
-    "bookSourceName": "搜小说网",
+    "bookSourceName": "搜小说网(sou7)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://wap.sou78.com#🎃",
     "bookUrlPattern": "",
@@ -2480,7 +2480,7 @@
   {
     "bookSourceComment": "// Error: Timed out waiting for 180000 ms",
     "bookSourceGroup": "精品小说站",
-    "bookSourceName": "搜小说网",
+    "bookSourceName": "搜小说网(sou)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://wap.sou.com/",
     "bookUrlPattern": "\\d+/\\d+/",
@@ -2905,7 +2905,7 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "精品小说站",
-    "bookSourceName": "新龙小说",
+    "bookSourceName": "新龙小说(long)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://www.longtimebook.com#🎃",
     "customOrder": 7000,
@@ -2952,7 +2952,7 @@
   {
     "bookSourceComment": "\n\n原地址：深夜看书\nhttps://www.shenyekanshu.com\nhttps://www.shenyebook.com",
     "bookSourceGroup": "精品小说站",
-    "bookSourceName": "新龙小说",
+    "bookSourceName": "新龙小说(niul)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://www.niuloong.com",
     "bookUrlPattern": "",
@@ -3589,7 +3589,7 @@
   },
   {
     "bookSourceGroup": "精品小说站",
-    "bookSourceName": "爱尚小说网",
+    "bookSourceName": "爱尚小说网(23hh)",
     "bookSourceType": 0,
     "bookSourceUrl": "http://www.23hh.la",
     "customButton": false,
@@ -3637,7 +3637,7 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "精品小说站",
-    "bookSourceName": "爱尚小说网",
+    "bookSourceName": "爱尚小说网(hh)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://www.hh.la",
     "bookUrlPattern": "",
@@ -4197,7 +4197,7 @@
   {
     "bookSourceComment": "// Error: Timed out waiting for 180000 ms",
     "bookSourceGroup": "精品小说站",
-    "bookSourceName": "精华书阁",
+    "bookSourceName": "精华书阁(jhss)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://m.jhsssd.com",
     "bookUrlPattern": "",
@@ -4273,7 +4273,7 @@
   {
     "bookSourceComment": "// Error: Timed out waiting for 180000 ms",
     "bookSourceGroup": "精品小说站",
-    "bookSourceName": "精华书阁",
+    "bookSourceName": "精华书阁(jhss)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://m.jhssd.com",
     "customOrder": 7000,
@@ -4332,7 +4332,7 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "精品小说站",
-    "bookSourceName": "精华书阁",
+    "bookSourceName": "精华书阁(2ksk)",
     "bookSourceType": 0,
     "bookSourceUrl": "http://www.2ksk.org#🎃",
     "customOrder": 7000,
@@ -4381,7 +4381,7 @@
   {
     "bookSourceComment": "//同库(精华书阁)：https://m.richvv.com\n//同库(神仙书阁)：https://m.shenxianfaka.top",
     "bookSourceGroup": "精品小说站",
-    "bookSourceName": "精华书阁",
+    "bookSourceName": "精华书阁(rich)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://m.richvv.com",
     "customOrder": 7000,
@@ -4503,7 +4503,7 @@
   {
     "bookSourceComment": "24.12.18修复by 明月",
     "bookSourceGroup": "精品小说站",
-    "bookSourceName": "红叶书斋",
+    "bookSourceName": "红叶书斋(hong)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://m.hongyebookzhai.com",
     "customOrder": 7000,
@@ -5237,7 +5237,7 @@
   {
     "bookSourceComment": "感谢@天天的鸟蛋蛋 ,提供的模板制作\n//同站：\n  肉肉屋 https://www.rourouwu.xyz\n新御书屋 https://www.yushuwx.com\n新御宅屋 https://www.yuzhaiwu.one\n可同站不同分类制作：\nhttps://www.po18sm.com\nhttps://www.po18gv.vip\nhttps://www.18shuyuan.com\nhttps://www.po18e.vip",
     "bookSourceGroup": "免费小说站",
-    "bookSourceName": "PO文学",
+    "bookSourceName": "精品阅读",
     "bookSourceType": 0,
     "bookSourceUrl": "https://www.gb84.com",
     "customOrder": 6000,
@@ -5394,7 +5394,7 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "免费小说站",
-    "bookSourceName": "久久小说",
+    "bookSourceName": "久久小说(jjjx)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://m.jjjxsw.com",
     "customOrder": 6000,
@@ -6540,7 +6540,7 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "免费小说站",
-    "bookSourceName": "红叶书斋",
+    "bookSourceName": "红叶书斋(shuf)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://m.shufahouse.com",
     "customOrder": 6000,
@@ -7290,7 +7290,7 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "笔趣阁备用",
-    "bookSourceName": "笔趣阁",
+    "bookSourceName": "笔趣阁(biqg)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://www.biqg8.com",
     "bookUrlPattern": "",
@@ -7350,7 +7350,7 @@
   },
   {
     "bookSourceGroup": "笔趣阁备用",
-    "bookSourceName": "笔趣阁",
+    "bookSourceName": "笔趣阁(abcb)",
     "bookSourceType": 0,
     "bookSourceUrl": "http://m.abcbiquge.com/",
     "customButton": false,
@@ -7396,7 +7396,7 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "笔趣阁备用",
-    "bookSourceName": "笔趣阁",
+    "bookSourceName": "笔趣阁(xbiq)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://www.xbiquge.la/#pb1101",
     "bookUrlPattern": "https://www.xbiquge.la/\\d+/\\d+/",
@@ -7472,7 +7472,7 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "笔趣阁备用",
-    "bookSourceName": "笔趣阁",
+    "bookSourceName": "笔趣阁(biqu)",
     "bookSourceType": 0,
     "bookSourceUrl": "http://www.biqule.net/",
     "bookUrlPattern": "http://www.biqule.net/article/\\d+/",
@@ -7532,7 +7532,7 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "笔趣阁备用",
-    "bookSourceName": "笔趣阁",
+    "bookSourceName": "笔趣阁(biqu)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://www.biqugege.cc",
     "bookUrlPattern": "",
@@ -7590,7 +7590,7 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "笔趣阁备用",
-    "bookSourceName": "笔趣阁",
+    "bookSourceName": "笔趣阁(bequ)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://www.bequgew.net/",
     "bookUrlPattern": "https://www.bequgew.com/\\d+/",
@@ -7660,7 +7660,7 @@
   {
     "bookSourceComment": "\nBy小新20250507",
     "bookSourceGroup": "笔趣阁备用",
-    "bookSourceName": "笔趣阁",
+    "bookSourceName": "笔趣阁(cong)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://www.conglianhao.com/",
     "customOrder": 5000,
@@ -7721,7 +7721,7 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "笔趣阁备用",
-    "bookSourceName": "笔趣阁",
+    "bookSourceName": "笔趣阁(biqu)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://www.biquge.casa#🎃",
     "bookUrlPattern": "",
@@ -7781,7 +7781,7 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "笔趣阁备用",
-    "bookSourceName": "笔趣阁",
+    "bookSourceName": "笔趣阁(biqu)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://m.biquge.one/",
     "bookUrlPattern": "https://m.biquge.one/\\d+",
@@ -7833,7 +7833,7 @@
   },
   {
     "bookSourceGroup": "笔趣阁备用",
-    "bookSourceName": "笔趣阁",
+    "bookSourceName": "笔趣阁(qbiq)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://m.qbiqus.com/",
     "customButton": false,
@@ -7883,7 +7883,7 @@
   {
     "bookSourceComment": "by二月无雪\n交流群：756138903",
     "bookSourceGroup": "笔趣阁备用",
-    "bookSourceName": "笔趣阁",
+    "bookSourceName": "笔趣阁(bqqu)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://www.bqquge.org",
     "customOrder": 5000,
@@ -7940,7 +7940,7 @@
   {
     "bookSourceComment": "",
     "bookSourceGroup": "笔趣阁备用",
-    "bookSourceName": "笔趣阁",
+    "bookSourceName": "笔趣阁(biqu)",
     "bookSourceType": 0,
     "bookSourceUrl": "https://www.biqusan.com",
     "bookUrlPattern": "",
