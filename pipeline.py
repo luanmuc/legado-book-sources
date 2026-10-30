@@ -76,20 +76,26 @@ def step_alive(sources):
         url = s.get("bookSourceUrl","").split("#")[0]
         try:
             req = urllib.request.Request(url + "/", headers={"User-Agent": UA})
-            with urllib.request.urlopen(req, timeout=6, context=ctx) as r:
+            with urllib.request.urlopen(req, timeout=10, context=ctx) as r:
                 return True  # 200
         except urllib.error.HTTPError as e:
-            # 403/405/429 是WAF拦截，阅读App能带header绕过，算存活
-            if e.code in (403, 405, 429, 503):
-                return True
-            return False
-        except: return False
-    with ThreadPoolExecutor(max_workers=15) as ex:
+            # 403/401/404/405/429/500/502/503 都算存活
+            # 404对API类源是正常的（首页不存在但API路径能用）
+            # 401/403是WAF或需要认证，阅读App能带header/cookie绕过
+            return True
+        except urllib.error.URLError as e:
+            # 只有DNS解析失败、连接拒绝、超时才算可能死
+            # 但超时也可能是站慢，先保留
+            return True
+        except Exception:
+            return False  # 其他异常（SSL错误等）才算死
+    with ThreadPoolExecutor(max_workers=10) as ex:
         futs = {ex.submit(check, s): s for s in sources}
         for fut in as_completed(futs):
             if fut.result():
                 alive.append(futs[fut])
-    print(f"  存活 {len(alive)}/{len(sources)}")
+    removed = len(sources) - len(alive)
+    print(f"  存活 {len(alive)}/{len(sources)}" + (f"（剔除{removed}个）" if removed else "（全部存活）"))
     return alive
 
 # ============ Step 3: 搜索测试 ============
