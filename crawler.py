@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 书源自动抓取器 - 从 yckceo.com 抓取原始书源
-原始数据存到 raw/ 目录，手动整理后的书源在根目录的 精选版书源.json
+原始数据存到 raw/ 目录，手动整理后的书源在根目录的 books.json
 
 用法：
   python3 crawler.py --fetch-list          # 抓取全部书源列表（59页）
@@ -79,7 +79,7 @@ def fetch_all_sources():
         if (i+1) % 100 == 0:
             print(f"  下载 {i+1}/{len(items)}, 去重后 {len(results)}")
         time.sleep(0.1)
-    out = os.path.join(RAW_DIR, "采集池.json")
+    out = os.path.join(RAW_DIR, "pool.json")
     json.dump(results, open(out, "w"), ensure_ascii=False)
     print(f"下载完成: {len(results)} 个去重书源 -> {out}")
     return results

@@ -18,7 +18,7 @@ ctx.verify_mode = ssl.CERT_NONE
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Mobile"
 BASE = os.path.dirname(os.path.abspath(__file__))
 RAW = os.path.join(BASE, "raw")
-FINAL = os.path.join(BASE, "精选版书源.json")
+FINAL = os.path.join(BASE, "books.json")
 os.makedirs(RAW, exist_ok=True)
 
 # ============ 工具函数 ============
@@ -45,7 +45,7 @@ def fetch(url, timeout=10, data=None, headers=None):
 # ============ Step 1: 抓取新书源 ============
 def step_fetch():
     print("\n[Step 1] 抓取书源列表...")
-    pool_file = os.path.join(RAW, "采集池.json")
+    pool_file = os.path.join(RAW, "pool.json")
     existing = json.load(open(pool_file, encoding="utf-8")) if os.path.exists(pool_file) else []
     existing_urls = set(s.get("bookSourceUrl","").split("#")[0] for s in existing)
     
@@ -245,7 +245,7 @@ def main():
     
     # 更新采集池
     all_raw = raw_db + new_sources if new_sources else raw_db
-    json.dump(all_raw, open(os.path.join(RAW,"采集池.json"),"w"), ensure_ascii=False)
+    json.dump(all_raw, open(os.path.join(RAW,"pool.json"),"w"), ensure_ascii=False)
     
     print(f"\n{'='*50}")
     print(f"完成！精选版: {len(final)} 个")

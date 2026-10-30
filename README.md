@@ -16,15 +16,15 @@
 
 | 名称 | 文件 | 说明 |
 |---|---|---|
-| **精选版** | `精选版书源.json` | 经过校验、去重、规则补全、净化的142个可用源，直接导入用 |
-| **采集池** | `raw/采集池.json` | 从 yckceo 自动抓取的4000+个原始源，未筛选未整理，供挖掘新源用 |
+| **精选版** | `books.json` | 经过校验、去重、规则补全、净化的142个可用源，直接导入用 |
+| **采集池** | `raw/pool.json` | 从 yckceo 自动抓取的4000+个原始源，未筛选未整理，供挖掘新源用 |
 
 ## 快速导入
 
 在阅读 App 中粘贴以下 URL 直接导入精选版：
 
 ```
-https://raw.githubusercontent.com/luanmuc/legado-book-sources/main/精选版书源.json
+https://raw.githubusercontent.com/luanmuc/legado-book-sources/main/books.json
 ```
 
 或手动下载 JSON 文件后在 App 内导入本地。
@@ -101,7 +101,7 @@ http[s]?://[^\s<]+
 
 ```
 legado-book-sources/
-├── 精选版书源.json          # ⭐ 手动整理后的书源（直接导入用）
+├── books.json          # ⭐ 手动整理后的书源（直接导入用）
 ├── README.md                 # 本文件
 ├── pipeline.py               # 全自动流水线（抓取→校验→补全→合并）
 ├── crawler.py               # 自动抓取脚本
@@ -115,7 +115,7 @@ legado-book-sources/
     └── auto-update.yml      # 每周自动更新
 ```
 
-**说明**：`raw/` 里是从 yckceo 自动抓取的原始数据（4000+ 个源，未筛选、未去重、规则未补全），供后续挖掘新源用；根目录的 `精选版书源.json` 是经过校验、去重、规则补全、净化后的可用源，直接导入即可。
+**说明**：`raw/` 里是从 yckceo 自动抓取的原始数据（4000+ 个源，未筛选、未去重、规则未补全），供后续挖掘新源用；根目录的 `books.json` 是经过校验、去重、规则补全、净化后的可用源，直接导入即可。
 
 ## 自动抓取
 
@@ -130,7 +130,7 @@ python3 crawler.py --fetch-all
 python3 crawler.py --fetch-collection <id>
 
 # 校验精选版书源
-python3 validate.py --test 精选版书源.json
+python3 validate.py --test books.json
 ```
 
 ## 全自动流水线

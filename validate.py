@@ -2,7 +2,7 @@
 """
 书源校验器 - 测试书源是否可用
 用法：
-  python3 validate.py --test 精选版书源.json
+  python3 validate.py --test books.json
 """
 import json, re, sys, ssl, time, urllib.request, urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
