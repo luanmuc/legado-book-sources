@@ -3,7 +3,7 @@ name: 自动更新书源
 on:
   schedule:
     - cron: '0 2 * * 1'  # 每周一凌晨2点
-  workflow_dispatch:  # 支持手动触发
+  workflow_dispatch:
 
 jobs:
   update:
@@ -18,8 +18,8 @@ jobs:
       - name: 安装依赖
         run: pip install beautifulsoup4 lxml
 
-      - name: 运行校验
-        run: python3 validate.py --test 阅读书源_最终可用.json || true
+      - name: 运行全自动流水线
+        run: python3 pipeline.py
 
       - name: 提交更新
         run: |

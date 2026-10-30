@@ -125,6 +125,12 @@ python3 crawler.py --fetch-collection <id>
 python3 validate.py --test 阅读书源_最终可用.json
 ```
 
-## 自动更新
+## 全自动流水线
 
-GitHub Actions 每周一自动运行校验脚本。
+```bash
+python3 pipeline.py
+```
+
+一键完成：抓取新书源 → 域名探活 → 搜索测试 → 自动补全规则 → 过滤成人漫画 → 去重合并 → 排序分组。
+
+GitHub Actions 每周一凌晨2点自动运行，有新书源自动提交。
