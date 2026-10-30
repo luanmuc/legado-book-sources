@@ -75,15 +75,20 @@ def step_alive(sources):
     def check(s):
         url = s.get("bookSourceUrl","").split("#")[0]
         try:
-            fetch(url + "/", timeout=6)
-            return True
+            req = urllib.request.Request(url + "/", headers={"User-Agent": UA})
+            with urllib.request.urlopen(req, timeout=6, context=ctx) as r:
+                return True  # 200
+        except urllib.error.HTTPError as e:
+            # 403/405/429 是WAF拦截，阅读App能带header绕过，算存活
+            if e.code in (403, 405, 429, 503):
+                return True
+            return False
         except: return False
     with ThreadPoolExecutor(max_workers=15) as ex:
         futs = {ex.submit(check, s): s for s in sources}
         for fut in as_completed(futs):
-            s = futs[fut]
             if fut.result():
-                alive.append(s)
+                alive.append(futs[fut])
     print(f"  存活 {len(alive)}/{len(sources)}")
     return alive
 
@@ -187,48 +192,54 @@ def step_merge(new_sources, existing_final):
     existing_final.sort(key=lambda x: (-x.get("customOrder",0), x.get("bookSourceName","")))
     return existing_final
 
+# ============ Step 0: 全量校验精选版，剔除死源 ============
+def step_validate_final(sources):
+    print(f"\n[Step 0] 全量校验精选版 ({len(sources)}个)...")
+    alive = step_alive(sources)
+    dead = len(sources) - len(alive)
+    if dead > 0:
+        print(f"  剔除 {dead} 个死源")
+    else:
+        print(f"  全部存活")
+    return alive
+
 # ============ 主流程 ============
 def main():
     print("=" * 50)
     print("全自动书源流水线")
     print("=" * 50)
     
-    # 读取现有最终书源
+    # 读取精选版
     final = json.load(open(FINAL, encoding="utf-8"))
-    print(f"当前最终书源: {len(final)} 个")
+    print(f"精选版: {len(final)} 个")
+    
+    # Step 0: 全量校验，剔除死源
+    final = step_validate_final(final)
     
     # Step 1: 抓取新增
     new_sources, raw_db = step_fetch()
-    if not new_sources:
-        print("\n没有新书源，流程结束")
-        return
     
-    # Step 2: 探活
-    alive = step_alive(new_sources)
-    if not alive: return
+    if new_sources:
+        # Step 2: 探活新增
+        alive = step_alive(new_sources)
+        # Step 3: 搜索测试
+        searchable = step_search(alive)
+        # Step 4: 过滤
+        filtered = step_filter(searchable)
+        # Step 5: 补全规则
+        fixed = step_autofix(filtered)
+        # Step 6: 合并
+        final = step_merge(fixed, final)
     
-    # Step 3: 搜索测试
-    searchable = step_search(alive)
-    if not searchable: return
+    # 保存精选版
+    json.dump(final, open(FINAL, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
     
-    # Step 4: 过滤
-    filtered = step_filter(searchable)
-    
-    # Step 5: 补全规则
-    fixed = step_autofix(filtered)
-    
-    # Step 6: 合并
-    merged = step_merge(fixed, final)
-    
-    # 保存
-    json.dump(merged, open(FINAL, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-    
-    # 更新raw库
-    all_raw = raw_db + new_sources
-    json.dump(all_raw, open(os.path.join(RAW,"merged_sources.json"),"w"), ensure_ascii=False)
+    # 更新采集池
+    all_raw = raw_db + new_sources if new_sources else raw_db
+    json.dump(all_raw, open(os.path.join(RAW,"采集池.json"),"w"), ensure_ascii=False)
     
     print(f"\n{'='*50}")
-    print(f"完成！最终书源: {len(merged)} 个（新增 {len(merged)-len(final)+len(final)-len(merged)+len(fixed)} 个）")
+    print(f"完成！精选版: {len(final)} 个")
     print(f"{'='*50}")
 
 if __name__ == "__main__":
