@@ -101,12 +101,13 @@ http[s]?://[^\s<]+
 
 ```
 legado-book-sources/
-├── 阅读书源_最终可用.json    # ⭐ 手动整理后的书源（直接导入用）
-├── README.md               # 本文件
+├── 精选版书源.json          # ⭐ 手动整理后的书源（直接导入用）
+├── README.md                 # 本文件
+├── pipeline.py               # 全自动流水线（抓取→校验→补全→合并）
 ├── crawler.py               # 自动抓取脚本
 ├── validate.py              # 书源校验脚本
 ├── raw/                     # 自动抓取的原始书源（未整理）
-│   ├── merged_sources.json  # 4000+ 去重后的原始书源库
+│   ├── 采集池.json           # 4000+ 去重后的原始书源库
 │   ├── shuyuan_list.json    # 书源列表元数据
 │   ├── shuyuans_list.json   # 合集列表元数据
 │   └── sources_alive.json   # 域名存活的源
@@ -114,7 +115,7 @@ legado-book-sources/
     └── auto-update.yml      # 每周自动更新
 ```
 
-**说明**：`raw/` 里是从 yckceo 自动抓取的原始数据（4000+ 个源，未筛选、未去重、规则未补全），供后续挖掘新源用；根目录的 `阅读书源_最终可用.json` 是经过校验、去重、规则补全、净化后的 142 个可用源，直接导入即可。
+**说明**：`raw/` 里是从 yckceo 自动抓取的原始数据（4000+ 个源，未筛选、未去重、规则未补全），供后续挖掘新源用；根目录的 `精选版书源.json` 是经过校验、去重、规则补全、净化后的可用源，直接导入即可。
 
 ## 自动抓取
 
@@ -122,14 +123,14 @@ legado-book-sources/
 # 抓取全部书源列表（59页）-> raw/shuyuan_list.json
 python3 crawler.py --fetch-list
 
-# 下载全部书源JSON并去重 -> raw/merged_sources.json
+# 下载全部书源JSON并去重 -> raw/采集池.json
 python3 crawler.py --fetch-all
 
 # 下载指定合集 -> raw/collection_<id>.json
 python3 crawler.py --fetch-collection <id>
 
-# 校验整理后的书源
-python3 validate.py --test 阅读书源_最终可用.json
+# 校验精选版书源
+python3 validate.py --test 精选版书源.json
 ```
 
 ## 全自动流水线

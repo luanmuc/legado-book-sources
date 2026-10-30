@@ -45,12 +45,12 @@ def fetch(url, timeout=10, data=None, headers=None):
 # ============ Step 1: 抓取新书源 ============
 def step_fetch():
     print("\n[Step 1] 抓取书源列表...")
-    # 简单抓最新几页看有没有新增（全量59页太慢，先抓前10页）
-    existing = json.load(open(os.path.join(RAW, "merged_sources.json"), encoding="utf-8")) if os.path.exists(os.path.join(RAW, "merged_sources.json")) else []
+    pool_file = os.path.join(RAW, "采集池.json")
+    existing = json.load(open(pool_file, encoding="utf-8")) if os.path.exists(pool_file) else []
     existing_urls = set(s.get("bookSourceUrl","").split("#")[0] for s in existing)
     
     new_sources = []
-    for p in range(1, 11):  # 抓前10页
+    for p in range(1, 11):
         try:
             html, _ = fetch(f"https://www.yckceo.com/yuedu/shuyuan/index.html?page={p}")
             for m in re.finditer(r'/yuedu/shuyuan/json/id/(\d+)\.json', html):
@@ -122,7 +122,8 @@ def step_search(sources):
             data = body.replace("{{key}}","剑来").encode(charset, errors="ignore") if method=="POST" and body else None
             headers = {"Content-Type":"application/x-www-form-urlencoded"} if data else {}
             html, _ = fetch(url, timeout=10, data=data, headers=headers)
-            return len(html) > 2000
+            # 返回>500字节就算有内容（API类返回JSON可能很小）
+            return len(html) > 500
         except: return False
     with ThreadPoolExecutor(max_workers=12) as ex:
         futs = {ex.submit(test, s): s for s in sources}
@@ -176,8 +177,10 @@ http[s]?://[^\s<]+
 # ============ Step 5: 过滤成人/漫画 ============
 def step_filter(sources):
     print(f"\n[Step 5] 过滤成人/漫画/非小说 ({len(sources)}个)...")
-    BAD = ["成人","🔞","肉文","海棠","po18","脸红","欲望","人妻","耽美","bl","漫画","动漫","漫客","听书","有声","词典","游戏","小红书"]
-    good = [s for s in sources if not any(b in s.get("bookSourceName","").lower() for b in [x.lower() for x in BAD])]
+    # 精确匹配，避免误杀（不用"bl"这种短词）
+    BAD = ["成人","肉文","海棠","po18","脸红心跳","欲望社","人妻","耽美","🔞",
+           "漫画","动漫","漫客","听书","有声","词典","游戏","小红书"]
+    good = [s for s in sources if not any(b.lower() in s.get("bookSourceName","").lower() for b in BAD)]
     print(f"  过滤后 {len(good)}/{len(sources)}")
     return good
 
