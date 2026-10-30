@@ -12,12 +12,19 @@
 | 笔趣阁备用 | 20 | 各类笔趣阁镜像 |
 | **合计** | **142** | |
 
+## 两种书源命名
+
+| 名称 | 文件 | 说明 |
+|---|---|---|
+| **精选版** | `精选版书源.json` | 经过校验、去重、规则补全、净化的142个可用源，直接导入用 |
+| **采集池** | `raw/采集池.json` | 从 yckceo 自动抓取的4000+个原始源，未筛选未整理，供挖掘新源用 |
+
 ## 快速导入
 
-在阅读 App 中粘贴以下 URL 直接导入：
+在阅读 App 中粘贴以下 URL 直接导入精选版：
 
 ```
-https://raw.githubusercontent.com/luanmuc/legado-book-sources/main/阅读书源_最终可用.json
+https://raw.githubusercontent.com/luanmuc/legado-book-sources/main/精选版书源.json
 ```
 
 或手动下载 JSON 文件后在 App 内导入本地。

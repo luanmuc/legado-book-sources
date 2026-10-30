@@ -18,7 +18,7 @@ ctx.verify_mode = ssl.CERT_NONE
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Mobile"
 BASE = os.path.dirname(os.path.abspath(__file__))
 RAW = os.path.join(BASE, "raw")
-FINAL = os.path.join(BASE, "阅读书源_最终可用.json")
+FINAL = os.path.join(BASE, "精选版书源.json")
 os.makedirs(RAW, exist_ok=True)
 
 # ============ 工具函数 ============
