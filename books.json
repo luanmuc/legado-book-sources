@@ -29,15 +29,12 @@
       "sourceRegex": ""
     },
     "ruleExplore": {
-      "author": "$.bAuth",
-      "bookList": "$.data.records||$.data.list",
-      "bookUrl": "https://m.qidian.com/book/{{$.bid}}/",
-      "coverUrl": "https://bookcover.yuewen.com/qdbimg/349573/{{$.bid}}",
-      "intro": "$.desc||$.timeStr##(.*前)##$1更新",
-      "kind": "$.rankCnt&&$.cat&&$.subCat&&$.state",
-      "lastChapter": "$.lastVUCname",
-      "name": "$.bName",
-      "wordCount": "$.cnt"
+      "bookList": "div.y-list__item",
+      "name": "h2@text",
+      "bookUrl": "a@href",
+      "coverUrl": "img@data-src",
+      "intro": "p[class*=bookDesc]@text",
+      "author": "p[class*=subTitle]@text##<em>.*"
     },
     "ruleSearch": {
       "author": "@css:p[class^=_searchBookAuthor]@text",
