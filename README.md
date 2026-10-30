@@ -90,21 +90,41 @@ http[s]?://[^\s<]+
 
 无 `##` 后接替换值的规则表示删除该行/该匹配内容。
 
+## 仓库结构
+
+```
+legado-book-sources/
+├── 阅读书源_最终可用.json    # ⭐ 手动整理后的书源（直接导入用）
+├── README.md               # 本文件
+├── crawler.py               # 自动抓取脚本
+├── validate.py              # 书源校验脚本
+├── raw/                     # 自动抓取的原始书源（未整理）
+│   ├── merged_sources.json  # 4000+ 去重后的原始书源库
+│   ├── shuyuan_list.json    # 书源列表元数据
+│   ├── shuyuans_list.json   # 合集列表元数据
+│   └── sources_alive.json   # 域名存活的源
+└── .github/workflows/
+    └── auto-update.yml      # 每周自动更新
+```
+
+**说明**：`raw/` 里是从 yckceo 自动抓取的原始数据（4000+ 个源，未筛选、未去重、规则未补全），供后续挖掘新源用；根目录的 `阅读书源_最终可用.json` 是经过校验、去重、规则补全、净化后的 142 个可用源，直接导入即可。
+
 ## 自动抓取
 
-本仓库附带自动抓取脚本，可从 [yckceo 书源仓库](https://www.yckceo.com/yuedu/shuyuan/index.html) 定期更新书源：
-
 ```bash
-# 抓取所有书源列表（59页）
+# 抓取全部书源列表（59页）-> raw/shuyuan_list.json
 python3 crawler.py --fetch-list
 
-# 下载指定合集JSON
+# 下载全部书源JSON并去重 -> raw/merged_sources.json
+python3 crawler.py --fetch-all
+
+# 下载指定合集 -> raw/collection_<id>.json
 python3 crawler.py --fetch-collection <id>
 
-# 校验书源可用性（域名探活+搜索测试）
+# 校验整理后的书源
 python3 validate.py --test 阅读书源_最终可用.json
 ```
 
 ## 自动更新
 
-GitHub Actions 每周一自动运行抓取脚本，检测新书源并更新。
+GitHub Actions 每周一自动运行校验脚本。
