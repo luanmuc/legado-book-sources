@@ -77,9 +77,8 @@ DATA_SOURCES = {
         {"name": "shidahuilang GitHub", "url": "https://raw.githubusercontent.com/shidahuilang/shuyuan/shuyuan/legado3.json"},
     ],
     # 净化规则数据源
-    # 已确认aoaostar网站有"乌云净化"20条，待找到正确直链后补充
     "clean_rules_sources": [
-        # {"name": "aoaostar乌云净化", "url": ""},  # TODO: 待找直链
+        {"name": "nyasama 1200条净化", "url": "https://shuyuan.nyasama.net/shuyuan/e4a6f3324f10443a0018deba816852b3.json"},
     ]
 }
 
@@ -130,7 +129,7 @@ def generate_clean_rules(sources, collected_rules=None):
     """生成配套净化规则：采集的 + 通用的，合并去重"""
     log.info("=== 生成配套净化规则 ===")
     
-    # 我自己写的通用规则
+    # 我自己写的通用规则（格式对齐官方）
     default_rules = [
         {
             "name": "通用-去除脚本标签",
@@ -138,8 +137,12 @@ def generate_clean_rules(sources, collected_rules=None):
             "pattern": "<script[\\s\\S]*?</script>",
             "replacement": "",
             "isRegex": True,
-            "enabled": True,
-            "order": 1
+            "isEnabled": True,
+            "order": 1,
+            "scopeContent": True,
+            "scopeSource": False,
+            "scopeTitle": False,
+            "timeoutMillisecond": 3000
         },
         {
             "name": "通用-去除样式标签",
@@ -147,8 +150,12 @@ def generate_clean_rules(sources, collected_rules=None):
             "pattern": "<style[\\s\\S]*?</style>",
             "replacement": "",
             "isRegex": True,
-            "enabled": True,
-            "order": 2
+            "isEnabled": True,
+            "order": 2,
+            "scopeContent": True,
+            "scopeSource": False,
+            "scopeTitle": False,
+            "timeoutMillisecond": 3000
         },
         {
             "name": "通用-去除广告文字",
@@ -156,17 +163,12 @@ def generate_clean_rules(sources, collected_rules=None):
             "pattern": "下载APP|扫码阅读|关注公众号|点击加载全文|热门推荐|相关推荐|本章未完|点击下一章继续阅读",
             "replacement": "",
             "isRegex": True,
-            "enabled": True,
-            "order": 3
-        },
-        {
-            "name": "通用-去除空行",
-            "group": "通用净化",
-            "pattern": "\\n\\n+",
-            "replacement": "\\n\\n",
-            "isRegex": True,
-            "enabled": True,
-            "order": 4
+            "isEnabled": True,
+            "order": 3,
+            "scopeContent": True,
+            "scopeSource": False,
+            "scopeTitle": False,
+            "timeoutMillisecond": 3000
         },
     ]
     
