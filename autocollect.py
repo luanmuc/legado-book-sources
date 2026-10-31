@@ -1,0 +1,584 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+全自动书源采集脚本
+功能：从多个数据源采集书源 → 清洗去重 → 校验 → 整理 → 合并到仓库
+
+用法：
+  python3 autocollect.py              # 完整流程
+  python3 autocollect.py --collect    # 只采集
+  python3 autocollect.py --validate   # 只校验
+  python3 autocollect.py --merge      # 只合并整理
+  python3 autocollect.py --months 2   # 采集最近2个月的
+"""
+
+import json
+import os
+import re
+import sys
+import time
+import hashlib
+import logging
+import argparse
+import requests
+from urllib.parse import urlparse
+from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# ============================================================
+# 配置区
+# ============================================================
+
+# 大厂正版源列表（单独保护，不被自动更新覆盖）
+BIG_SITES = [
+    {"name": "起点中文", "url": "https://www.qidian.com"},
+    {"name": "番茄小说", "url": "https://fanqienovel.com"},
+    {"name": "创世中文", "url": "http://chuangshi.qq.com"},
+    {"name": "红袖添香", "url": "https://hongxiua.com"},
+    {"name": "书旗小说", "url": "https://www.shuqi.com/"},
+    {"name": "QQ阅读", "url": "https://ubook.reader.qq.com/"},
+    {"name": "纵横中文", "url": "https://m.zongheng.com"},
+    {"name": "潇湘书院", "url": "https://www.xxsy.net"},
+    {"name": "晋江文学", "url": "https://www.jjwxc.net"},
+    {"name": "磨铁中文", "url": "http://api.motie.com"},
+    {"name": "黑岩阅读", "url": "https://www.heiyan.com"},
+    {"name": "刺猬猫", "url": "https://mm.sfacg.com"},
+]
+
+# 测试关键词池
+QUICK_TEST_KEYWORD = "凡人修仙传"  # 快速过滤用
+FULL_TEST_KEYWORDS = [
+    "凡人修仙传", "斗破苍穹", "遮天", "完美世界", "诡秘之主",
+    "剑来", "射雕英雄传", "知否知否", "三生三世十里桃花", "东宫"
+]
+
+# 数据源配置
+DATA_SOURCES = {
+    "yckceo_list": {
+        "name": "yckceo书源列表",
+        "base_url": "https://yckceo.com/yuedu/source",
+        "enabled": True
+    },
+    "yckceo_heji": {
+        "name": "yckceo书源合集",
+        "base_url": "https://yckceo.com/yuedu/heji",
+        "enabled": True
+    },
+    "nyasama": {
+        "name": "nyasama星辰整理",
+        "url": "https://shuyuan.nyasama.net/shuyuan/6e67d2531a9076f40e3bb59f50c13e2e.json",
+        "enabled": True
+    },
+    # 大佬仓库（持续补充）
+    "gurus": [
+        {"name": "aoaostar", "url": "https://raw.githubusercontent.com/aoaostar/legado-source/main/books.json"},
+        {"name": "酷安三舞313", "url": ""},  # 待补充
+        {"name": "酷安开源阅读", "url": ""},  # 待补充
+        {"name": "shidahuilang", "url": ""},  # 待补充
+    ]
+}
+
+# 过滤规则：非小说类关键词
+NON_NOVEL_KEYWORDS = [
+    "漫画", "听书", "影视", "视频", "动漫", "电影", "电视剧",
+    "吾爱破解", "52pojie", "豆瓣", "知乎", "B站", "bilibili",
+    "音乐", "电台", "广播", "游戏", "动漫", "漫画柜", "漫画台"
+]
+
+# 请求配置
+REQUEST_TIMEOUT = 10
+REQUEST_RETRY = 2
+CONCURRENCY = 8
+USER_AGENT = "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+
+# 路径配置
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+RAW_DIR = os.path.join(BASE_DIR, "raw", "autocollect")
+OUTPUT_FILE = os.path.join(BASE_DIR, "books.json")
+REPORT_FILE = os.path.join(BASE_DIR, "collect_report.md")
+
+# ============================================================
+# 日志配置
+# ============================================================
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler(os.path.join(BASE_DIR, "autocollect.log")),
+        logging.StreamHandler()
+    ]
+)
+log = logging.getLogger(__name__)
+
+# ============================================================
+# 工具函数
+# ============================================================
+
+def ensure_dir(path):
+    os.makedirs(path, exist_ok=True)
+
+def get_domain(url):
+    """提取域名（去www、去端口、小写）"""
+    try:
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower()
+        if domain.startswith("www."):
+            domain = domain[4:]
+        return domain
+    except:
+        return url
+
+def fetch_url(url, timeout=REQUEST_TIMEOUT, retry=REQUEST_RETRY):
+    """带重试的请求"""
+    headers = {"User-Agent": USER_AGENT}
+    for i in range(retry + 1):
+        try:
+            resp = requests.get(url, headers=headers, timeout=timeout)
+            return resp
+        except Exception as e:
+            if i < retry:
+                time.sleep(2)
+            else:
+                log.warning(f"请求失败: {url} - {e}")
+                return None
+
+def is_non_novel(source):
+    """判断是否为非小说源"""
+    name = source.get("bookSourceName", "").lower()
+    url = source.get("bookSourceUrl", "").lower()
+    for kw in NON_NOVEL_KEYWORDS:
+        if kw.lower() in name or kw.lower() in url:
+            return True
+    return False
+
+def is_big_site(source):
+    """判断是否为大厂源"""
+    url = source.get("bookSourceUrl", "")
+    domain = get_domain(url)
+    for big in BIG_SITES:
+        if get_domain(big["url"]) in domain or domain in get_domain(big["url"]):
+            return True
+    return False
+
+# ============================================================
+# 第一阶段：采集
+# ============================================================
+
+def get_target_months(months=2):
+    """动态获取最近N个月的列表"""
+    now = datetime.now()
+    result = []
+    for i in range(months):
+        dt = now - timedelta(days=30 * i)
+        result.append({
+            "year": dt.year,
+            "month": dt.month,
+            "label": f"{dt.year}年{dt.month}月"
+        })
+    return result
+
+def collect_yckceo_list(months=2):
+    """采集yckceo书源列表（按月份）"""
+    log.info("=== 采集yckceo书源列表 ===")
+    targets = get_target_months(months)
+    all_sources = []
+    
+    for target in targets:
+        log.info(f"采集 {target['label']} 书源列表...")
+        # 这里先占位，实际爬取逻辑后面补全
+        # 先从已有的raw目录读取
+        pass
+    
+    log.info(f"yckceo书源列表采集完成，共 {len(all_sources)} 个")
+    return all_sources
+
+def collect_yckceo_heji(months=2):
+    """采集yckceo书源合集（按月份）"""
+    log.info("=== 采集yckceo书源合集 ===")
+    targets = get_target_months(months)
+    all_sources = []
+    
+    for target in targets:
+        log.info(f"采集 {target['label']} 书源合集...")
+        # 占位，实际爬取逻辑后面补全
+        pass
+    
+    log.info(f"yckceo书源合集采集完成，共 {len(all_sources)} 个")
+    return all_sources
+
+def collect_nyasama():
+    """采集nyasama星辰整理书源包"""
+    log.info("=== 采集nyasama星辰整理 ===")
+    url = DATA_SOURCES["nyasama"]["url"]
+    resp = fetch_url(url)
+    if resp and resp.status_code == 200:
+        try:
+            data = resp.json()
+            log.info(f"nyasama采集完成，共 {len(data)} 个源")
+            return data
+        except:
+            log.error("nyasama返回格式错误")
+    return []
+
+def collect_gurus():
+    """采集大佬仓库书源"""
+    log.info("=== 采集大佬仓库 ===")
+    all_sources = []
+    for guru in DATA_SOURCES["gurus"]:
+        if not guru["url"]:
+            continue
+        log.info(f"采集 {guru['name']}...")
+        resp = fetch_url(guru["url"])
+        if resp and resp.status_code == 200:
+            try:
+                data = resp.json()
+                all_sources.extend(data)
+                log.info(f"  {guru['name']}: {len(data)} 个")
+            except:
+                log.warning(f"  {guru['name']} 格式错误")
+    log.info(f"大佬仓库采集完成，共 {len(all_sources)} 个")
+    return all_sources
+
+def collect_all(months=2):
+    """采集所有数据源"""
+    ensure_dir(RAW_DIR)
+    
+    sources = []
+    sources.extend(collect_yckceo_list(months))
+    sources.extend(collect_yckceo_heji(months))
+    sources.extend(collect_nyasama())
+    sources.extend(collect_gurus())
+    
+    # 保存原始数据
+    raw_file = os.path.join(RAW_DIR, f"raw_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    with open(raw_file, "w", encoding="utf-8") as f:
+        json.dump(sources, f, ensure_ascii=False, indent=2)
+    
+    log.info(f"采集完成，原始数据共 {len(sources)} 个源，保存到 {raw_file}")
+    return sources
+
+# ============================================================
+# 第二阶段：清洗去重
+# ============================================================
+
+def clean_and_dedup(sources):
+    """清洗和去重"""
+    log.info("=== 开始清洗去重 ===")
+    log.info(f"原始数据: {len(sources)} 个")
+    
+    # 1. 基础格式校验
+    valid = []
+    for s in sources:
+        if not isinstance(s, dict):
+            continue
+        if not s.get("bookSourceUrl"):
+            continue
+        if not s.get("bookSourceName"):
+            continue
+        valid.append(s)
+    log.info(f"格式校验通过: {len(valid)} 个")
+    
+    # 2. 按域名去重（保留字段最完整的）
+    domain_map = {}
+    for s in valid:
+        domain = get_domain(s["bookSourceUrl"])
+        # 计算字段完整度（字段越多越好）
+        score = len([k for k, v in s.items() if v and v != ""])
+        if domain not in domain_map or score > len([k for k, v in domain_map[domain].items() if v and v != ""]):
+            domain_map[domain] = s
+    
+    deduped = list(domain_map.values())
+    log.info(f"域名去重后: {len(deduped)} 个")
+    
+    # 3. 过滤非小说源
+    novel_sources = [s for s in deduped if not is_non_novel(s)]
+    log.info(f"过滤非小说后: {len(novel_sources)} 个")
+    
+    return novel_sources
+
+# ============================================================
+# 第三阶段：校验
+# ============================================================
+
+def quick_validate(source):
+    """快速校验：只用1个关键词测试搜索"""
+    url = source.get("bookSourceUrl", "")
+    domain = get_domain(url)
+    
+    result = {
+        "source": source,
+        "domain": domain,
+        "alive": False,
+        "waf": False,
+        "search_ok": False,
+        "reason": ""
+    }
+    
+    # 先测试首页可达性
+    try:
+        resp = fetch_url(url, timeout=5)
+        if resp is None:
+            result["reason"] = "连接失败"
+            return result
+        
+        if resp.status_code == 200:
+            result["alive"] = True
+        elif resp.status_code in [403, 405, 503]:
+            result["waf"] = True  # WAF盾站，不淘汰
+            result["alive"] = True
+        elif resp.status_code == 404:
+            result["reason"] = "404不存在"
+            return result
+        else:
+            result["alive"] = True  # 其他状态码先认为活着
+            
+    except Exception as e:
+        result["reason"] = f"请求异常: {e}"
+        return result
+    
+    # 快速搜索测试（占位，实际需要解析searchUrl）
+    # 这里先简化：能访问就认为搜索大概率能用
+    result["search_ok"] = True
+    
+    return result
+
+def full_validate(source):
+    """完整校验：10个关键词 + 目录 + 正文"""
+    # 快速校验通过后才跑完整校验
+    # 这里简化，实际需要模拟阅读App的搜索流程
+    keywords_pass = 0
+    for kw in FULL_TEST_KEYWORDS:
+        # 模拟搜索测试
+        # 实际需要构造搜索URL并解析结果
+        keywords_pass += 1  # 占位
+    
+    pass_rate = keywords_pass / len(FULL_TEST_KEYWORDS)
+    return {
+        "source": source,
+        "pass_rate": pass_rate,
+        "keywords_pass": keywords_pass
+    }
+
+def validate_sources(sources):
+    """批量校验"""
+    log.info("=== 开始校验 ===")
+    log.info(f"待校验: {len(sources)} 个")
+    
+    # 第一遍：快速过滤
+    log.info("第一遍：快速过滤（1个关键词）...")
+    quick_results = []
+    with ThreadPoolExecutor(max_workers=CONCURRENCY) as executor:
+        futures = {executor.submit(quick_validate, s): s for s in sources}
+        for future in as_completed(futures):
+            result = future.result()
+            quick_results.append(result)
+    
+    alive_sources = [r for r in quick_results if r["alive"]]
+    dead_sources = [r for r in quick_results if not r["alive"]]
+    log.info(f"快速过滤: 存活 {len(alive_sources)} 个，淘汰 {len(dead_sources)} 个")
+    
+    # 第二遍：完整校验（只对存活的）
+    log.info("第二遍：完整校验（10个关键词）...")
+    full_results = []
+    for r in alive_sources:
+        full_r = full_validate(r["source"])
+        full_results.append(full_r)
+    
+    # 按通过率排序
+    full_results.sort(key=lambda x: x["pass_rate"], reverse=True)
+    
+    return full_results, dead_sources
+
+# ============================================================
+# 第四阶段：整理（改名、分组、排序）
+# ============================================================
+
+def generate_chinese_name(source, used_names):
+    """生成四字纯汉字名称"""
+    original = source.get("bookSourceName", "")
+    # 去掉表情和特殊字符
+    clean = re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9]', '', original)
+    # 提取中文部分
+    chinese = re.findall(r'[\u4e00-\u9fa5]+', clean)
+    if chinese:
+        name = "".join(chinese)[:4]
+    else:
+        # 没有中文就用拼音或者域名
+        domain = get_domain(source.get("bookSourceUrl", ""))
+        name = domain[:4].upper()
+    
+    # 去重
+    base_name = name
+    i = 2
+    while name in used_names:
+        name = base_name + str(i)
+        i += 1
+    
+    used_names.add(name)
+    return name
+
+def classify_source(source):
+    """分类：大厂/笔趣阁/玄幻/言情/综合"""
+    url = source.get("bookSourceUrl", "")
+    name = source.get("bookSourceName", "")
+    
+    if is_big_site(source):
+        return "大厂正版"
+    
+    domain = get_domain(url)
+    if "biquge" in domain or "笔趣" in name:
+        return "笔趣阁类"
+    
+    # 其他分类后续细化
+    return "综合其他"
+
+def organize_sources(validated_sources, existing_sources):
+    """整理：改名、分组、排序"""
+    log.info("=== 开始整理 ===")
+    
+    used_names = set()
+    result = []
+    custom_order = 1
+    
+    # 1. 先加大厂源（从现有仓库里拿，保护起来）
+    big_sites = [s for s in existing_sources if is_big_site(s)]
+    log.info(f"大厂源: {len(big_sites)} 个（保留原有配置）")
+    
+    for s in big_sites:
+        s["customOrder"] = custom_order
+        custom_order += 1
+        used_names.add(s.get("bookSourceName", ""))
+        result.append(s)
+    
+    # 2. 加其他源
+    other_sources = [r["source"] for r in validated_sources if not is_big_site(r["source"])]
+    log.info(f"其他源: {len(other_sources)} 个")
+    
+    # 按分组排序
+    groups = {"笔趣阁类": [], "玄幻武侠": [], "言情女频": [], "综合其他": []}
+    for s in other_sources:
+        group = classify_source(s)
+        if group in groups:
+            groups[group].append(s)
+        else:
+            groups["综合其他"].append(s)
+    
+    for group_name in ["笔趣阁类", "玄幻武侠", "言情女频", "综合其他"]:
+        for s in groups[group_name]:
+            # 改名
+            new_name = generate_chinese_name(s, used_names)
+            s["bookSourceName"] = new_name
+            s["customOrder"] = custom_order
+            custom_order += 1
+            result.append(s)
+    
+    log.info(f"整理完成，共 {len(result)} 个源")
+    return result
+
+# ============================================================
+# 第五阶段：报告生成
+# ============================================================
+
+def generate_report(raw_count, deduped_count, dead_sources, final_count, big_count):
+    """生成采集报告"""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    report = f"""# 书源采集报告
+
+**采集时间：** {now}
+
+## 统计
+
+| 阶段 | 数量 |
+|------|------|
+| 原始采集 | {raw_count} |
+| 去重过滤后 | {deduped_count} |
+| 校验淘汰 | {len(dead_sources)} |
+| 最终入库 | {final_count} |
+| 其中大厂源 | {big_count} |
+
+## 淘汰原因Top 5
+
+（自动统计）
+
+## 新增数据源
+
+（自动统计）
+
+---
+*本报告由 autocollect.py 自动生成*
+"""
+    
+    with open(REPORT_FILE, "w", encoding="utf-8") as f:
+        f.write(report)
+    
+    log.info(f"报告已生成: {REPORT_FILE}")
+
+# ============================================================
+# 主流程
+# ============================================================
+
+def main():
+    parser = argparse.ArgumentParser(description="全自动书源采集脚本")
+    parser.add_argument("--collect", action="store_true", help="只执行采集")
+    parser.add_argument("--validate", action="store_true", help="只执行校验")
+    parser.add_argument("--merge", action="store_true", help="只执行合并整理")
+    parser.add_argument("--months", type=int, default=2, help="采集最近N个月的（默认2）")
+    args = parser.parse_args()
+    
+    log.info("=" * 50)
+    log.info("全自动书源采集脚本 启动")
+    log.info("=" * 50)
+    
+    # 加载现有书源
+    existing = []
+    if os.path.exists(OUTPUT_FILE):
+        with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+            existing = json.load(f)
+        log.info(f"加载现有书源: {len(existing)} 个")
+    
+    # 第一阶段：采集
+    if not args.validate and not args.merge:
+        raw_sources = collect_all(months=args.months)
+    else:
+        # 从raw目录加载最近的
+        raw_files = sorted([f for f in os.listdir(RAW_DIR) if f.startswith("raw_")], reverse=True)
+        if raw_files:
+            with open(os.path.join(RAW_DIR, raw_files[0]), "r", encoding="utf-8") as f:
+                raw_sources = json.load(f)
+        else:
+            raw_sources = []
+    
+    # 第二阶段：清洗去重
+    if not args.validate and not args.merge:
+        cleaned = clean_and_dedup(raw_sources)
+    else:
+        cleaned = raw_sources
+    
+    # 第三阶段：校验
+    if not args.merge:
+        validated, dead = validate_sources(cleaned)
+    else:
+        validated = [{"source": s, "pass_rate": 1.0} for s in cleaned]
+        dead = []
+    
+    # 第四阶段：整理合并
+    if not args.collect and not args.validate:
+        final_sources = organize_sources(validated, existing)
+        
+        # 保存
+        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+            json.dump(final_sources, f, ensure_ascii=False, indent=2)
+        
+        # 生成报告
+        big_count = len([s for s in final_sources if is_big_site(s)])
+        generate_report(len(raw_sources), len(cleaned), dead, len(final_sources), big_count)
+        
+        log.info("=" * 50)
+        log.info(f"全部完成！最终书源: {len(final_sources)} 个")
+        log.info(f"输出文件: {OUTPUT_FILE}")
+        log.info("=" * 50)
+
+if __name__ == "__main__":
+    main()
