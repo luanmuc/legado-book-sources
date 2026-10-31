@@ -274,9 +274,20 @@ log = logging.getLogger(__name__)
 def ensure_dir(path):
     os.makedirs(path, exist_ok=True)
 
+def clean_url(url):
+    """清理URL：去掉锚点、特殊字符、空格"""
+    if not url:
+        return ""
+    # 去掉锚点后面的内容
+    url = re.sub(r'[#＃].*$', '', url)
+    # 去掉首尾空格
+    url = url.strip()
+    return url
+
 def get_domain(url):
     """提取域名（去www、去端口、小写）"""
     try:
+        url = clean_url(url)
         parsed = urlparse(url)
         domain = parsed.netloc.lower()
         if domain.startswith("www."):
@@ -494,13 +505,16 @@ def clean_and_dedup(sources):
     log.info("=== 开始清洗去重 ===")
     log.info(f"原始数据: {len(sources)} 个")
     
-    # 1. 基础格式校验
+    # 1. 基础格式校验 + URL清理
     valid = []
     for s in sources:
         if not isinstance(s, dict):
             continue
-        if not s.get("bookSourceUrl"):
+        url = s.get("bookSourceUrl", "")
+        if not url:
             continue
+        # 清理URL
+        s["bookSourceUrl"] = clean_url(url)
         if not s.get("bookSourceName"):
             continue
         valid.append(s)
@@ -711,17 +725,20 @@ def validate_sources(sources):
     dead_sources = [r for r in quick_results if not r["alive"]]
     log.info(f"快速过滤: 存活 {len(alive_sources)} 个，淘汰 {len(dead_sources)} 个")
     
-    # 第二遍：完整校验（多关键词搜索测试）
+    # 第二遍：完整校验（多关键词搜索测试，并发执行）
     log.info("第二遍：完整校验（3个关键词搜索测试）...")
     full_results = []
     low_pass = []
-    for r in alive_sources:
-        full_r = full_validate(r["source"])
-        # 通过率低于30%的，标记为低质量
-        if full_r["pass_rate"] >= 0.3:
-            full_results.append(full_r)
-        else:
-            low_pass.append({"source": r["source"], "reason": f"搜索通过率低({full_r['pass_rate']*100:.0f}%)"})
+    with ThreadPoolExecutor(max_workers=CONCURRENCY) as executor:
+        futures = {executor.submit(full_validate, r["source"]): r for r in alive_sources}
+        for future in as_completed(futures):
+            r = futures[future]
+            full_r = future.result()
+            # 通过率低于30%的，标记为低质量
+            if full_r["pass_rate"] >= 0.3:
+                full_results.append(full_r)
+            else:
+                low_pass.append({"source": r["source"], "reason": f"搜索通过率低({full_r['pass_rate']*100:.0f}%)"})
     
     dead_sources.extend(low_pass)
     log.info(f"完整校验: 合格 {len(full_results)} 个，淘汰低质量 {len(low_pass)} 个")
