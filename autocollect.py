@@ -95,7 +95,68 @@ USER_AGENT = "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RAW_DIR = os.path.join(BASE_DIR, "raw", "autocollect")
 OUTPUT_FILE = os.path.join(BASE_DIR, "books.json")
+CLEAN_RULES_FILE = os.path.join(BASE_DIR, "clean_rules.json")
 REPORT_FILE = os.path.join(BASE_DIR, "collect_report.md")
+
+def generate_clean_rules(sources):
+    """生成配套净化规则"""
+    log.info("=== 生成配套净化规则 ===")
+    
+    rules = [
+        # 通用广告过滤
+        {
+            "name": "通用-去除脚本标签",
+            "group": "通用净化",
+            "pattern": "<script[\\s\\S]*?</script>",
+            "replacement": "",
+            "isRegex": True,
+            "enabled": True,
+            "order": 1
+        },
+        {
+            "name": "通用-去除样式标签",
+            "group": "通用净化",
+            "pattern": "<style[\\s\\S]*?</style>",
+            "replacement": "",
+            "isRegex": True,
+            "enabled": True,
+            "order": 2
+        },
+        {
+            "name": "通用-去除广告文字",
+            "group": "通用净化",
+            "pattern": "下载APP|扫码阅读|关注公众号|点击加载全文|热门推荐|相关推荐|本章未完|点击下一章继续阅读",
+            "replacement": "",
+            "isRegex": True,
+            "enabled": True,
+            "order": 3
+        },
+        {
+            "name": "通用-去除空行",
+            "group": "通用净化",
+            "pattern": "\\n\\n+",
+            "replacement": "\\n\\n",
+            "isRegex": True,
+            "enabled": True,
+            "order": 4
+        },
+        {
+            "name": "笔趣阁-去除版权信息",
+            "group": "笔趣阁净化",
+            "pattern": "笔趣阁.*?最快更新|请到.*?站点阅读|手机站.*?地址",
+            "replacement": "",
+            "isRegex": True,
+            "enabled": True,
+            "order": 10
+        },
+    ]
+    
+    # 保存
+    with open(CLEAN_RULES_FILE, "w", encoding="utf-8") as f:
+        json.dump(rules, f, ensure_ascii=False, indent=2)
+    
+    log.info(f"净化规则生成完成，共 {len(rules)} 条 -> {CLEAN_RULES_FILE}")
+    return rules
 
 # ============================================================
 # 日志配置
@@ -654,9 +715,12 @@ def main():
     if not args.collect and not args.validate:
         final_sources = organize_sources(validated, existing)
         
-        # 保存
+        # 保存书源
         with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
             json.dump(final_sources, f, ensure_ascii=False, indent=2)
+        
+        # 生成配套净化规则
+        generate_clean_rules(final_sources)
         
         # 生成报告
         big_count = len([s for s in final_sources if is_big_site(s)])

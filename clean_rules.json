@@ -1,0 +1,47 @@
+[
+  {
+    "name": "通用-去除脚本标签",
+    "group": "通用净化",
+    "pattern": "<script[\\s\\S]*?</script>",
+    "replacement": "",
+    "isRegex": true,
+    "enabled": true,
+    "order": 1
+  },
+  {
+    "name": "通用-去除样式标签",
+    "group": "通用净化",
+    "pattern": "<style[\\s\\S]*?</style>",
+    "replacement": "",
+    "isRegex": true,
+    "enabled": true,
+    "order": 2
+  },
+  {
+    "name": "通用-去除广告文字",
+    "group": "通用净化",
+    "pattern": "下载APP|扫码阅读|关注公众号|点击加载全文|热门推荐|相关推荐|本章未完|点击下一章继续阅读",
+    "replacement": "",
+    "isRegex": true,
+    "enabled": true,
+    "order": 3
+  },
+  {
+    "name": "通用-去除空行",
+    "group": "通用净化",
+    "pattern": "\\n\\n+",
+    "replacement": "\\n\\n",
+    "isRegex": true,
+    "enabled": true,
+    "order": 4
+  },
+  {
+    "name": "笔趣阁-去除版权信息",
+    "group": "笔趣阁净化",
+    "pattern": "笔趣阁.*?最快更新|请到.*?站点阅读|手机站.*?地址",
+    "replacement": "",
+    "isRegex": true,
+    "enabled": true,
+    "order": 10
+  }
+]
