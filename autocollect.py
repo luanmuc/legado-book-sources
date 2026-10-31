@@ -181,14 +181,44 @@ def get_target_months(months=2):
 def collect_yckceo_list(months=2):
     """采集yckceo书源列表（按月份）"""
     log.info("=== 采集yckceo书源列表 ===")
-    targets = get_target_months(months)
     all_sources = []
     
-    for target in targets:
-        log.info(f"采集 {target['label']} 书源列表...")
-        # 这里先占位，实际爬取逻辑后面补全
-        # 先从已有的raw目录读取
-        pass
+    # 爬取前几页，按上传时间过滤
+    base_url = "https://www.yckceo.com/yuedu/shuyuan/index.html"
+    page = 1
+    max_pages = 20  # 先爬前20页，足够覆盖最近1-2个月
+    
+    while page <= max_pages:
+        try:
+            resp = fetch_url(f"{base_url}?page={page}")
+            if not resp:
+                break
+            
+            html = resp.text
+            # 找书源JSON链接
+            ids = re.findall(r'/yuedu/shuyuan/json/id/(\d+)\.json', html)
+            if not ids:
+                break
+            
+            log.info(f"  书源列表第{page}页，找到 {len(ids)} 个")
+            
+            # 下载每个书源
+            for sid in ids:
+                s_resp = fetch_url(f"https://www.yckceo.com/yuedu/shuyuan/json/id/{sid}.json")
+                if s_resp and s_resp.status_code == 200:
+                    try:
+                        source = s_resp.json()
+                        all_sources.append(source)
+                    except:
+                        pass
+                time.sleep(0.1)
+            
+            page += 1
+            time.sleep(0.3)
+            
+        except Exception as e:
+            log.warning(f"  第{page}页失败: {e}")
+            break
     
     log.info(f"yckceo书源列表采集完成，共 {len(all_sources)} 个")
     return all_sources
@@ -196,13 +226,46 @@ def collect_yckceo_list(months=2):
 def collect_yckceo_heji(months=2):
     """采集yckceo书源合集（按月份）"""
     log.info("=== 采集yckceo书源合集 ===")
-    targets = get_target_months(months)
     all_sources = []
     
-    for target in targets:
-        log.info(f"采集 {target['label']} 书源合集...")
-        # 占位，实际爬取逻辑后面补全
-        pass
+    # 爬取合集列表页
+    base_url = "https://www.yckceo.com/yuedu/heji/index.html"
+    page = 1
+    max_pages = 10  # 先爬前10页合集
+    
+    while page <= max_pages:
+        try:
+            resp = fetch_url(f"{base_url}?page={page}")
+            if not resp:
+                break
+            
+            html = resp.text
+            # 找合集JSON链接
+            ids = re.findall(r'/yuedu/shuyuans/json/id/(\d+)\.json', html)
+            if not ids:
+                break
+            
+            log.info(f"  合集列表第{page}页，找到 {len(ids)} 个合集")
+            
+            # 下载每个合集里的书源
+            for cid in ids:
+                c_resp = fetch_url(f"https://www.yckceo.com/yuedu/shuyuans/json/id/{cid}.json")
+                if c_resp and c_resp.status_code == 200:
+                    try:
+                        sources = c_resp.json()
+                        if isinstance(sources, list):
+                            all_sources.extend(sources)
+                            log.info(f"    合集{cid}: {len(sources)} 个")
+                    except:
+                        pass
+                time.sleep(0.2)
+            
+            page += 1
+            time.sleep(0.3)
+            
+        except Exception as e:
+            log.warning(f"  合集列表第{page}页失败: {e}")
+            break
     
     log.info(f"yckceo书源合集采集完成，共 {len(all_sources)} 个")
     return all_sources
@@ -404,15 +467,23 @@ def generate_chinese_name(source, used_names):
     if chinese:
         name = "".join(chinese)[:4]
     else:
-        # 没有中文就用拼音或者域名
+        # 没有中文就用域名首字母转拼音（简化处理）
         domain = get_domain(source.get("bookSourceUrl", ""))
-        name = domain[:4].upper()
+        name = "书源" + domain[:2].upper()
+    
+    # 确保是纯汉字
+    if not re.match(r'^[\u4e00-\u9fa5]+$', name):
+        name = "小说站" + str(len(used_names) % 10)
     
     # 去重
     base_name = name
     i = 2
     while name in used_names:
-        name = base_name + str(i)
+        # 加一个字区分
+        suffix = ["阁", "楼", "斋", "居", "轩", "苑", "堂", "馆"][len(used_names) % 8]
+        name = base_name[:3] + suffix
+        if name in used_names:
+            name = base_name[:2] + suffix + str(i)
         i += 1
     
     used_names.add(name)
@@ -422,15 +493,31 @@ def classify_source(source):
     """分类：大厂/笔趣阁/玄幻/言情/综合"""
     url = source.get("bookSourceUrl", "")
     name = source.get("bookSourceName", "")
+    group = source.get("bookSourceGroup", "")
     
     if is_big_site(source):
         return "大厂正版"
     
     domain = get_domain(url)
-    if "biquge" in domain or "笔趣" in name:
-        return "笔趣阁类"
     
-    # 其他分类后续细化
+    # 笔趣阁类
+    biquge_keywords = ["biquge", "笔趣", "bqg", "藏花阁", "飘天文学", "小说阅读网"]
+    for kw in biquge_keywords:
+        if kw in domain.lower() or kw in name.lower():
+            return "笔趣阁类"
+    
+    # 言情女频类
+    romance_keywords = ["言情", "女频", "耽美", "晋江", "红袖", "潇湘", "花语女生"]
+    for kw in romance_keywords:
+        if kw in name.lower() or kw in group.lower() or kw in domain.lower():
+            return "言情女频"
+    
+    # 玄幻武侠类
+    xuanhuan_keywords = ["玄幻", "武侠", "修真", "修仙", "奇幻"]
+    for kw in xuanhuan_keywords:
+        if kw in name.lower() or kw in group.lower():
+            return "玄幻武侠"
+    
     return "综合其他"
 
 def organize_sources(validated_sources, existing_sources):
