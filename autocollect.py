@@ -919,6 +919,38 @@ def generate_report(raw_count, deduped_count, dead_sources, final_count, big_cou
     log.info(f"报告已生成: {REPORT_FILE}")
 
 # ============================================================
+# 自动发布
+# ============================================================
+
+def auto_publish(final_count, big_count):
+    """自动提交并推送到GitHub"""
+    import subprocess
+    log.info("=== 自动发布到GitHub ===")
+    
+    try:
+        # 配置git用户
+        subprocess.run(["git", "config", "user.name", "autocollect-bot"], check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "bot@autocollect.com"], check=True, capture_output=True)
+        
+        # 加文件
+        subprocess.run(["git", "add", "books.json", "clean_rules.json", "collect_report.md"], check=True, capture_output=True)
+        
+        # 提交
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        commit_msg = f"chore: 自动更新 {now}\n\n- 书源总数: {final_count}\n- 大厂正版: {big_count}"
+        result = subprocess.run(["git", "commit", "-m", commit_msg], capture_output=True, text=True)
+        if "nothing to commit" in result.stdout:
+            log.info("没有更新内容，不需要发布")
+            return
+        
+        # 推送
+        subprocess.run(["git", "push", "origin", "main"], check=True, capture_output=True)
+        log.info("✅ 自动发布成功！")
+    except Exception as e:
+        log.warning(f"自动发布失败: {e}")
+        log.warning("可以手动执行 git add && git commit && git push")
+
+# ============================================================
 # 主流程
 # ============================================================
 
@@ -927,6 +959,7 @@ def main():
     parser.add_argument("--collect", action="store_true", help="只执行采集")
     parser.add_argument("--validate", action="store_true", help="只执行校验")
     parser.add_argument("--merge", action="store_true", help="只执行合并整理")
+    parser.add_argument("--publish", action="store_true", help="跑完自动发布到GitHub")
     parser.add_argument("--months", type=int, default=2, help="采集最近N个月的（默认2）")
     args = parser.parse_args()
     
@@ -986,6 +1019,10 @@ def main():
         log.info(f"全部完成！最终书源: {len(final_sources)} 个")
         log.info(f"输出文件: {OUTPUT_FILE}")
         log.info("=" * 50)
+        
+        # 自动发布
+        if args.publish:
+            auto_publish(len(final_sources), big_count)
 
 if __name__ == "__main__":
     main()
