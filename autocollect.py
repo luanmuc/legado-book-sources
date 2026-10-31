@@ -57,12 +57,12 @@ DATA_SOURCES = {
     "yckceo_list": {
         "name": "yckceo书源列表",
         "base_url": "https://yckceo.com/yuedu/source",
-        "enabled": False  # yckceo有反爬，暂时关闭
+        "enabled": True
     },
     "yckceo_heji": {
         "name": "yckceo书源合集",
         "base_url": "https://yckceo.com/yuedu/heji",
-        "enabled": False  # yckceo有反爬，暂时关闭
+        "enabled": True
     },
     # 大佬仓库（直链JSON）
     "gurus": [
@@ -338,42 +338,49 @@ def get_target_months(months=2):
     return result
 
 def collect_yckceo_list(months=2):
-    """采集yckceo书源列表（按月份）"""
+    """采集yckceo书源列表：从列表页提取详情id，直接拼JSON链接下载"""
     log.info("=== 采集yckceo书源列表 ===")
     all_sources = []
     
-    # 爬取前几页，按上传时间过滤
     base_url = "https://www.yckceo.com/yuedu/shuyuan/index.html"
     page = 1
-    max_pages = 20  # 先爬前20页，足够覆盖最近1-2个月
+    max_pages = 20  # 爬前20页
     
     while page <= max_pages:
         try:
             resp = fetch_url(f"{base_url}?page={page}")
-            if not resp:
+            if not resp or resp.status_code != 200:
                 break
             
             html = resp.text
-            # 找书源JSON链接
-            ids = re.findall(r'/yuedu/shuyuan/json/id/(\d+)\.json', html)
+            # 从列表页提取详情页id：/yuedu/shuyuan/content/id/XXXX.html
+            ids = re.findall(r'/yuedu/shuyuan/content/id/(\d+)\.html', html)
             if not ids:
+                log.info(f"  第{page}页没有更多书源了")
                 break
             
             log.info(f"  书源列表第{page}页，找到 {len(ids)} 个")
             
-            # 下载每个书源
+            # 直接拼接JSON链接下载（id是一样的）
             for sid in ids:
-                s_resp = fetch_url(f"https://www.yckceo.com/yuedu/shuyuan/json/id/{sid}.json")
+                json_url = f"https://www.yckceo.com/yuedu/shuyuan/json/id/{sid}.json"
+                s_resp = fetch_url(json_url, timeout=8)
                 if s_resp and s_resp.status_code == 200:
                     try:
-                        source = s_resp.json()
-                        all_sources.append(source)
+                        data = s_resp.json()
+                        if isinstance(data, list):
+                            # 单个书源也是列表格式
+                            for s in data:
+                                if isinstance(s, dict) and s.get("bookSourceUrl"):
+                                    all_sources.append(s)
+                        elif isinstance(data, dict) and data.get("bookSourceUrl"):
+                            all_sources.append(data)
                     except:
                         pass
                 time.sleep(0.1)
             
             page += 1
-            time.sleep(0.3)
+            time.sleep(0.5)
             
         except Exception as e:
             log.warning(f"  第{page}页失败: {e}")
@@ -383,32 +390,33 @@ def collect_yckceo_list(months=2):
     return all_sources
 
 def collect_yckceo_heji(months=2):
-    """采集yckceo书源合集（按月份）"""
+    """采集yckceo书源合集：从合集列表页提取id，下载合集JSON"""
     log.info("=== 采集yckceo书源合集 ===")
     all_sources = []
     
-    # 爬取合集列表页
-    base_url = "https://www.yckceo.com/yuedu/heji/index.html"
+    base_url = "https://www.yckceo.com/yuedu/shuyuans/index.html"
     page = 1
-    max_pages = 10  # 先爬前10页合集
+    max_pages = 10  # 爬前10页合集
     
     while page <= max_pages:
         try:
             resp = fetch_url(f"{base_url}?page={page}")
-            if not resp:
+            if not resp or resp.status_code != 200:
                 break
             
             html = resp.text
-            # 找合集JSON链接
-            ids = re.findall(r'/yuedu/shuyuans/json/id/(\d+)\.json', html)
+            # 从合集列表页提取详情id：/yuedu/shuyuans/content/id/XXXX.html
+            ids = re.findall(r'/yuedu/shuyuans/content/id/(\d+)\.html', html)
             if not ids:
+                log.info(f"  第{page}页没有更多合集了")
                 break
             
             log.info(f"  合集列表第{page}页，找到 {len(ids)} 个合集")
             
-            # 下载每个合集里的书源
+            # 下载每个合集（自动跟随302跳转到CDN）
             for cid in ids:
-                c_resp = fetch_url(f"https://www.yckceo.com/yuedu/shuyuans/json/id/{cid}.json")
+                json_url = f"https://www.yckceo.com/yuedu/shuyuans/json/id/{cid}.json"
+                c_resp = fetch_url(json_url, timeout=15)
                 if c_resp and c_resp.status_code == 200:
                     try:
                         sources = c_resp.json()
@@ -420,7 +428,7 @@ def collect_yckceo_heji(months=2):
                 time.sleep(0.2)
             
             page += 1
-            time.sleep(0.3)
+            time.sleep(0.5)
             
         except Exception as e:
             log.warning(f"  合集列表第{page}页失败: {e}")
