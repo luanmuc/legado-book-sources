@@ -69,12 +69,12 @@ DATA_SOURCES = {
         "url": "https://shuyuan.nyasama.net/shuyuan/6e67d2531a9076f40e3bb59f50c13e2e.json",
         "enabled": True
     },
-    # 大佬仓库（持续补充）
+    # 大佬仓库（直链JSON）
     "gurus": [
-        {"name": "aoaostar", "url": "https://raw.githubusercontent.com/aoaostar/legado-source/main/books.json"},
-        {"name": "酷安三舞313", "url": ""},  # 待补充
-        {"name": "酷安开源阅读", "url": ""},  # 待补充
-        {"name": "shidahuilang", "url": ""},  # 待补充
+        {"name": "酷安三舞313", "url": "https://legado.aoaostar.com/sources/2a1f129b.json"},
+        {"name": "关耳女频", "url": "https://legado.aoaostar.com/sources/e3e5d620.json"},
+        {"name": "XIU2精品", "url": "https://legado.aoaostar.com/sources/71e564f.json"},
+        {"name": "shidahuilang GitHub", "url": "https://raw.githubusercontent.com/shidahuilang/shuyuan/shuyuan/legado3.json"},
     ]
 }
 
