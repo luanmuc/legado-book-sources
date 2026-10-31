@@ -75,6 +75,11 @@ DATA_SOURCES = {
         {"name": "关耳女频", "url": "https://legado.aoaostar.com/sources/e3e5d620.json"},
         {"name": "XIU2精品", "url": "https://legado.aoaostar.com/sources/71e564f.json"},
         {"name": "shidahuilang GitHub", "url": "https://raw.githubusercontent.com/shidahuilang/shuyuan/shuyuan/legado3.json"},
+    ],
+    # 净化规则数据源
+    "clean_rules_sources": [
+        {"name": "aoaostar净化规则", "url": "https://legado.aoaostar.com/replaceRules.json"},
+        {"name": "三舞313净化规则", "url": "https://legado.aoaostar.com/sources/2a1f129b_replace.json"},
     ]
 }
 
@@ -98,12 +103,35 @@ OUTPUT_FILE = os.path.join(BASE_DIR, "books.json")
 CLEAN_RULES_FILE = os.path.join(BASE_DIR, "clean_rules.json")
 REPORT_FILE = os.path.join(BASE_DIR, "collect_report.md")
 
-def generate_clean_rules(sources):
-    """生成配套净化规则"""
+def collect_clean_rules():
+    """采集各个大佬的净化规则"""
+    log.info("=== 采集净化规则 ===")
+    all_rules = []
+    
+    for source in DATA_SOURCES.get("clean_rules_sources", []):
+        name = source["name"]
+        url = source["url"]
+        log.info(f"  采集 {name}...")
+        
+        resp = fetch_url(url, timeout=15)
+        if resp and resp.status_code == 200:
+            try:
+                rules = resp.json()
+                if isinstance(rules, list):
+                    all_rules.extend(rules)
+                    log.info(f"    成功: {len(rules)} 条")
+            except:
+                log.warning(f"    格式错误")
+    
+    log.info(f"净化规则采集完成，共 {len(all_rules)} 条")
+    return all_rules
+
+def generate_clean_rules(sources, collected_rules=None):
+    """生成配套净化规则：采集的 + 通用的，合并去重"""
     log.info("=== 生成配套净化规则 ===")
     
-    rules = [
-        # 通用广告过滤
+    # 我自己写的通用规则
+    default_rules = [
         {
             "name": "通用-去除脚本标签",
             "group": "通用净化",
@@ -140,23 +168,32 @@ def generate_clean_rules(sources):
             "enabled": True,
             "order": 4
         },
-        {
-            "name": "笔趣阁-去除版权信息",
-            "group": "笔趣阁净化",
-            "pattern": "笔趣阁.*?最快更新|请到.*?站点阅读|手机站.*?地址",
-            "replacement": "",
-            "isRegex": True,
-            "enabled": True,
-            "order": 10
-        },
     ]
+    
+    # 合并采集的和默认的
+    all_rules = []
+    if collected_rules:
+        all_rules.extend(collected_rules)
+    all_rules.extend(default_rules)
+    
+    # 按pattern去重
+    seen = set()
+    unique_rules = []
+    for r in all_rules:
+        pattern = r.get("pattern", "")
+        if pattern and pattern not in seen:
+            seen.add(pattern)
+            unique_rules.append(r)
+    
+    # 排序
+    unique_rules.sort(key=lambda x: x.get("order", 999))
     
     # 保存
     with open(CLEAN_RULES_FILE, "w", encoding="utf-8") as f:
-        json.dump(rules, f, ensure_ascii=False, indent=2)
+        json.dump(unique_rules, f, ensure_ascii=False, indent=2)
     
-    log.info(f"净化规则生成完成，共 {len(rules)} 条 -> {CLEAN_RULES_FILE}")
-    return rules
+    log.info(f"净化规则生成完成，共 {len(unique_rules)} 条（采集{len(collected_rules or [])} + 通用{len(default_rules)}，去重后）")
+    return unique_rules
 
 # ============================================================
 # 日志配置
@@ -719,8 +756,9 @@ def main():
         with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
             json.dump(final_sources, f, ensure_ascii=False, indent=2)
         
-        # 生成配套净化规则
-        generate_clean_rules(final_sources)
+        # 采集大佬净化规则 + 生成配套净化规则
+        collected_rules = collect_clean_rules()
+        generate_clean_rules(final_sources, collected_rules)
         
         # 生成报告
         big_count = len([s for s in final_sources if is_big_site(s)])

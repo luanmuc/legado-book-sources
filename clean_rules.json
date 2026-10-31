@@ -34,14 +34,5 @@
     "isRegex": true,
     "enabled": true,
     "order": 4
-  },
-  {
-    "name": "笔趣阁-去除版权信息",
-    "group": "笔趣阁净化",
-    "pattern": "笔趣阁.*?最快更新|请到.*?站点阅读|手机站.*?地址",
-    "replacement": "",
-    "isRegex": true,
-    "enabled": true,
-    "order": 10
   }
 ]
