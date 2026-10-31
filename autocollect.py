@@ -57,12 +57,12 @@ DATA_SOURCES = {
     "yckceo_list": {
         "name": "yckceo书源列表",
         "base_url": "https://yckceo.com/yuedu/source",
-        "enabled": True
+        "enabled": False  # yckceo有反爬，暂时关闭
     },
     "yckceo_heji": {
         "name": "yckceo书源合集",
         "base_url": "https://yckceo.com/yuedu/heji",
-        "enabled": True
+        "enabled": False  # yckceo有反爬，暂时关闭
     },
     "nyasama": {
         "name": "nyasama星辰整理",
@@ -93,7 +93,8 @@ NON_NOVEL_KEYWORDS = [
 REQUEST_TIMEOUT = 10
 REQUEST_RETRY = 2
 CONCURRENCY = 8
-USER_AGENT = "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+REFERER = "https://www.google.com/"
 
 # 路径配置
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -288,8 +289,13 @@ def get_domain(url):
         return url
 
 def fetch_url(url, timeout=REQUEST_TIMEOUT, retry=REQUEST_RETRY):
-    """带重试的请求"""
-    headers = {"User-Agent": USER_AGENT}
+    """带重试的请求，加反爬头"""
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Referer": REFERER,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8"
+    }
     for i in range(retry + 1):
         try:
             resp = requests.get(url, headers=headers, timeout=timeout)
@@ -462,13 +468,23 @@ def collect_gurus():
     return all_sources
 
 def collect_all(months=2):
-    """采集所有数据源"""
+    """采集所有启用的数据源"""
     ensure_dir(RAW_DIR)
     
     sources = []
-    sources.extend(collect_yckceo_list(months))
-    sources.extend(collect_yckceo_heji(months))
+    
+    # yckceo书源列表
+    if DATA_SOURCES.get("yckceo_list", {}).get("enabled", False):
+        sources.extend(collect_yckceo_list(months))
+    
+    # yckceo书源合集
+    if DATA_SOURCES.get("yckceo_heji", {}).get("enabled", False):
+        sources.extend(collect_yckceo_heji(months))
+    
+    # nyasama星辰整理
     sources.extend(collect_nyasama())
+    
+    # 大佬仓库
     sources.extend(collect_gurus())
     
     # 保存原始数据
@@ -650,16 +666,37 @@ def quick_validate(source):
     return result
 
 def full_validate(source):
-    """完整校验：10个关键词 + 目录 + 正文"""
-    # 快速校验通过后才跑完整校验
-    # 这里简化，实际需要模拟阅读App的搜索流程
-    keywords_pass = 0
-    for kw in FULL_TEST_KEYWORDS:
-        # 模拟搜索测试
-        # 实际需要构造搜索URL并解析结果
-        keywords_pass += 1  # 占位
+    """完整校验：多关键词搜索测试"""
+    search_url = source.get("searchUrl", "")
+    url = source.get("bookSourceUrl", "")
     
-    pass_rate = keywords_pass / len(FULL_TEST_KEYWORDS)
+    # 没有搜索规则的，直接不通过
+    if not search_url:
+        return {"source": source, "pass_rate": 0.0, "keywords_pass": 0}
+    
+    keywords_pass = 0
+    test_keywords = FULL_TEST_KEYWORDS[:3]  # 先测3个关键词，够了
+    
+    for kw in test_keywords:
+        try:
+            # 构造搜索URL
+            if search_url.startswith("http"):
+                test_url = search_url.replace("{{key}}", kw).replace("searchKey", kw)
+            else:
+                base = url.rstrip("/")
+                path = search_url.split(",")[0]
+                if path.startswith("/"):
+                    test_url = base + path.replace("{{key}}", kw)
+                else:
+                    test_url = base + "/" + path.replace("{{key}}", kw)
+            
+            resp = fetch_url(test_url, timeout=6)
+            if resp and resp.status_code == 200 and len(resp.text) > 200:
+                keywords_pass += 1
+        except:
+            pass
+    
+    pass_rate = keywords_pass / len(test_keywords) if test_keywords else 0
     return {
         "source": source,
         "pass_rate": pass_rate,
@@ -667,12 +704,12 @@ def full_validate(source):
     }
 
 def validate_sources(sources):
-    """批量校验"""
+    """批量校验：两级过滤"""
     log.info("=== 开始校验 ===")
     log.info(f"待校验: {len(sources)} 个")
     
     # 第一遍：快速过滤
-    log.info("第一遍：快速过滤（1个关键词）...")
+    log.info("第一遍：快速过滤（首页+搜索接口连通性）...")
     quick_results = []
     with ThreadPoolExecutor(max_workers=CONCURRENCY) as executor:
         futures = {executor.submit(quick_validate, s): s for s in sources}
@@ -684,12 +721,20 @@ def validate_sources(sources):
     dead_sources = [r for r in quick_results if not r["alive"]]
     log.info(f"快速过滤: 存活 {len(alive_sources)} 个，淘汰 {len(dead_sources)} 个")
     
-    # 第二遍：完整校验（只对存活的）
-    log.info("第二遍：完整校验（10个关键词）...")
+    # 第二遍：完整校验（多关键词搜索测试）
+    log.info("第二遍：完整校验（3个关键词搜索测试）...")
     full_results = []
+    low_pass = []
     for r in alive_sources:
         full_r = full_validate(r["source"])
-        full_results.append(full_r)
+        # 通过率低于30%的，标记为低质量
+        if full_r["pass_rate"] >= 0.3:
+            full_results.append(full_r)
+        else:
+            low_pass.append({"source": r["source"], "reason": f"搜索通过率低({full_r['pass_rate']*100:.0f}%)"})
+    
+    dead_sources.extend(low_pass)
+    log.info(f"完整校验: 合格 {len(full_results)} 个，淘汰低质量 {len(low_pass)} 个")
     
     # 按通过率排序
     full_results.sort(key=lambda x: x["pass_rate"], reverse=True)
@@ -764,16 +809,16 @@ def classify_source(source):
     return "综合其他"
 
 def organize_sources(validated_sources, existing_sources):
-    """整理：改名、分组、排序"""
+    """整理：改名、分组、排序（大厂源强制保护，不被新采集覆盖）"""
     log.info("=== 开始整理 ===")
     
     used_names = set()
     result = []
     custom_order = 1
     
-    # 1. 先加大厂源（从现有仓库里拿，保护起来）
+    # 1. 大厂源：强制从现有仓库拿，新采集的一律跳过不覆盖
     big_sites = [s for s in existing_sources if is_big_site(s)]
-    log.info(f"大厂源: {len(big_sites)} 个（保留原有配置）")
+    log.info(f"大厂源: {len(big_sites)} 个（强制保护，保留手动调好的配置）")
     
     for s in big_sites:
         s["customOrder"] = custom_order
@@ -781,8 +826,18 @@ def organize_sources(validated_sources, existing_sources):
         used_names.add(s.get("bookSourceName", ""))
         result.append(s)
     
-    # 2. 加其他源
-    other_sources = [r["source"] for r in validated_sources if not is_big_site(r["source"])]
+    # 2. 其他源：新采集的，跳过所有大厂域名（避免重复）
+    other_sources = []
+    skipped_big = 0
+    for r in validated_sources:
+        s = r["source"]
+        if is_big_site(s):
+            skipped_big += 1
+            continue
+        other_sources.append(s)
+    
+    if skipped_big > 0:
+        log.info(f"跳过新采集的大厂源: {skipped_big} 个（不覆盖手动调好的版本）")
     log.info(f"其他源: {len(other_sources)} 个")
     
     # 按分组排序
