@@ -64,11 +64,6 @@ DATA_SOURCES = {
         "base_url": "https://yckceo.com/yuedu/heji",
         "enabled": False  # yckceo有反爬，暂时关闭
     },
-    "nyasama": {
-        "name": "nyasama星辰整理",
-        "url": "https://shuyuan.nyasama.net/shuyuan/6e67d2531a9076f40e3bb59f50c13e2e.json",
-        "enabled": True
-    },
     # 大佬仓库（直链JSON）
     "gurus": [
         {"name": "酷安三舞313", "url": "https://legado.aoaostar.com/sources/2a1f129b.json"},
@@ -480,9 +475,6 @@ def collect_all(months=2):
     # yckceo书源合集
     if DATA_SOURCES.get("yckceo_heji", {}).get("enabled", False):
         sources.extend(collect_yckceo_heji(months))
-    
-    # nyasama星辰整理
-    sources.extend(collect_nyasama())
     
     # 大佬仓库
     sources.extend(collect_gurus())
