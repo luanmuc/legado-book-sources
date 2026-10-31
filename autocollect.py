@@ -77,9 +77,9 @@ DATA_SOURCES = {
         {"name": "shidahuilang GitHub", "url": "https://raw.githubusercontent.com/shidahuilang/shuyuan/shuyuan/legado3.json"},
     ],
     # 净化规则数据源
+    # 已确认aoaostar网站有"乌云净化"20条，待找到正确直链后补充
     "clean_rules_sources": [
-        {"name": "aoaostar净化规则", "url": "https://legado.aoaostar.com/replaceRules.json"},
-        {"name": "三舞313净化规则", "url": "https://legado.aoaostar.com/sources/2a1f129b_replace.json"},
+        # {"name": "aoaostar乌云净化", "url": ""},  # TODO: 待找直链
     ]
 }
 
