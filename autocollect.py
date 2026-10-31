@@ -125,8 +125,66 @@ def collect_clean_rules():
     log.info(f"净化规则采集完成，共 {len(all_rules)} 条")
     return all_rules
 
+def optimize_clean_rules(rules):
+    """优化净化规则：分组简化、合并同类、按优先级排序"""
+    # 分组映射表
+    group_map = {
+        "禁词": "禁词过滤",
+        "广告": "广告净化",
+        "错字": "错字修正",
+        "和谐": "和谐还原",
+        "标点": "标点修正",
+        "标题": "标题净化",
+        "英语": "英语翻译",
+        "冗余": "冗余清理",
+        "修正": "内容修正",
+        "排版": "排版优化",
+        "清理": "内容清理",
+        "净化": "内容清理",
+        "星号": "格式修正",
+        "格式": "格式修正",
+        "转化": "内容清理",
+        "通用": "通用净化",
+    }
+    
+    # 分组优先级（order越小越先执行）
+    group_priority = {
+        "格式修正": 10,
+        "广告净化": 20,
+        "内容清理": 30,
+        "冗余清理": 40,
+        "排版优化": 50,
+        "标点修正": 60,
+        "错字修正": 70,
+        "内容修正": 80,
+        "和谐还原": 90,
+        "禁词过滤": 100,
+        "标题净化": 110,
+        "英语翻译": 120,
+        "通用净化": 15,
+    }
+    
+    # 简化分组名
+    for r in rules:
+        old_group = r.get("group", "")
+        new_group = "其他"
+        for key, target in group_map.items():
+            if key in old_group:
+                new_group = target
+                break
+        r["group"] = new_group
+    
+    # 按分组优先级排序
+    rules.sort(key=lambda x: group_priority.get(x["group"], 500))
+    
+    # 重新编号id
+    for i, r in enumerate(rules):
+        r["id"] = i + 1
+    
+    return rules
+
 def generate_clean_rules(sources, collected_rules=None):
-    """生成配套净化规则：采集的 + 通用的，合并去重"""
+    """生成配套净化规则：采集的 + 通用的，合并去重优化"""
     log.info("=== 生成配套净化规则 ===")
     
     # 我自己写的通用规则（格式对齐官方）
@@ -187,15 +245,15 @@ def generate_clean_rules(sources, collected_rules=None):
             seen.add(pattern)
             unique_rules.append(r)
     
-    # 排序
-    unique_rules.sort(key=lambda x: x.get("order", 999))
+    # 优化：分组简化、合并、排序
+    optimized = optimize_clean_rules(unique_rules)
     
     # 保存
     with open(CLEAN_RULES_FILE, "w", encoding="utf-8") as f:
-        json.dump(unique_rules, f, ensure_ascii=False, indent=2)
+        json.dump(optimized, f, ensure_ascii=False, indent=2)
     
-    log.info(f"净化规则生成完成，共 {len(unique_rules)} 条（采集{len(collected_rules or [])} + 通用{len(default_rules)}，去重后）")
-    return unique_rules
+    log.info(f"净化规则生成完成，共 {len(optimized)} 条（采集{len(collected_rules or [])} + 通用{len(default_rules)}，去重优化后）")
+    return optimized
 
 # ============================================================
 # 日志配置
@@ -513,9 +571,10 @@ def check_rule_integrity(source):
 # ============================================================
 
 def quick_validate(source):
-    """快速校验：只用1个关键词测试搜索"""
+    """快速校验：首页可达性 + 搜索接口连通性"""
     url = source.get("bookSourceUrl", "")
     domain = get_domain(url)
+    search_url = source.get("searchUrl", "")
     
     result = {
         "source": source,
@@ -526,11 +585,11 @@ def quick_validate(source):
         "reason": ""
     }
     
-    # 先测试首页可达性
+    # 第一步：测试首页可达性
     try:
         resp = fetch_url(url, timeout=5)
         if resp is None:
-            result["reason"] = "连接失败"
+            result["reason"] = "首页连接失败"
             return result
         
         if resp.status_code == 200:
@@ -539,18 +598,54 @@ def quick_validate(source):
             result["waf"] = True  # WAF盾站，不淘汰
             result["alive"] = True
         elif resp.status_code == 404:
-            result["reason"] = "404不存在"
+            result["reason"] = "首页404"
             return result
         else:
-            result["alive"] = True  # 其他状态码先认为活着
+            result["alive"] = True
             
     except Exception as e:
-        result["reason"] = f"请求异常: {e}"
+        result["reason"] = f"首页请求异常"
         return result
     
-    # 快速搜索测试（占位，实际需要解析searchUrl）
-    # 这里先简化：能访问就认为搜索大概率能用
-    result["search_ok"] = True
+    # 第二步：测试搜索接口连通性（简化版）
+    if search_url and result["alive"]:
+        try:
+            # 从searchUrl提取实际请求地址
+            # 格式通常是：/search?q=关键词 或者完整URL
+            test_keyword = QUICK_TEST_KEYWORD
+            
+            # 构造测试URL
+            if search_url.startswith("http"):
+                test_url = search_url.replace("{{key}}", test_keyword).replace("searchKey", test_keyword)
+            else:
+                # 相对路径，拼接域名
+                base = url.rstrip("/")
+                path = search_url.split(",")[0]  # 取第一个逗号前的部分
+                if path.startswith("/"):
+                    test_url = base + path.replace("{{key}}", test_keyword)
+                else:
+                    test_url = base + "/" + path.replace("{{key}}", test_keyword)
+            
+            # 发测试请求
+            s_resp = fetch_url(test_url, timeout=8)
+            if s_resp and s_resp.status_code == 200:
+                # 看看返回内容是不是正常（不是空的，不是错误页）
+                content = s_resp.text
+                if len(content) > 100:  # 至少有内容
+                    result["search_ok"] = True
+                else:
+                    result["reason"] = "搜索返回内容太少"
+            elif s_resp and s_resp.status_code in [403, 405]:
+                result["search_ok"] = True  # WAF站搜索接口可能也被挡，但不淘汰
+            else:
+                result["reason"] = f"搜索接口{ s_resp.status_code if s_resp else '失败' }"
+                
+        except Exception as e:
+            result["reason"] = f"搜索测试异常"
+            # 搜索测试失败不直接淘汰，首页活着就留着
+            result["search_ok"] = False
+    else:
+        result["search_ok"] = result["alive"]  # 没有searchUrl的，首页活着就算过
     
     return result
 
@@ -719,6 +814,21 @@ def generate_report(raw_count, deduped_count, dead_sources, final_count, big_cou
     """生成采集报告"""
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
+    # 统计淘汰原因
+    from collections import Counter
+    reason_counter = Counter()
+    for d in dead_sources:
+        reason = d.get("reason", "未知")
+        reason_counter[reason] += 1
+    
+    top_reasons = reason_counter.most_common(5)
+    reasons_text = ""
+    for reason, count in top_reasons:
+        reasons_text += f"- {reason}: {count} 个\n"
+    
+    # 统计分组
+    # 这里简化，后面可以加
+    
     report = f"""# 书源采集报告
 
 **采集时间：** {now}
@@ -735,11 +845,7 @@ def generate_report(raw_count, deduped_count, dead_sources, final_count, big_cou
 
 ## 淘汰原因Top 5
 
-（自动统计）
-
-## 新增数据源
-
-（自动统计）
+{reasons_text}
 
 ---
 *本报告由 autocollect.py 自动生成*
