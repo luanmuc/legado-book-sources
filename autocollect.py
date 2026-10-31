@@ -21,6 +21,8 @@ import hashlib
 import logging
 import argparse
 import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)  # 关SSL警告
 from urllib.parse import urlparse
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -56,12 +58,12 @@ FULL_TEST_KEYWORDS = [
 DATA_SOURCES = {
     "yckceo_list": {
         "name": "yckceo书源列表",
-        "base_url": "https://yckceo.com/yuedu/source",
+        "base_url": "https://www.yckceo.com/yuedu/shuyuan/index.html",
         "enabled": True
     },
     "yckceo_heji": {
         "name": "yckceo书源合集",
-        "base_url": "https://yckceo.com/yuedu/heji",
+        "base_url": "https://www.yckceo.com/yuedu/shuyuans/index.html",
         "enabled": True
     },
     # 大佬仓库（直链JSON）
@@ -293,7 +295,7 @@ def fetch_url(url, timeout=REQUEST_TIMEOUT, retry=REQUEST_RETRY):
     }
     for i in range(retry + 1):
         try:
-            resp = requests.get(url, headers=headers, timeout=timeout)
+            resp = requests.get(url, headers=headers, timeout=timeout, verify=False)  # 跳过SSL验证，自签名证书不报错
             return resp
         except Exception as e:
             if i < retry:
@@ -312,11 +314,13 @@ def is_non_novel(source):
     return False
 
 def is_big_site(source):
-    """判断是否为大厂源"""
+    """判断是否为大厂源（精确匹配，避免误判）"""
     url = source.get("bookSourceUrl", "")
     domain = get_domain(url)
     for big in BIG_SITES:
-        if get_domain(big["url"]) in domain or domain in get_domain(big["url"]):
+        big_domain = get_domain(big["url"])
+        # 精确匹配 或者 是大厂域名的子域名
+        if domain == big_domain or domain.endswith("." + big_domain):
             return True
     return False
 
@@ -436,20 +440,6 @@ def collect_yckceo_heji(months=2):
     
     log.info(f"yckceo书源合集采集完成，共 {len(all_sources)} 个")
     return all_sources
-
-def collect_nyasama():
-    """采集nyasama星辰整理书源包"""
-    log.info("=== 采集nyasama星辰整理 ===")
-    url = DATA_SOURCES["nyasama"]["url"]
-    resp = fetch_url(url)
-    if resp and resp.status_code == 200:
-        try:
-            data = resp.json()
-            log.info(f"nyasama采集完成，共 {len(data)} 个源")
-            return data
-        except:
-            log.error("nyasama返回格式错误")
-    return []
 
 def collect_gurus():
     """采集大佬仓库书源"""
