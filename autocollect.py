@@ -458,7 +458,55 @@ def clean_and_dedup(sources):
     novel_sources = [s for s in deduped if not is_non_novel(s)]
     log.info(f"过滤非小说后: {len(novel_sources)} 个")
     
-    return novel_sources
+    # 4. 规则完整性校验（按官方规范）
+    valid_sources = []
+    invalid_count = 0
+    for s in novel_sources:
+        if check_rule_integrity(s):
+            valid_sources.append(s)
+        else:
+            invalid_count += 1
+    log.info(f"规则完整性校验: 通过 {len(valid_sources)} 个，淘汰 {invalid_count} 个")
+    
+    return valid_sources
+
+def check_rule_integrity(source):
+    """按官方规范检查书源规则完整性"""
+    # 必填字段检查
+    required_fields = [
+        "bookSourceUrl",
+        "bookSourceName", 
+        "searchUrl",
+    ]
+    for field in required_fields:
+        if not source.get(field):
+            return False
+    
+    # 规则对象检查
+    rule_search = source.get("ruleSearch", {})
+    rule_book_info = source.get("ruleBookInfo", {})
+    rule_toc = source.get("ruleToc", {})
+    rule_content = source.get("ruleContent", {})
+    
+    # 搜索规则必须有bookList和name
+    if not rule_search.get("bookList"):
+        return False
+    if not rule_search.get("name"):
+        return False
+    
+    # 详情规则必须有name和intro（至少有一个）
+    if not rule_book_info.get("name") and not rule_book_info.get("intro"):
+        return False
+    
+    # 目录规则必须有chapterList
+    if not rule_toc.get("chapterList"):
+        return False
+    
+    # 正文规则必须有content
+    if not rule_content.get("content"):
+        return False
+    
+    return True
 
 # ============================================================
 # 第三阶段：校验
