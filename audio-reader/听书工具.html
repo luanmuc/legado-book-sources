@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>听书工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 16px;
+            line-height: 1.6;
+            resize: vertical;
+            outline: none;
+        }
+        
+        textarea:focus {
+            border-color: #1976d2;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        select, input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        select:focus {
+            border-color: #1976d2;
+        }
+        
+        .speed-value {
+            text-align: center;
+            font-size: 14px;
+            color: #1976d2;
+            font-weight: 600;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .btn-play {
+            background: #1976d2;
+            color: white;
+        }
+        
+        .btn-pause {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .btn-stop {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-resume {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            background: #e3f2fd;
+            color: #1976d2;
+            font-size: 14px;
+            margin-top: 16px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #eee;
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #1976d2;
+            width: 0%;
+            transition: width 0.1s;
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 12px;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            button {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>听书工具</h1>
+        
+        <div class="card">
+            <div class="card-title">粘贴小说文本</div>
+            <textarea id="textInput" placeholder="在这里粘贴你想听的小说内容..."></textarea>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">设置</div>
+            <div class="controls">
+                <div class="control-group">
+                    <label for="voiceSelect">选择音色</label>
+                    <select id="voiceSelect"></select>
+                </div>
+                <div class="control-group">
+                    <label for="speedRange">语速: <span class="speed-value" id="speedValue">1.0x</span></label>
+                    <input type="range" id="speedRange" min="0.5" max="2" step="0.1" value="1">
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="buttons">
+                <button class="btn-play" onclick="play()">开始播放</button>
+                <button class="btn-pause" onclick="pause()">暂停</button>
+                <button class="btn-resume" onclick="resume()">继续</button>
+                <button class="btn-stop" onclick="stop()">停止</button>
+            </div>
+            <div class="status" id="status">就绪</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const synth = window.speechSynthesis;
+        let voices = [];
+        let currentUtterance = null;
+        
+        // 加载音色列表
+        function loadVoices() {
+            voices = synth.getVoices();
+            const select = document.getElementById('voiceSelect');
+            select.innerHTML = '';
+            
+            // 优先显示中文音色
+            const zhVoices = voices.filter(v => v.lang.includes('zh'));
+            const otherVoices = voices.filter(v => !v.lang.includes('zh'));
+            
+            [...zhVoices, ...otherVoices].forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.value = voices.indexOf(voice);
+                option.textContent = `${voice.name} (${voice.lang})`;
+                select.appendChild(option);
+            });
+        }
+        
+        // 页面加载完成后加载音色
+        if (synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = loadVoices;
+        }
+        loadVoices();
+        
+        // 语速变化
+        document.getElementById('speedRange').addEventListener('input', function() {
+            document.getElementById('speedValue').textContent = this.value + 'x';
+        });
+        
+        function play() {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                alert('请先粘贴小说内容！');
+                return;
+            }
+            
+            stop();
+            
+            const voiceIndex = document.getElementById('voiceSelect').value;
+            const speed = parseFloat(document.getElementById('speedRange').value);
+            
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            currentUtterance.voice = voices[voiceIndex];
+            currentUtterance.rate = speed;
+            
+            currentUtterance.onstart = () => {
+                document.getElementById('status').textContent = '正在播放...';
+            };
+            
+            currentUtterance.onend = () => {
+                document.getElementById('status').textContent = '播放完成';
+                document.getElementById('progressFill').style.width = '100%';
+            };
+            
+            currentUtterance.onerror = (e) => {
+                document.getElementById('status').textContent = '播放出错: ' + e.error;
+            };
+            
+            synth.speak(currentUtterance);
+        }
+        
+        function pause() {
+            synth.pause();
+            document.getElementById('status').textContent = '已暂停';
+        }
+        
+        function resume() {
+            synth.resume();
+            document.getElementById('status').textContent = '继续播放...';
+        }
+        
+        function stop() {
+            synth.cancel();
+            document.getElementById('status').textContent = '已停止';
+            document.getElementById('progressFill').style.width = '0%';
+        }
+    </script>
+</body>
+</html>
