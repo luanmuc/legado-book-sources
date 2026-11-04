@@ -2,22 +2,22 @@ name: 自动采集更新书源
 
 on:
   schedule:
-    - cron: '0 2 * * 0'  # 每周日凌晨2点(UTC) 自动跑 = 北京时间周日10:00
-  workflow_dispatch:       # 也可以手动点按钮触发
+    - cron: '0 2 * * 0'  # 每周日 UTC 02:00 = 北京时间周日 10:00
+  workflow_dispatch:       # 手动触发
     inputs:
       months:
         description: '采集最近N个月'
         required: false
         default: '1'
 
-# 关键：没有这个权限声明，GITHUB_TOKEN 是只读的，最后一步 git push 会失败
+# 关键：仓库级默认 GITHUB_TOKEN 是只读，必须在这里声明写权限，否则 git push 必然失败
 permissions:
   contents: write
 
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 120  # 采集+校验1300个源需要时间，放宽到120分钟
+    timeout-minutes: 120
 
     steps:
       - uses: actions/checkout@v4
@@ -30,22 +30,34 @@ jobs:
         run: pip install requests beautifulsoup4 lxml
 
       - name: 运行全自动采集脚本
+        id: collect
+        continue-on-error: true
         run: python3 autocollect.py --months ${{ inputs.months || '1' }}
 
-      - name: 显示采集结果
+      - name: 输出采集结果
         if: always()
         run: |
           echo "=== 采集报告 ==="
           cat collect_report.md 2>/dev/null || echo "报告未生成"
           echo
-          echo "=== 书源数量 ==="
-          python3 -c "import json; d=json.load(open('books.json')); print(f'当前 {len(d)} 个书源')" 2>/dev/null || echo "books.json 读取失败"
+          echo "=== 当前书源数 ==="
+          python3 -c "import json; d=json.load(open('books.json')); print(f'{len(d)} 个')" 2>/dev/null || echo "books.json 读取失败"
+          echo
+          echo "=== 采集脚本退出码: ${{ steps.collect.outcome }} ==="
 
       - name: 提交更新
         run: |
+          set +e
+          # 只添加确实存在的文件，避免 pathspec 报错
+          for f in books.json clean_rules.json collect_report.md; do
+            if [ -f "$f" ]; then git add "$f"; fi
+          done
+          # 没有暂存内容就跳过
+          if git diff --staged --quiet; then
+            echo "没有变化，跳过提交"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add books.json clean_rules.json collect_report.md
-          git diff --staged --quiet && echo "没有变化，跳过提交" && exit 0
           git commit -m "chore: 自动采集更新 $(date +%Y-%m-%d) [skip ci]"
           git push
