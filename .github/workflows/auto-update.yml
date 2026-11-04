@@ -2,14 +2,23 @@ name: 自动采集更新书源
 
 on:
   schedule:
-    - cron: '0 2 * * 0'  # 每周日凌晨2点自动跑
+    - cron: '0 2 * * 0'  # 每周日凌晨2点(UTC) 自动跑 = 北京时间周日10:00
   workflow_dispatch:       # 也可以手动点按钮触发
+    inputs:
+      months:
+        description: '采集最近N个月'
+        required: false
+        default: '1'
+
+# 关键：没有这个权限声明，GITHUB_TOKEN 是只读的，最后一步 git push 会失败
+permissions:
+  contents: write
 
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 60  # 最多跑60分钟，防止卡死
-    
+    timeout-minutes: 120  # 采集+校验1300个源需要时间，放宽到120分钟
+
     steps:
       - uses: actions/checkout@v4
 
@@ -21,21 +30,22 @@ jobs:
         run: pip install requests beautifulsoup4 lxml
 
       - name: 运行全自动采集脚本
-        run: python3 autocollect.py --months 1
+        run: python3 autocollect.py --months ${{ inputs.months || '1' }}
 
-      - name: 生成Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            books.json
-            clean_rules.json
-          body_path: collect_report.md
+      - name: 显示采集结果
+        if: always()
+        run: |
+          echo "=== 采集报告 ==="
+          cat collect_report.md 2>/dev/null || echo "报告未生成"
+          echo
+          echo "=== 书源数量 ==="
+          python3 -c "import json; d=json.load(open('books.json')); print(f'当前 {len(d)} 个书源')" 2>/dev/null || echo "books.json 读取失败"
 
       - name: 提交更新
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add books.json clean_rules.json collect_report.md autocollect.log
-          git diff --staged --quiet || git commit -m "chore: 每周自动采集更新 $(date +%Y-%m-%d)"
+          git add books.json clean_rules.json collect_report.md
+          git diff --staged --quiet && echo "没有变化，跳过提交" && exit 0
+          git commit -m "chore: 自动采集更新 $(date +%Y-%m-%d) [skip ci]"
           git push
