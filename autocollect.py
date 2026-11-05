@@ -141,21 +141,33 @@ def main():
             log.info("=" * 50)
             return
 
-        # ===== 中间层提升正式版模式：books_pending.json → 完整校验 → books.json =====
+        # ===== 中间层提升正式版模式：books_pending.json 完整校验 + 与正式版合并发布 =====
         if args.publish_pending:
             if not os.path.exists(PENDING_FILE):
                 log.error("中间层 books_pending.json 不存在，先运行 --stage 合并采集结果")
                 return
             with open(PENDING_FILE, "r", encoding="utf-8") as f:
                 pending_sources = json.load(f)
-            # 大厂保护：12个大厂原样保留（手动调好的版本），其余全部重新完整校验
-            big_sites = [s for s in pending_sources if is_big_site(s)]
-            rest_sources = [s for s in pending_sources if not is_big_site(s)]
-            log.info(f"发布前完整校验: 中间层 {len(pending_sources)} 个 = 大厂保护 {len(big_sites)} + 待校验 {len(rest_sources)}")
-            validated, dead = validate_sources(rest_sources)          # 两级校验：快速存活 + 完整搜索
+            # 读取现有正式版作为合并基准：大厂保护 + 既有源全部保留（中间层做增量合并，不替换正式版）
+            current_sources = []
+            if os.path.exists(OUTPUT_FILE):
+                with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+                    current_sources = json.load(f)
+            big_sites = [s for s in current_sources if is_big_site(s)]
+            rest_pending = [s for s in pending_sources if not is_big_site(s)]
+            log.info(f"发布前完整校验: 中间层 {len(pending_sources)} 个 + 正式版 {len(current_sources)} 个（大厂保护 {len(big_sites)}，中间层待校验 {len(rest_pending)}）")
+            validated, dead = validate_sources(rest_pending)          # 两级校验：快速存活 + 完整搜索
             validated = filter_junk_sources(validated)                # 垃圾过滤（成人保留归组，与正常流程一致）
-            final_sources = organize_sources(validated, big_sites)    # 大厂最顶保护 + 规范化整理
-            log.info(f"发布校验完成: {len(rest_sources)} → 合格 {len([v for v in validated if v.get('pass_rate',0)>=1])}，淘汰 {len(dead)}")
+            # 合并：正式版全部保留 + 校验合格新源按 bookSourceUrl 去重追加
+            existing_urls = {s.get("bookSourceUrl") for s in current_sources}
+            merged = [{"source": s, "pass_rate": 1.0} for s in current_sources]
+            added = 0
+            for v in validated:
+                if v.get("source", {}).get("bookSourceUrl") not in existing_urls:
+                    merged.append(v)
+                    added += 1
+            final_sources = organize_sources(merged, current_sources)  # 大厂最顶保护 + 规范化整理
+            log.info(f"发布合并完成: 正式版 {len(current_sources)} → {len(final_sources)}（新增 {added}，发布校验淘汰 {len(dead)}）")
             with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
                 json.dump(final_sources, f, ensure_ascii=False, indent=2)
             # 配套净化规则 + 报告（真实统计：中间层/发布校验淘汰/最终发布）
@@ -163,7 +175,7 @@ def main():
             generate_clean_rules(final_sources, collected_rules)
             big_count = len([s for s in final_sources if is_big_site(s)])
             generate_report(len(pending_sources), len(pending_sources), dead, len(final_sources), big_count)
-            log.info(f"正式版已更新: {OUTPUT_FILE}（{len(final_sources)} 个，发布校验淘汰 {len(dead)}）")
+            log.info(f"正式版已更新: {OUTPUT_FILE}（{len(final_sources)} 个，大厂 {big_count}，发布校验淘汰 {len(dead)}）")
             if args.publish:
                 auto_publish(len(final_sources), big_count)
             return
