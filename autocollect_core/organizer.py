@@ -14,6 +14,15 @@ from .cleaner import is_big_site
 SUFFIX_CHARS = ["书屋", "阅读", "小说", "书城", "书库", "书轩", "书斋", "书苑"]
 
 
+def _natural_name_key(source):
+    """名字自然排序键：同族前缀聚合，尾部数字按数值比较（笔趣阁2 < 笔趣阁3 < ... < 笔趣阁146）"""
+    name = source.get("bookSourceName", "") or ""
+    m = re.match(r"^(.*?)(\d+)$", name)
+    if m:
+        return (m.group(1), int(m.group(2)))
+    return (name, 0)
+
+
 def generate_chinese_name(source, used_names, group):
     """生成名字：笔趣阁类统一「笔趣阁+数字」；其他类四字纯汉字，重名加数字"""
     original = source.get("bookSourceName", "")
@@ -133,13 +142,17 @@ def organize_sources(validated_sources, existing_sources):
             groups["综合其他"].append(s)
 
     for group_name in ["笔趣阁类", "玄幻武侠", "言情女频", "综合其他", ADULT_GROUP]:
-        # 组内按域名排序，保证数字编号稳定有序
-        for s in sorted(groups[group_name], key=lambda x: x.get("bookSourceUrl", "")):
+        # 组内先按域名排序改名，保证名字-域名绑定稳定（序号分配不漂移）
+        items = sorted(groups[group_name], key=lambda x: x.get("bookSourceUrl", ""))
+        for s in items:
             # 规范化分组写回（覆盖原始乱分组/emoji/状态标记）
             s["bookSourceGroup"] = group_name
             # 改名
-            new_name = generate_chinese_name(s, used_names, group_name)
-            s["bookSourceName"] = new_name
+            s["bookSourceName"] = generate_chinese_name(s, used_names, group_name)
+
+        # 改名后按"名字族+数值"自然排序：同族名字（笔趣阁/笔趣阁2/...）聚合相邻，
+        # 序号按数值递增（笔趣阁2 在 笔趣阁3 前，而非字典序 笔趣阁10<笔趣阁2）
+        for s in sorted(items, key=_natural_name_key):
             s["customOrder"] = custom_order
             custom_order += 1
             result.append(s)
