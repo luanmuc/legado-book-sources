@@ -146,10 +146,11 @@ def collect_yckceo_list(months=1, page_start=1, page_end=10):
     return all_sources
 
 
-def collect_yckceo_heji(months=1, page_start=1, page_end=1):
+def collect_yckceo_heji(months=1, page_start=1, page_end=1, limit=30):
     """采集yckceo书源合集：从合集列表页提取id，下载合集JSON
-    page_start/page_end: 支持分段采集（默认只采第1页=最新100个合集，用户指定范围）
-    months: 只采集最近N个月内更新的合集（按更新时间过滤，超范围自动停止）
+    page_start/page_end: 支持分段采集（默认只采第1页）
+    limit: 只采集列表前N个合集（默认30，用户要求；列表顺序=最新上传在前）
+    months: 只采集最近N个月内更新的合集（对前limit个再叠加过滤）
     """
     log.info("=== 采集yckceo书源合集 ===")
     if months > 0:
@@ -160,6 +161,7 @@ def collect_yckceo_heji(months=1, page_start=1, page_end=1):
     page = page_start
     max_pages = page_end
     now = datetime.now()
+    candidates = []  # [(id, time_str)] 按列表顺序（最新在前）
 
     while page <= max_pages:
         try:
@@ -174,35 +176,41 @@ def collect_yckceo_heji(months=1, page_start=1, page_end=1):
                 log.info(f"  第{page}页没有更多合集了")
                 break
 
-            # 按更新时间过滤最近N个月
             times = extract_update_times(html)
-            kept_ids, all_old = filter_by_months(ids, times, months, now, f"合集第{page}页")
-            if all_old:
-                log.info(f"  第{page}页合集全部超过最近{months}个月，停止翻页")
+            # 时间与id一一对应（缺失时按最新处理，不误杀）
+            if len(times) < len(ids):
+                times = times + ["刚刚"] * (len(ids) - len(times))
+            candidates.extend(zip(ids, times))
+            log.info(f"  第{page}页: {len(ids)} 个合集，累计候选 {len(candidates)}")
+            if len(candidates) >= limit:
                 break
-            if not kept_ids:
-                break
-
-            # 下载每个合集（自动跟随302跳转到CDN）
-            for cid in kept_ids:
-                json_url = f"https://www.yckceo.com/yuedu/shuyuans/json/id/{cid}.json"
-                c_resp = fetch_url(json_url, timeout=15)
-                if c_resp and c_resp.status_code == 200:
-                    try:
-                        sources = c_resp.json()
-                        if isinstance(sources, list):
-                            all_sources.extend(sources)
-                            log.info(f"    合集{cid}: {len(sources)} 个")
-                    except Exception:
-                        pass
-                time.sleep(0.2)
-
             page += 1
             time.sleep(0.5)
 
         except Exception as e:
             log.warning(f"  合集列表第{page}页失败: {e}")
             break
+
+    candidates = candidates[:limit]
+    log.info(f"取列表前 {len(candidates)} 个合集，按最近{months}个月过滤中…")
+    kept_ids, _ = filter_by_months(
+        [c[0] for c in candidates], [c[1] for c in candidates], months, now, f"合集前{limit}个"
+    )
+    log.info(f"过滤后保留 {len(kept_ids)} 个合集")
+
+    # 下载每个合集（自动跟随302跳转到CDN）
+    for cid in kept_ids:
+        json_url = f"https://www.yckceo.com/yuedu/shuyuans/json/id/{cid}.json"
+        c_resp = fetch_url(json_url, timeout=15)
+        if c_resp and c_resp.status_code == 200:
+            try:
+                sources = c_resp.json()
+                if isinstance(sources, list):
+                    all_sources.extend(sources)
+                    log.info(f"    合集{cid}: {len(sources)} 个")
+            except Exception:
+                pass
+        time.sleep(0.2)
 
     log.info(f"yckceo书源合集采集完成，共 {len(all_sources)} 个")
     return all_sources

@@ -45,8 +45,8 @@ def cmd_list(args):
 
 def cmd_heji(args):
     start, end = args.start, args.end
-    log.info(f"段: yckceo书源合集 {start}-{end}页（最近{args.months}个月）")
-    sources = collect_yckceo_heji(months=args.months, page_start=start, page_end=end)
+    log.info(f"段: yckceo书源合集 {start}-{end}页（最近{args.months}个月，前{args.limit}个合集）")
+    sources = collect_yckceo_heji(months=args.months, page_start=start, page_end=end, limit=args.limit)
     save(f"raw_heji_{start}_{end}.json", sources)
 
 
@@ -96,6 +96,7 @@ def main():
     p_heji.add_argument("start", type=int)
     p_heji.add_argument("end", type=int)
     p_heji.add_argument("--months", type=int, default=1, help="只采集最近N个月（默认1）")
+    p_heji.add_argument("--limit", type=int, default=30, help="只采集列表前N个合集（默认30）")
     sub.add_parser("gurus", help="采集4个大佬仓库 → raw_gurus.json")
     sub.add_parser("merge", help="合并所有分片 → raw_all_*.json")
 

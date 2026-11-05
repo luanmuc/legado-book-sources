@@ -80,7 +80,7 @@ bash scripts/run_weekly_collect.sh 1     # 1=采集最近1个月（默认），�
 
 # 或手动分步执行（每步独立落盘、可断点恢复）：
 python3 scripts/collect_staged.py list --months 1      # A1: 采集yckceo书源列表前10页
-python3 scripts/collect_staged.py heji 1 1 --months 1  # A2: 采集合集第1页（最新100个合集）
+python3 scripts/collect_staged.py heji 1 1 --months 1 --limit 30  # A2: 合集只采列表前30个（每个含多源）
 python3 scripts/collect_staged.py gurus                # A3: 4个大佬仓库直链
 python3 scripts/run_from_fragments.py clean            # B: 流式合并清洗去重(checkpoint)
 python3 scripts/run_from_fragments.py validate --start 0 --count 1000   # C: 分批两级校验
@@ -134,7 +134,7 @@ scripts/
 - 按分组+域名排序，customOrder字段控制导入后顺序
 
 ## 📝 更新日志
-- v3.2.5 (2026-11-05): 采集范围收敛——书源列表只采前10页、合集只采第1页（最新100个合集）
+- v3.2.5 (2026-11-05): 采集范围收敛——书源列表只采前10页、书源合集只采列表前30个（每个合集含数百个源；实测第1页100合集=约8.9万源）
 - v3.2.4 (2026-11-05): 全对话复盘维护——修复清洗脚本漏读raw_heji_*.json分片断链/默认采集月份改1(贴合"只采集当前一个月")/清理4个死代码脚本(crawler/pipeline/validate/rename)
 - v3.2.3 (2026-11-05): 脚本维护——months参数真正生效（按更新时间过滤，超范围自动停止）/周任务改分步执行/报告真实统计/校验淘汰落盘
 - v3.2.2 (2026-11-05): 全自动采集链路升级——两阶段采集（提取链接+批量下载）/流式清洗/两级校验/垃圾过滤/命名规范化，书源 610→929

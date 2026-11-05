@@ -32,7 +32,7 @@ echo "工作目录: ${REPO_DIR}" >> "${LOG_FILE}"
 # ===== 阶段A: 采集（列表前10页 + 合集第1页，--months 按更新时间过滤）=====
 echo "===== 阶段A: 采集 yckceo列表 + 合集 + 大佬仓库 =====" >> "${LOG_FILE}"
 "${PYTHON}" scripts/collect_staged.py list --months "${MONTHS}" >> "${LOG_FILE}" 2>&1 || { echo "[FAIL] 列表采集失败" >> "${LOG_FILE}"; exit 1; }
-"${PYTHON}" scripts/collect_staged.py heji 1 1 --months "${MONTHS}" >> "${LOG_FILE}" 2>&1 || { echo "[FAIL] 合集第1页失败" >> "${LOG_FILE}"; exit 1; }
+"${PYTHON}" scripts/collect_staged.py heji 1 1 --months "${MONTHS}" >> "${LOG_FILE}" 2>&1 || { echo "[FAIL] 合集前30个失败" >> "${LOG_FILE}"; exit 1; }
 "${PYTHON}" scripts/collect_staged.py gurus >> "${LOG_FILE}" 2>&1 || { echo "[FAIL] 大佬仓库失败" >> "${LOG_FILE}"; exit 1; }
 
 # ===== 阶段B: 流式清洗（合并分片+去重+过滤，checkpoint可恢复）=====
