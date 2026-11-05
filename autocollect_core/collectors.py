@@ -28,16 +28,72 @@ def get_target_months(months=2):
     return result
 
 
+def parse_update_time(txt, now=None):
+    """解析yckceo列表/合集页条目的更新时间（相对/绝对）为绝对时间；无法解析返回None"""
+    now = now or datetime.now()
+    txt = (txt or "").strip()
+    m = re.match(r"(\d+)\s*分钟前", txt)
+    if m:
+        return now - timedelta(minutes=int(m.group(1)))
+    m = re.match(r"(\d+)\s*小时前", txt)
+    if m:
+        return now - timedelta(hours=int(m.group(1)))
+    m = re.match(r"(\d+)\s*天前", txt)
+    if m:
+        return now - timedelta(days=int(m.group(1)))
+    m = re.match(r"(\d+)\s*个月前", txt)
+    if m:
+        return now - timedelta(days=30 * int(m.group(1)))
+    m = re.match(r"(\d{1,2})/(\d{1,2})\s+(\d{1,2}):(\d{2})", txt)
+    if m:
+        mm, dd = int(m.group(1)), int(m.group(2))
+        year = now.year
+        if (mm, dd) > (now.month, now.day):  # 跨年边界：倒序列表不会出现未来日期
+            year -= 1
+        return datetime(year, mm, dd, int(m.group(3)), int(m.group(4)))
+    m = re.match(r"(\d{4})-(\d{1,2})-(\d{1,2})", txt)
+    if m:
+        return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    return None
+
+
+def extract_update_times(html):
+    """提取列表页每个条目的更新时间（顺序与id提取结果一一对应）"""
+    return re.findall(r'<p class="m-right"[^>]*>([^<]+)</p>', html)
+
+
+def filter_by_months(ids, times, months, now, label):
+    """按更新时间过滤最近N个月内的条目；返回(保留ids, 是否整页均超范围)"""
+    if months <= 0:
+        return ids, False
+    cutoff = now - timedelta(days=30 * months)
+    kept, all_old = [], True
+    for i, sid in enumerate(ids):
+        dt = parse_update_time(times[i] if i < len(times) else "", now)
+        if dt is None:
+            kept.append(sid)  # 时间解析失败不误杀，保留
+            continue
+        if dt >= cutoff:
+            kept.append(sid)
+            all_old = False
+    log.info(f"  {label}: 最近{months}个月过滤 {len(ids)}→{len(kept)} 个")
+    return kept, all_old
+
+
 def collect_yckceo_list(months=2, page_start=1, page_end=20):
     """采集yckceo书源列表：从列表页提取详情id，直接拼JSON链接下载
     page_start/page_end: 支持分段采集（如 1-20 一次，或 1-10/11-20 分两次）
+    months: 只采集最近N个月内更新的书源（按更新时间过滤，超范围自动停止）
     """
     log.info("=== 采集yckceo书源列表 ===")
+    if months > 0:
+        log.info(f"目标月份范围: {' / '.join(m['label'] for m in get_target_months(months))}")
     all_sources = []
 
     base_url = "https://www.yckceo.com/yuedu/shuyuan/index.html"
     page = page_start
     max_pages = page_end
+    now = datetime.now()
 
     while page <= max_pages:
         try:
@@ -52,10 +108,17 @@ def collect_yckceo_list(months=2, page_start=1, page_end=20):
                 log.info(f"  第{page}页没有更多书源了")
                 break
 
-            log.info(f"  书源列表第{page}页，找到 {len(ids)} 个")
+            # 按更新时间过滤最近N个月
+            times = extract_update_times(html)
+            kept_ids, all_old = filter_by_months(ids, times, months, now, f"列表第{page}页")
+            if all_old:
+                log.info(f"  第{page}页书源全部超过最近{months}个月，停止翻页")
+                break
+            if not kept_ids:
+                break
 
             # 直接拼接JSON链接下载（id是一样的）
-            for sid in ids:
+            for sid in kept_ids:
                 json_url = f"https://www.yckceo.com/yuedu/shuyuan/json/id/{sid}.json"
                 s_resp = fetch_url(json_url, timeout=8)
                 if s_resp and s_resp.status_code == 200:
@@ -86,13 +149,17 @@ def collect_yckceo_list(months=2, page_start=1, page_end=20):
 def collect_yckceo_heji(months=2, page_start=1, page_end=10):
     """采集yckceo书源合集：从合集列表页提取id，下载合集JSON
     page_start/page_end: 支持分段采集（如 1-3 / 4-7 / 8-10 分三次）
+    months: 只采集最近N个月内更新的合集（按更新时间过滤，超范围自动停止）
     """
     log.info("=== 采集yckceo书源合集 ===")
+    if months > 0:
+        log.info(f"目标月份范围: {' / '.join(m['label'] for m in get_target_months(months))}")
     all_sources = []
 
     base_url = "https://www.yckceo.com/yuedu/shuyuans/index.html"
     page = page_start
     max_pages = page_end
+    now = datetime.now()
 
     while page <= max_pages:
         try:
@@ -107,10 +174,17 @@ def collect_yckceo_heji(months=2, page_start=1, page_end=10):
                 log.info(f"  第{page}页没有更多合集了")
                 break
 
-            log.info(f"  合集列表第{page}页，找到 {len(ids)} 个合集")
+            # 按更新时间过滤最近N个月
+            times = extract_update_times(html)
+            kept_ids, all_old = filter_by_months(ids, times, months, now, f"合集第{page}页")
+            if all_old:
+                log.info(f"  第{page}页合集全部超过最近{months}个月，停止翻页")
+                break
+            if not kept_ids:
+                break
 
             # 下载每个合集（自动跟随302跳转到CDN）
-            for cid in ids:
+            for cid in kept_ids:
                 json_url = f"https://www.yckceo.com/yuedu/shuyuans/json/id/{cid}.json"
                 c_resp = fetch_url(json_url, timeout=15)
                 if c_resp and c_resp.status_code == 200:

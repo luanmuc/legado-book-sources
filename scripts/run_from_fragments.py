@@ -177,6 +177,21 @@ def cmd_validate(args):
         json.dump(unique, f, ensure_ascii=False, indent=2)
     log.info(f"✅ 本批合格 {len(validated)}，累计合格 {len(unique)} → {result_file}")
 
+    # 淘汰源也落盘（供 final 报告统计淘汰原因）
+    dead_file = os.path.join(RAW_DIR, "dead.json")
+    prev_dead = []
+    if os.path.exists(dead_file):
+        with open(dead_file, "r", encoding="utf-8") as f:
+            prev_dead = json.load(f)
+    dead_by_url = {}
+    for d in prev_dead:
+        dead_by_url[d.get("bookSourceUrl", "")] = d
+    for d in dead:
+        dead_by_url[d.get("bookSourceUrl", "")] = d
+    with open(dead_file, "w", encoding="utf-8") as f:
+        json.dump(list(dead_by_url.values()), f, ensure_ascii=False, indent=2)
+    log.info(f"累计淘汰 {len(dead_by_url)} 个 → {dead_file}")
+
 
 def cmd_final(args):
     """整理+净化规则+报告+发布（基于合格源文件，可用过滤后的干净池）"""
@@ -205,9 +220,47 @@ def cmd_final(args):
     collected = collect_clean_rules()
     generate_clean_rules(final, collected)
 
-    # 报告
+    # 报告（真实统计：分片原始量 / 清洗量 / 校验淘汰 / 入库量）
+    raw_count = 0
+    list_file = os.path.join(RAW_DIR, "raw_list.json")
+    if os.path.exists(list_file):
+        try:
+            raw_count += len(json.load(open(list_file, encoding="utf-8")))
+        except Exception:
+            pass
+    heji_dir = os.path.join(RAW_DIR, "heji")
+    for fpath in glob.glob(os.path.join(heji_dir, "*.json")):
+        try:
+            raw_count += len(json.load(open(fpath, encoding="utf-8")))
+        except Exception:
+            pass
+    gurus_file = os.path.join(RAW_DIR, "raw_gurus.json")
+    if os.path.exists(gurus_file):
+        try:
+            raw_count += len(json.load(open(gurus_file, encoding="utf-8")))
+        except Exception:
+            pass
+
+    cleaned_files = sorted(glob.glob(os.path.join(RAW_DIR, "cleaned_*.json")), reverse=True)
+    deduped_count = 0
+    if cleaned_files:
+        try:
+            deduped_count = len(json.load(open(cleaned_files[0], encoding="utf-8")))
+        except Exception:
+            pass
+
+    dead = []
+    dead_file = os.path.join(RAW_DIR, "dead.json")
+    if os.path.exists(dead_file):
+        try:
+            dead = json.load(open(dead_file, encoding="utf-8"))
+        except Exception:
+            dead = []
+    if not dead:  # 无淘汰记录时按差值估算
+        dead = [{"reason": "两级校验未通过"}] * max(0, deduped_count - len(validated))
+
     big_count = len([s for s in final if is_big_site(s)])
-    generate_report(0, 0, [], len(final), big_count)
+    generate_report(raw_count, deduped_count, dead, len(final), big_count)
 
     if args.publish:
         auto_publish(len(final), big_count)

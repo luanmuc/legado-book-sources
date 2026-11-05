@@ -38,15 +38,15 @@ def save(fragment_name, sources):
 
 
 def cmd_list(args):
-    log.info("段1: yckceo书源列表 20页")
-    sources = collect_yckceo_list(page_start=1, page_end=20)
+    log.info(f"段1: yckceo书源列表 20页（最近{args.months}个月）")
+    sources = collect_yckceo_list(months=args.months, page_start=1, page_end=20)
     save("raw_list.json", sources)
 
 
 def cmd_heji(args):
     start, end = args.start, args.end
-    log.info(f"段: yckceo书源合集 {start}-{end}页")
-    sources = collect_yckceo_heji(page_start=start, page_end=end)
+    log.info(f"段: yckceo书源合集 {start}-{end}页（最近{args.months}个月）")
+    sources = collect_yckceo_heji(months=args.months, page_start=start, page_end=end)
     save(f"raw_heji_{start}_{end}.json", sources)
 
 
@@ -90,10 +90,12 @@ def main():
     parser = argparse.ArgumentParser(description="分段采集脚本")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    sub.add_parser("list", help="采集yckceo列表20页 → raw_list.json")
+    p_list = sub.add_parser("list", help="采集yckceo列表20页 → raw_list.json")
+    p_list.add_argument("--months", type=int, default=2, help="只采集最近N个月（默认2）")
     p_heji = sub.add_parser("heji", help="采集合集指定页范围 → raw_heji_s_e.json")
     p_heji.add_argument("start", type=int)
     p_heji.add_argument("end", type=int)
+    p_heji.add_argument("--months", type=int, default=2, help="只采集最近N个月（默认2）")
     sub.add_parser("gurus", help="采集4个大佬仓库 → raw_gurus.json")
     sub.add_parser("merge", help="合并所有分片 → raw_all_*.json")
 

@@ -75,44 +75,56 @@
 
 ### 使用方法
 ```bash
-# 完整流程（采集→校验→整理→输出）
-python3 autocollect.py
+# 一键完整流程（推荐，分步执行防中断，每周任务用这个）
+bash scripts/run_weekly_collect.sh 2     # 2=采集最近2个月，可调
 
-# 跑完自动发布到GitHub
-python3 autocollect.py --publish
+# 或手动分步执行（每步独立落盘、可断点恢复）：
+python3 scripts/collect_staged.py list --months 2      # A1: 采集yckceo列表20页
+python3 scripts/collect_staged.py heji 1 5 --months 2  # A2: 采集合集1-5页
+python3 scripts/collect_staged.py heji 6 10 --months 2 # A3: 采集合集6-10页
+python3 scripts/collect_staged.py gurus                # A4: 4个大佬仓库直链
+python3 scripts/run_from_fragments.py clean            # B: 流式合并清洗去重(checkpoint)
+python3 scripts/run_from_fragments.py validate --start 0 --count 1000   # C: 分批两级校验
+python3 scripts/filter_junk_sources.py                 # D: 垃圾过滤(成人单独分组)
+python3 scripts/run_from_fragments.py final --input raw/autocollect/validated_clean.json --publish  # E: 整理+发布
 
-# 只采集最近3个月的
-python3 autocollect.py --months 3
-
-# 单独执行某个阶段
-python3 autocollect.py --collect    # 只采集
-python3 autocollect.py --validate   # 只校验
-python3 autocollect.py --merge      # 只合并整理
+# 单命令完整流程（适合交互调试，沙箱环境可能中断）
+python3 autocollect.py --publish --months 2
 ```
 
 ### 优化特性
-- **增量采集**：动态计算最近N个月，不写死
+- **增量采集**：`--months N` 按更新时间过滤，只采集最近N个月的列表/合集，超范围自动停止翻页
 - **两级过滤**：1个词快速筛，10个词精测，节省时间
 - **域名去重**：同一站多域名自动合并，保留最优规则
 - **WAF友好**：403盾站不淘汰，能搜出书就保留
 - **大厂保护**：12个正版大站单独保护，不被自动更新覆盖
-- **自动报告**：每次跑完生成采集报告，新增/淘汰一目了然
+- **垃圾过滤**：剔除失效标记/测试占位/非小说，成人内容单独归组
+- **自动报告**：每次跑完生成采集报告，采集/清洗/淘汰/入库一目了然
+- **断点恢复**：采集分片独立落盘、清洗checkpoint、校验分批追加，中断零损失
 
-### 模块化结构（v3.2.1）
-脚本已拆分为 `autocollect_core/` 包，主入口 `autocollect.py` 命令行接口保持不变：
+### 模块化结构（v3.2.3）
+核心逻辑在 `autocollect_core/` 包，主入口 `autocollect.py`；`scripts/` 提供分步执行脚本（每周任务主路径）：
 
 ```
-autocollect.py              # 主入口（五阶段编排）
+autocollect.py              # 主入口（五阶段编排，单命令模式）
 autocollect_core/
 ├── config.py               # 配置区：数据源/关键词/路径
 ├── utils.py                # 日志 + 工具（fetch_url/clean_url/get_domain）
-├── collectors.py           # 采集：yckceo列表/合集/大佬仓库
+├── collectors.py           # 采集：yckceo列表/合集(按月份过滤)/大佬仓库
 ├── cleaner.py              # 清洗去重 + 大厂判断
 ├── validators.py           # 规则完整性/快速/完整/两级校验
 ├── organizer.py            # 四字改名/分组/customOrder/大厂保护
 ├── cleanrules.py           # 净化规则采集/优化/生成
 ├── report.py               # 采集报告
 └── publisher.py            # git推送 + 发布页Release
+scripts/
+├── run_weekly_collect.sh   # 每周任务入口（crontab调用，分步全流程+发布）
+├── collect_staged.py       # 分段采集（list/heji/gurus/merge，--months过滤）
+├── collect_heji_ids.py     # 阶段A: 提取全部合集链接ID
+├── collect_heji_batch.py   # 阶段B: 逐合集独立落盘批量下载
+├── run_from_fragments.py   # 分片恢复: clean/validate/final(可--publish)
+├── filter_junk_sources.py  # 垃圾过滤+成人分组
+└── collect_heji_batch.py   # 逐合集批量下载（断点续传）
 ```
 
 ## ✏️ 命名规范
@@ -123,6 +135,7 @@ autocollect_core/
 - 按分组+域名排序，customOrder字段控制导入后顺序
 
 ## 📝 更新日志
+- v3.2.3 (2026-11-05): 脚本维护——months参数真正生效（按更新时间过滤，超范围自动停止）/周任务改分步执行/报告真实统计/校验淘汰落盘
 - v3.2.2 (2026-11-05): 全自动采集链路升级——两阶段采集（提取链接+批量下载）/流式清洗/两级校验/垃圾过滤/命名规范化，书源 610→929
 - v3.2.1 (2026-11-05): 脚本模块化重构，拆分为 autocollect_core/ 9模块包
 - v3.2 (2026-11-01): 修复起点书源分类页加载为空的问题
