@@ -6,6 +6,7 @@ autocollect_core 整理模块（第四阶段）
 
 import re
 
+from .config import ADULT_GROUP
 from .utils import get_domain, log
 from .cleaner import is_big_site
 
@@ -52,8 +53,8 @@ def classify_source(source):
         return "大厂正版"
 
     # 成人书源（filter_junk_sources 已统一打标记）
-    if group == "成人书源":
-        return "成人书源"
+    if group == ADULT_GROUP:
+        return ADULT_GROUP
 
     domain = get_domain(url)
 
@@ -111,7 +112,7 @@ def organize_sources(validated_sources, existing_sources):
     log.info(f"其他源: {len(other_sources)} 个")
 
     # 按分组排序（成人书源放最后）
-    groups = {"笔趣阁类": [], "玄幻武侠": [], "言情女频": [], "综合其他": [], "成人书源": []}
+    groups = {"笔趣阁类": [], "玄幻武侠": [], "言情女频": [], "综合其他": [], ADULT_GROUP: []}
     for s in other_sources:
         group = classify_source(s)
         if group in groups:
@@ -119,7 +120,7 @@ def organize_sources(validated_sources, existing_sources):
         else:
             groups["综合其他"].append(s)
 
-    for group_name in ["笔趣阁类", "玄幻武侠", "言情女频", "综合其他", "成人书源"]:
+    for group_name in ["笔趣阁类", "玄幻武侠", "言情女频", "综合其他", ADULT_GROUP]:
         # 组内按域名排序，保证数字编号稳定有序
         for s in sorted(groups[group_name], key=lambda x: x.get("bookSourceUrl", "")):
             # 规范化分组写回（覆盖原始乱分组/emoji/状态标记）

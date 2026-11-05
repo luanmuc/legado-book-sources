@@ -22,7 +22,7 @@ import os
 from autocollect_core.config import OUTPUT_FILE, RAW_DIR
 from autocollect_core.utils import log
 from autocollect_core.collectors import collect_all
-from autocollect_core.cleaner import clean_and_dedup, is_big_site
+from autocollect_core.cleaner import clean_and_dedup, filter_junk_sources, is_big_site
 from autocollect_core.validators import validate_sources
 from autocollect_core.organizer import organize_sources
 from autocollect_core.cleanrules import collect_clean_rules, generate_clean_rules
@@ -74,6 +74,10 @@ def main():
     else:
         validated = [{"source": s, "pass_rate": 1.0} for s in cleaned]
         dead = []
+
+    # 第三点五阶段：垃圾过滤（剔除非小说/测试/失效标记，成人内容保留归组）
+    if not args.merge:
+        validated = filter_junk_sources(validated)
 
     # 第四阶段：整理合并
     if not args.collect and not args.validate:

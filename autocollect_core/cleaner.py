@@ -4,7 +4,8 @@ autocollect_core 清洗去重模块（第二阶段）
 格式校验 / URL清理 / 域名去重 / 非小说过滤 / 规则完整性过滤
 """
 
-from .config import BIG_SITES, NON_NOVEL_KEYWORDS
+from .config import (ADULT_GROUP, BIG_SITES, JUNK_DEAD_KW, JUNK_ADULT_KW,
+                     JUNK_NON_NOVEL_KW, JUNK_TEST_KW, NON_NOVEL_KEYWORDS)
 from .utils import clean_url, get_domain, log
 from .validators import check_rule_integrity
 
@@ -78,3 +79,52 @@ def clean_and_dedup(sources):
     log.info(f"规则完整性校验: 通过 {len(valid_sources)} 个，淘汰 {invalid_count} 个")
 
     return valid_sources
+
+
+def _source_blob(s):
+    name = s.get("bookSourceName") or ""
+    url = s.get("bookSourceUrl") or ""
+    group = s.get("bookSourceGroup") or ""
+    return (name + " " + url + " " + group).lower()
+
+
+def classify_junk(s):
+    """垃圾源分类：返回 非小说/测试占位/失效标记，干净源返回 None"""
+    blob = _source_blob(s)
+    if any(k.lower() in blob for k in JUNK_NON_NOVEL_KW):
+        return "非小说"
+    if any(k.lower() in blob for k in JUNK_TEST_KW):
+        return "测试占位"
+    if any(k in blob for k in JUNK_DEAD_KW):
+        return "失效标记"
+    return None
+
+
+def is_adult_source(s):
+    """是否为成人内容源"""
+    blob = _source_blob(s)
+    return any(k in blob for k in JUNK_ADULT_KW)
+
+
+def filter_junk_sources(items, keep_adult=True):
+    """垃圾过滤（集成到主流程）：剔除垃圾，成人内容保留并归入ADULT_GROUP分组
+    items: 校验合格列表（包装结构 {source, pass_rate} 或裸源 dict 均可，原样返回）
+    """
+    junk_counts = {}
+    adult_count = 0
+    kept = []
+    for item in items:
+        s = item.get("source", item) if isinstance(item, dict) else item
+        reason = classify_junk(s)
+        if reason:
+            junk_counts[reason] = junk_counts.get(reason, 0) + 1
+            continue
+        if keep_adult and is_adult_source(s):
+            s["bookSourceGroup"] = ADULT_GROUP  # 成人源统一归组，organize 单独分组
+            adult_count += 1
+        kept.append(item)
+
+    log.info(f"垃圾过滤: 剔除 {sum(junk_counts.values())} 个 {junk_counts}")
+    log.info(f"成人内容保留 {adult_count} 个（归入{ADULT_GROUP}分组）")
+    log.info(f"过滤后干净源 {len(kept)} 个")
+    return kept

@@ -111,7 +111,7 @@ autocollect_core/
 ├── config.py               # 配置区：数据源/关键词/路径
 ├── utils.py                # 日志 + 工具（fetch_url/clean_url/get_domain）
 ├── collectors.py           # 采集：yckceo列表/合集(按月份过滤)/大佬仓库
-├── cleaner.py              # 清洗去重 + 大厂判断
+├── cleaner.py              # 清洗去重 + 大厂判断 + 垃圾过滤/成人归组
 ├── validators.py           # 规则完整性/快速/完整/两级校验
 ├── organizer.py            # 四字改名/分组/customOrder/大厂保护
 ├── cleanrules.py           # 净化规则采集/优化/生成
