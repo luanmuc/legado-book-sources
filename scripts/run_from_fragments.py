@@ -182,9 +182,12 @@ def cmd_validate(args):
     merged = prev + validated
 
     def _src_url(item):
-        # 兼容包装结构({source,...})与裸源dict
-        s = item.get("source", {}) if isinstance(item, dict) else item
-        return (s or {}).get("bookSourceUrl", "") if isinstance(s, dict) else ""
+        # 兼容包装结构({source,...})与裸源dict（bookSourceUrl 顶层）
+        if not isinstance(item, dict):
+            return ""
+        if "source" in item and isinstance(item["source"], dict):
+            return item["source"].get("bookSourceUrl", "")
+        return item.get("bookSourceUrl", "")
 
     seen = set()
     unique = []

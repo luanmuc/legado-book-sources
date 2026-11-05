@@ -24,7 +24,7 @@ from autocollect_core.config import OUTPUT_FILE, RAW_DIR, PENDING_FILE
 from autocollect_core.utils import log
 from autocollect_core.collectors import collect_all
 from autocollect_core.cleaner import clean_and_dedup, filter_junk_sources, is_big_site
-from autocollect_core.validators import validate_sources
+from autocollect_core.validators import validate_sources, validate_sources_with_checkpoint
 from autocollect_core.organizer import organize_sources
 from autocollect_core.cleanrules import collect_clean_rules, generate_clean_rules
 from autocollect_core.report import generate_report
@@ -107,12 +107,13 @@ def main():
     else:
         cleaned = raw_sources
 
-    # 第三阶段：校验
+    # 第三阶段：校验（带断点续传：每批落盘 ckpt_{tag}_*.json，中断重启跳过已验源）
     if args.publish_pending:
         validated = None
         dead = []
     elif not args.merge:
-        validated, dead = validate_sources(cleaned)
+        ckpt_tag = os.path.basename(args.from_cleaned).replace(".json", "") if args.from_cleaned else "collect"
+        validated, dead = validate_sources_with_checkpoint(cleaned, ckpt_tag)
     else:
         validated = [{"source": s, "pass_rate": 1.0} for s in cleaned]
         dead = []
@@ -156,7 +157,7 @@ def main():
             big_sites = [s for s in current_sources if is_big_site(s)]
             rest_pending = [s for s in pending_sources if not is_big_site(s)]
             log.info(f"发布前完整校验: 中间层 {len(pending_sources)} 个 + 正式版 {len(current_sources)} 个（大厂保护 {len(big_sites)}，中间层待校验 {len(rest_pending)}）")
-            validated, dead = validate_sources(rest_pending)          # 两级校验：快速存活 + 完整搜索
+            validated, dead = validate_sources_with_checkpoint(rest_pending, "pending", batch=200)  # 两级校验：快速存活 + 完整搜索（断点续传）
             validated = filter_junk_sources(validated)                # 垃圾过滤（成人保留归组，与正常流程一致）
             # 合并：正式版全部保留 + 校验合格新源按 bookSourceUrl 去重追加
             existing_urls = {s.get("bookSourceUrl") for s in current_sources}

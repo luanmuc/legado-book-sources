@@ -215,3 +215,70 @@ def validate_sources(sources):
     full_results.sort(key=lambda x: x["pass_rate"], reverse=True)
 
     return full_results, dead_sources
+
+
+def validate_sources_with_checkpoint(sources, tag, batch=300):
+    """两级校验 + 断点续传（主流程 --stage/--publish/--publish-pending 使用）
+
+    每批校验结果立即落盘 raw/autocollect/ckpt_{tag}_validated.json / ckpt_{tag}_dead.json；
+    重启时读取已验URL自动跳过（真正断点续传，不用从头重跑）；
+    全部校验完成后删除checkpoint文件，下次同一tag从头开始。
+
+    tag: 输入标识（如 cleaned文件名、pending），输入不同tag不同，互不干扰。
+    """
+    import json
+    import os
+
+    from .config import RAW_DIR
+
+    def _url(item):
+        # 兼容裸源 dict（bookSourceUrl 顶层）与包装结构（{source: {...}}）
+        if not isinstance(item, dict):
+            return ""
+        if "source" in item and isinstance(item["source"], dict):
+            return item["source"].get("bookSourceUrl", "")
+        return item.get("bookSourceUrl", "")
+
+    vfile = os.path.join(RAW_DIR, f"ckpt_{tag}_validated.json")
+    dfile = os.path.join(RAW_DIR, f"ckpt_{tag}_dead.json")
+    os.makedirs(RAW_DIR, exist_ok=True)
+
+    validated, dead_acc = [], []
+    done = set()
+    if os.path.exists(vfile):
+        try:
+            with open(vfile, encoding="utf-8") as f:
+                validated = json.load(f)
+            done = {_url(v) for v in validated if _url(v)}
+            log.info(f"断点续传: 已校验 {len(validated)} 个（{vfile}）")
+        except Exception as e:
+            log.warning(f"checkpoint损坏，从头校验: {e}")
+            validated = []
+    if os.path.exists(dfile):
+        try:
+            with open(dfile, encoding="utf-8") as f:
+                dead_acc = json.load(f)
+            done |= {_url(d) for d in dead_acc if _url(d)}  # 已淘汰的源同样不重跑
+        except Exception:
+            dead_acc = []
+
+    todo = [s for s in sources if _url(s) and _url(s) not in done]
+    log.info(f"校验断点: 共 {len(sources)} 个，已验 {len(validated)}，待验 {len(todo)}")
+    if not todo:
+        log.info("全部已校验，直接复用结果")
+    for i in range(0, len(todo), batch):
+        batch_sources = todo[i:i + batch]
+        v, d = validate_sources(batch_sources)
+        validated.extend(v)
+        dead_acc.extend(d)
+        with open(vfile, "w", encoding="utf-8") as f:
+            json.dump(validated, f, ensure_ascii=False, indent=2)
+        with open(dfile, "w", encoding="utf-8") as f:
+            json.dump(dead_acc, f, ensure_ascii=False, indent=2)
+        log.info(f"  批次 [{i}:{i + len(batch_sources)}] 完成: 合格 {len(validated)} 累计，淘汰 {len(dead_acc)} 累计")
+
+    for f in (vfile, dfile):
+        if os.path.exists(f):
+            os.remove(f)
+    log.info(f"✅ 两级校验完成: 合格 {len(validated)}，淘汰 {len(dead_acc)}（checkpoint已清理）")
+    return validated, dead_acc
