@@ -1,5 +1,8 @@
 # 开发文档（DEVELOPMENT.md）
 
+> 中断恢复（对话中断/额度耗尽/沙箱重置/发布传入一半）见 **[RESUME.md](RESUME.md)**；
+> 接续第一步永远是 `python3 scripts/status.py`（本地+发布页真实状态一条命令看清）。
+
 > Legado 阅读书源仓库自动采集系统的架构、数据流、CLI、发布与故障排查说明。
 > 维护者视角的完整手册。用户文档见 [README.md](README.md)。
 
@@ -84,6 +87,7 @@
 | `run_from_fragments.py` | 分片恢复：`clean`（合并分片+清洗+成人豁免，兼容 raw_heji_*.json 与 heji/*.json 两种路径）/ `validate --start --count`（分批）/ `final --input --publish` |
 | `filter_junk_sources.py` | 垃圾过滤+成人归组（复用 cleaner 核心函数） |
 | `check_usable.py` | 真实性专项检测：全量/抽样跑 `check_source_usable`，输出 usable_report + 断点 ckpt_usable.json |
+| `status.py` | **状态自检**：正式版/中间层源数与分组、最新 cleaned、校验断点、采集分片、git 状态、发布页最新版本与 assets 完整性、crontab 是否在（中断接续第一步） |
 | `install_cron.sh` | 一键重建本地 crontab（每周日 02:00，VM 重置后恢复用） |
 
 ---
@@ -209,6 +213,10 @@ python3 scripts/check_usable.py --limit 50     # 抽样
 ---
 
 ## 6. 发布流程（publisher.py）
+
+**发布中断恢复（2026-11-06 新增）**：`is_partial_release()` 检测最新 Release 的 assets 是否缺失或 0 字节
+（= 上次上传传到一半），命中则 `publish_release` 复用该 tag 补齐上传，**不再新开版本**；
+两个 asset 都传齐才算发布成功，未齐会明确提示"重跑同一命令自动补齐"。
 
 1. `git config user.name/email`（本地）→ `git add books.json clean_rules.json collect_report.md`
 2. `git commit` + `git push origin main`
