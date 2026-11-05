@@ -52,8 +52,8 @@ def clean_url(url):
     url = re.sub(r'[#＃].*$', '', url)
     # 去掉首尾空格
     url = url.strip()
-    # 剔除URL中的非URL字符：中文注释/全角符号等（如上游数据 url 尾部被手打"已整理"）
-    m = re.match(r'^(https?://[^\s\u4e00-\u9fff\uff00-\uffef]+)', url)
+    # 剔除URL中的非URL字符：中文注释/全角符号/emoji等（如上游数据 url 尾部被手打"已整理"、🔞）
+    m = re.match(r'^(https?://[^\s\u4e00-\u9fff\uff00-\uffef\U0001F300-\U0010FFFF]+)', url)
     if m:
         url = m.group(1)
     return url
