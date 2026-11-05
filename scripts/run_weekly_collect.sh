@@ -29,11 +29,10 @@ cd "${REPO_DIR}" || { echo "[FATAL] 无法进入仓库目录 ${REPO_DIR}" >> "${
 echo "===== 每周自动采集启动 $(date '+%Y-%m-%d %H:%M:%S') | months=${MONTHS} =====" >> "${LOG_FILE}"
 echo "工作目录: ${REPO_DIR}" >> "${LOG_FILE}"
 
-# ===== 阶段A: 采集（--months 按更新时间过滤，超范围自动停止）=====
+# ===== 阶段A: 采集（列表前10页 + 合集第1页，--months 按更新时间过滤）=====
 echo "===== 阶段A: 采集 yckceo列表 + 合集 + 大佬仓库 =====" >> "${LOG_FILE}"
 "${PYTHON}" scripts/collect_staged.py list --months "${MONTHS}" >> "${LOG_FILE}" 2>&1 || { echo "[FAIL] 列表采集失败" >> "${LOG_FILE}"; exit 1; }
-"${PYTHON}" scripts/collect_staged.py heji 1 5 --months "${MONTHS}" >> "${LOG_FILE}" 2>&1 || { echo "[FAIL] 合集1-5页失败" >> "${LOG_FILE}"; exit 1; }
-"${PYTHON}" scripts/collect_staged.py heji 6 10 --months "${MONTHS}" >> "${LOG_FILE}" 2>&1 || { echo "[FAIL] 合集6-10页失败" >> "${LOG_FILE}"; exit 1; }
+"${PYTHON}" scripts/collect_staged.py heji 1 1 --months "${MONTHS}" >> "${LOG_FILE}" 2>&1 || { echo "[FAIL] 合集第1页失败" >> "${LOG_FILE}"; exit 1; }
 "${PYTHON}" scripts/collect_staged.py gurus >> "${LOG_FILE}" 2>&1 || { echo "[FAIL] 大佬仓库失败" >> "${LOG_FILE}"; exit 1; }
 
 # ===== 阶段B: 流式清洗（合并分片+去重+过滤，checkpoint可恢复）=====

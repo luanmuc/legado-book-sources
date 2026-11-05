@@ -80,9 +80,9 @@ def filter_by_months(ids, times, months, now, label):
     return kept, all_old
 
 
-def collect_yckceo_list(months=2, page_start=1, page_end=20):
+def collect_yckceo_list(months=1, page_start=1, page_end=10):
     """采集yckceo书源列表：从列表页提取详情id，直接拼JSON链接下载
-    page_start/page_end: 支持分段采集（如 1-20 一次，或 1-10/11-20 分两次）
+    page_start/page_end: 支持分段采集（默认只采前10页，用户指定范围）
     months: 只采集最近N个月内更新的书源（按更新时间过滤，超范围自动停止）
     """
     log.info("=== 采集yckceo书源列表 ===")
@@ -146,9 +146,9 @@ def collect_yckceo_list(months=2, page_start=1, page_end=20):
     return all_sources
 
 
-def collect_yckceo_heji(months=2, page_start=1, page_end=10):
+def collect_yckceo_heji(months=1, page_start=1, page_end=1):
     """采集yckceo书源合集：从合集列表页提取id，下载合集JSON
-    page_start/page_end: 支持分段采集（如 1-3 / 4-7 / 8-10 分三次）
+    page_start/page_end: 支持分段采集（默认只采第1页=最新100个合集，用户指定范围）
     months: 只采集最近N个月内更新的合集（按更新时间过滤，超范围自动停止）
     """
     log.info("=== 采集yckceo书源合集 ===")

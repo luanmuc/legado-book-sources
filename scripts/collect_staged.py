@@ -38,8 +38,8 @@ def save(fragment_name, sources):
 
 
 def cmd_list(args):
-    log.info(f"段1: yckceo书源列表 20页（最近{args.months}个月）")
-    sources = collect_yckceo_list(months=args.months, page_start=1, page_end=20)
+    log.info(f"段1: yckceo书源列表 前10页（最近{args.months}个月）")
+    sources = collect_yckceo_list(months=args.months, page_start=1, page_end=10)
     save("raw_list.json", sources)
 
 
