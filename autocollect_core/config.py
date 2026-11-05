@@ -112,4 +112,5 @@ RAW_DIR = os.path.join(BASE_DIR, "raw", "autocollect")
 OUTPUT_FILE = os.path.join(BASE_DIR, "books.json")
 CLEAN_RULES_FILE = os.path.join(BASE_DIR, "clean_rules.json")
 REPORT_FILE = os.path.join(BASE_DIR, "collect_report.md")
+PENDING_FILE = os.path.join(BASE_DIR, "books_pending.json")  # 中间层：采集产物先并入此处，用户确认后才提升为正式版
 LOG_FILE = os.path.join(BASE_DIR, "autocollect.log")

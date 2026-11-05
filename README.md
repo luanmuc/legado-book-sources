@@ -73,10 +73,28 @@
 > 2 小时只能爬完 20 页列表，无法完成全量校验，因此自动采集不在 GitHub Actions 上执行，
 > 改为本地执行 + 自动推送发布。
 
+### 三层架构（采集 → 中间层 → 正式版）
+```
+采集层（GitHub Actions 每周自动，跨洋已优化）     中间层（本地国内网络）        正式版
+list前10页+合集前30个+大佬仓库  → 清洗去重 → weekly/cleaned_*.json
+                                                        ↓
+校验+垃圾过滤+整理 → 合并进 books_pending.json（待你确认，不动正式版）
+                                                        ↓ 你确认后
+books_pending.json 提升为 books.json + clean_rules + Release 更新
+```
+
 ### 使用方法
 ```bash
-# 一键完整流程（推荐，分步执行防中断，每周任务用这个）
-bash scripts/run_weekly_collect.sh 1     # 1=采集最近1个月（默认），可调大如2/3
+# ① GitHub Actions 每周自动：采集+清洗 → weekly/cleaned_*.json（已配置 schedule 每周日 UTC 02:00）
+
+# ② 本地：从 Actions 采集结果继续 → 合并进中间层（每次采集都并入，等你确认）
+python3 autocollect.py --from-cleaned weekly/cleaned_XXX.json --stage
+
+# ③ 本地：确认后把中间层提升为正式版并发布（发布由你确认）
+python3 autocollect.py --publish-pending --publish
+
+# 一键完整流程（不分层，直接出正式版，适合交互调试）
+bash scripts/run_weekly_collect.sh 1
 
 # 或手动分步执行（每步独立落盘、可断点恢复）：
 python3 scripts/collect_staged.py list --months 1      # A1: 采集yckceo书源列表前10页
@@ -134,6 +152,7 @@ scripts/
 - 按分组+域名排序，customOrder字段控制导入后顺序
 
 ## 📝 更新日志
+- v3.2.6 (2026-11-05): 三层架构（采集→中间层→正式版）+ 跨洋采集打通——GitHub Actions 每周自动采集+清洗 push weekly/cleaned（30s超时+20并发+重试解决跨洋）；本地 --stage 合并进 books_pending.json 等你确认，--publish-pending 确认后提升正式版+发布
 - v3.2.5 (2026-11-05): 采集范围收敛——书源列表只采前10页、书源合集只采列表前30个（每个合集含数百个源；实测第1页100合集=约8.9万源）
 - v3.2.4 (2026-11-05): 全对话复盘维护——修复清洗脚本漏读raw_heji_*.json分片断链/默认采集月份改1(贴合"只采集当前一个月")/清理4个死代码脚本(crawler/pipeline/validate/rename)
 - v3.2.3 (2026-11-05): 脚本维护——months参数真正生效（按更新时间过滤，超范围自动停止）/周任务改分步执行/报告真实统计/校验淘汰落盘

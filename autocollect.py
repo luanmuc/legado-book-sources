@@ -20,7 +20,7 @@ import json
 import os
 from datetime import datetime
 
-from autocollect_core.config import OUTPUT_FILE, RAW_DIR
+from autocollect_core.config import OUTPUT_FILE, RAW_DIR, PENDING_FILE
 from autocollect_core.utils import log
 from autocollect_core.collectors import collect_all
 from autocollect_core.cleaner import clean_and_dedup, filter_junk_sources, is_big_site
@@ -41,7 +41,11 @@ def main():
     parser.add_argument("--collect-only", action="store_true",
                         help="只采集+清洗+规则校验，保存到 weekly/cleaned_*.json（GitHub Actions跨洋用，不做存活探测）")
     parser.add_argument("--from-cleaned", metavar="FILE",
-                        help="从清洗结果继续：校验+垃圾过滤+整理+发布（本地国内网络用，跳过采集/清洗）")
+                        help="从清洗结果继续：校验+垃圾过滤+整理（本地国内网络用，跳过采集/清洗）")
+    parser.add_argument("--stage", action="store_true",
+                        help="整理结果合并进中间层 books_pending.json，不发布（采集层→中间层，等你确认）")
+    parser.add_argument("--publish-pending", action="store_true",
+                        help="把中间层 books_pending.json 提升为正式版并保存（中间层→正式版；加 --publish 才更新Release）")
     args = parser.parse_args()
 
     log.info("=" * 50)
@@ -82,7 +86,9 @@ def main():
         cleaned = None
 
     # 第一阶段：采集
-    if not args.validate and not args.merge:
+    if args.from_cleaned or args.publish_pending:
+        pass  # --from-cleaned 已加载 / --publish-pending 直接用中间层，跳过采集
+    elif not args.validate and not args.merge:
         raw_sources = collect_all(months=args.months)
     else:
         # 从raw目录加载最近的
@@ -94,27 +100,67 @@ def main():
             raw_sources = []
 
     # 第二阶段：清洗去重
-    if not args.validate and not args.merge:
-        if cleaned is not None:  # --from-cleaned 已加载
-            pass
-        else:
-            cleaned = clean_and_dedup(raw_sources)
+    if args.from_cleaned or args.publish_pending:
+        pass  # cleaned 已加载 / publish-pending 不需要
+    elif not args.validate and not args.merge:
+        cleaned = clean_and_dedup(raw_sources)
     else:
         cleaned = raw_sources
 
     # 第三阶段：校验
-    if not args.merge:
+    if args.publish_pending:
+        validated = None
+        dead = []
+    elif not args.merge:
         validated, dead = validate_sources(cleaned)
     else:
         validated = [{"source": s, "pass_rate": 1.0} for s in cleaned]
         dead = []
 
     # 第三点五阶段：垃圾过滤（剔除非小说/测试/失效标记，成人内容保留归组）
-    if not args.merge:
+    if not args.merge and not args.publish_pending:
         validated = filter_junk_sources(validated)
 
     # 第四阶段：整理合并
     if not args.collect and not args.validate:
+
+        # ===== 中间层模式：合并进 books_pending.json，不发布（等你确认） =====
+        if args.stage:
+            pending_existing = []
+            if os.path.exists(PENDING_FILE):
+                with open(PENDING_FILE, "r", encoding="utf-8") as f:
+                    pending_existing = json.load(f)
+                log.info(f"加载中间层: {len(pending_existing)} 个")
+            final_pending = organize_sources(validated, pending_existing)
+            with open(PENDING_FILE, "w", encoding="utf-8") as f:
+                json.dump(final_pending, f, ensure_ascii=False, indent=2)
+            big_count = len([s for s in final_pending if is_big_site(s)])
+            log.info("=" * 50)
+            log.info(f"已并入中间层 books_pending.json: {len(final_pending)} 个（大厂 {big_count} 最顶保护）")
+            log.info("正式版 books.json 未动。你确认后运行: python3 autocollect.py --publish-pending --publish")
+            log.info("=" * 50)
+            return
+
+        # ===== 中间层提升正式版模式：books_pending.json → books.json =====
+        if args.publish_pending:
+            if not os.path.exists(PENDING_FILE):
+                log.error("中间层 books_pending.json 不存在，先运行 --stage 合并采集结果")
+                return
+            with open(PENDING_FILE, "r", encoding="utf-8") as f:
+                final_sources = json.load(f)
+            log.info(f"中间层提升为正式版: {len(final_sources)} 个")
+            with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+                json.dump(final_sources, f, ensure_ascii=False, indent=2)
+            # 配套净化规则 + 报告
+            collected_rules = collect_clean_rules()
+            generate_clean_rules(final_sources, collected_rules)
+            big_count = len([s for s in final_sources if is_big_site(s)])
+            generate_report(len(final_sources), len(final_sources), [], len(final_sources), big_count)
+            log.info(f"正式版已更新: {OUTPUT_FILE}（{len(final_sources)} 个）")
+            if args.publish:
+                auto_publish(len(final_sources), big_count)
+            return
+
         final_sources = organize_sources(validated, existing)
 
         # 保存书源
