@@ -28,14 +28,16 @@ def get_target_months(months=2):
     return result
 
 
-def collect_yckceo_list(months=2):
-    """采集yckceo书源列表：从列表页提取详情id，直接拼JSON链接下载"""
+def collect_yckceo_list(months=2, page_start=1, page_end=20):
+    """采集yckceo书源列表：从列表页提取详情id，直接拼JSON链接下载
+    page_start/page_end: 支持分段采集（如 1-20 一次，或 1-10/11-20 分两次）
+    """
     log.info("=== 采集yckceo书源列表 ===")
     all_sources = []
 
     base_url = "https://www.yckceo.com/yuedu/shuyuan/index.html"
-    page = 1
-    max_pages = 20  # 爬前20页
+    page = page_start
+    max_pages = page_end
 
     while page <= max_pages:
         try:
@@ -81,14 +83,16 @@ def collect_yckceo_list(months=2):
     return all_sources
 
 
-def collect_yckceo_heji(months=2):
-    """采集yckceo书源合集：从合集列表页提取id，下载合集JSON"""
+def collect_yckceo_heji(months=2, page_start=1, page_end=10):
+    """采集yckceo书源合集：从合集列表页提取id，下载合集JSON
+    page_start/page_end: 支持分段采集（如 1-3 / 4-7 / 8-10 分三次）
+    """
     log.info("=== 采集yckceo书源合集 ===")
     all_sources = []
 
     base_url = "https://www.yckceo.com/yuedu/shuyuans/index.html"
-    page = 1
-    max_pages = 10  # 爬前10页合集
+    page = page_start
+    max_pages = page_end
 
     while page <= max_pages:
         try:

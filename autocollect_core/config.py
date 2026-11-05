@@ -74,7 +74,7 @@ NON_NOVEL_KEYWORDS = [
 # ============================================================
 REQUEST_TIMEOUT = 10
 REQUEST_RETRY = 2
-CONCURRENCY = 8
+CONCURRENCY = 20  # 校验并发（IO密集，20并发加速批量探测）
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 REFERER = "https://www.google.com/"
 

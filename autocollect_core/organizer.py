@@ -10,47 +10,50 @@ from .utils import get_domain, log
 from .cleaner import is_big_site
 
 
-def generate_chinese_name(source, used_names):
-    """生成四字纯汉字名称"""
+SUFFIX_CHARS = ["书屋", "阅读", "小说", "书城", "书库", "书轩", "书斋", "书苑"]
+
+
+def generate_chinese_name(source, used_names, group):
+    """生成名字：笔趣阁类统一「笔趣阁+数字」；其他类四字纯汉字，重名加数字"""
     original = source.get("bookSourceName", "")
-    # 去掉表情和特殊字符
-    clean = re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9]', '', original)
-    # 提取中文部分
-    chinese = re.findall(r'[\u4e00-\u9fa5]+', clean)
-    if chinese:
-        name = "".join(chinese)[:4]
+    clean = re.sub(r'[^\u4e00-\u9fa5]', '', original)
+
+    if group == "笔趣阁类":
+        base = "笔趣阁"  # 批量同名的统一基底，用数字排序区分
     else:
-        # 没有中文就用域名首字母转拼音（简化处理）
-        domain = get_domain(source.get("bookSourceUrl", ""))
-        name = "书源" + domain[:2].upper()
+        chinese = clean[:4]
+        if len(chinese) < 4:  # 不足4字，循环补足到正好4字
+            pad_idx = len(used_names) % len(SUFFIX_CHARS)
+            while len(chinese) < 4:
+                pad_word = SUFFIX_CHARS[pad_idx % len(SUFFIX_CHARS)]
+                chinese += pad_word[: 4 - len(chinese)]
+                pad_idx += 1
+        base = chinese
 
-    # 确保是纯汉字
-    if not re.match(r'^[\u4e00-\u9fa5]+$', name):
-        name = "小说站" + str(len(used_names) % 10)
-
-    # 去重
-    base_name = name
-    i = 2
-    while name in used_names:
-        # 加一个字区分
-        suffix = ["阁", "楼", "斋", "居", "轩", "苑", "堂", "馆"][len(used_names) % 8]
-        name = base_name[:3] + suffix
-        if name in used_names:
-            name = base_name[:2] + suffix + str(i)
-        i += 1
-
+    # 唯一性：base 或 base+N
+    if base not in used_names:
+        used_names.add(base)
+        return base
+    n = 2
+    while f"{base}{n}" in used_names:
+        n += 1
+    name = f"{base}{n}"
     used_names.add(name)
     return name
 
 
 def classify_source(source):
-    """分类：大厂/笔趣阁/玄幻/言情/综合"""
+    """分类：大厂/笔趣阁/玄幻/言情/成人/综合"""
     url = source.get("bookSourceUrl", "")
     name = source.get("bookSourceName", "")
     group = source.get("bookSourceGroup", "")
 
     if is_big_site(source):
         return "大厂正版"
+
+    # 成人书源（filter_junk_sources 已统一打标记）
+    if group == "成人书源":
+        return "成人书源"
 
     domain = get_domain(url)
 
@@ -107,8 +110,8 @@ def organize_sources(validated_sources, existing_sources):
         log.info(f"跳过新采集的大厂源: {skipped_big} 个（不覆盖手动调好的版本）")
     log.info(f"其他源: {len(other_sources)} 个")
 
-    # 按分组排序
-    groups = {"笔趣阁类": [], "玄幻武侠": [], "言情女频": [], "综合其他": []}
+    # 按分组排序（成人书源放最后）
+    groups = {"笔趣阁类": [], "玄幻武侠": [], "言情女频": [], "综合其他": [], "成人书源": []}
     for s in other_sources:
         group = classify_source(s)
         if group in groups:
@@ -116,10 +119,13 @@ def organize_sources(validated_sources, existing_sources):
         else:
             groups["综合其他"].append(s)
 
-    for group_name in ["笔趣阁类", "玄幻武侠", "言情女频", "综合其他"]:
-        for s in groups[group_name]:
+    for group_name in ["笔趣阁类", "玄幻武侠", "言情女频", "综合其他", "成人书源"]:
+        # 组内按域名排序，保证数字编号稳定有序
+        for s in sorted(groups[group_name], key=lambda x: x.get("bookSourceUrl", "")):
+            # 规范化分组写回（覆盖原始乱分组/emoji/状态标记）
+            s["bookSourceGroup"] = group_name
             # 改名
-            new_name = generate_chinese_name(s, used_names)
+            new_name = generate_chinese_name(s, used_names, group_name)
             s["bookSourceName"] = new_name
             s["customOrder"] = custom_order
             custom_order += 1

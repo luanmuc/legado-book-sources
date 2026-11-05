@@ -22,11 +22,19 @@ def check_rule_integrity(source):
         if not source.get(field):
             return False
 
-    # 规则对象检查
+    # 规则对象检查（防御异常格式：可能是list/str等）
     rule_search = source.get("ruleSearch", {})
     rule_book_info = source.get("ruleBookInfo", {})
     rule_toc = source.get("ruleToc", {})
     rule_content = source.get("ruleContent", {})
+    if not isinstance(rule_search, dict):
+        rule_search = {}
+    if not isinstance(rule_book_info, dict):
+        rule_book_info = {}
+    if not isinstance(rule_toc, dict):
+        rule_toc = {}
+    if not isinstance(rule_content, dict):
+        rule_content = {}
 
     # 搜索规则必须有bookList和name
     if not rule_search.get("bookList"):
@@ -64,9 +72,9 @@ def quick_validate(source):
         "reason": ""
     }
 
-    # 第一步：测试首页可达性
+    # 第一步：测试首页可达性（探测场景不重试，死站直接判死提速）
     try:
-        resp = fetch_url(url, timeout=5)
+        resp = fetch_url(url, timeout=4, retry=0)
         if resp is None:
             result["reason"] = "首页连接失败"
             return result
@@ -104,8 +112,8 @@ def quick_validate(source):
                 else:
                     test_url = base + "/" + path.replace("{{key}}", test_keyword)
 
-            # 发测试请求
-            s_resp = fetch_url(test_url, timeout=8)
+            # 发测试请求（不重试）
+            s_resp = fetch_url(test_url, timeout=6, retry=0)
             if s_resp and s_resp.status_code == 200:
                 # 看看返回内容是不是正常（不是空的，不是错误页）
                 content = s_resp.text
@@ -153,7 +161,7 @@ def full_validate(source):
                 else:
                     test_url = base + "/" + path.replace("{{key}}", kw)
 
-            resp = fetch_url(test_url, timeout=6)
+            resp = fetch_url(test_url, timeout=5, retry=0)
             if resp and resp.status_code == 200 and len(resp.text) > 200:
                 keywords_pass += 1
         except Exception:
