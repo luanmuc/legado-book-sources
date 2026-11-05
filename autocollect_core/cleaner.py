@@ -95,7 +95,7 @@ def classify_junk(s):
         return "非小说"
     if any(k.lower() in blob for k in JUNK_TEST_KW):
         return "测试占位"
-    if any(k in blob for k in JUNK_DEAD_KW):
+    if any(k.lower() in blob for k in JUNK_DEAD_KW):  # blob已小写，关键词统一lower避免大小写漏判
         return "失效标记"
     return None
 
@@ -103,7 +103,7 @@ def classify_junk(s):
 def is_adult_source(s):
     """是否为成人内容源"""
     blob = _source_blob(s)
-    return any(k in blob for k in JUNK_ADULT_KW)
+    return any(k.lower() in blob for k in JUNK_ADULT_KW)
 
 
 def filter_junk_sources(items, keep_adult=True):
@@ -115,13 +115,16 @@ def filter_junk_sources(items, keep_adult=True):
     kept = []
     for item in items:
         s = item.get("source", item) if isinstance(item, dict) else item
+        # 先判成人：成人内容无条件保留（即使名字含"漫画/影视"等词也不当垃圾剔）
+        if keep_adult and is_adult_source(s):
+            s["bookSourceGroup"] = ADULT_GROUP  # 成人源统一归组，organize 单独分组
+            adult_count += 1
+            kept.append(item)
+            continue
         reason = classify_junk(s)
         if reason:
             junk_counts[reason] = junk_counts.get(reason, 0) + 1
             continue
-        if keep_adult and is_adult_source(s):
-            s["bookSourceGroup"] = ADULT_GROUP  # 成人源统一归组，organize 单独分组
-            adult_count += 1
         kept.append(item)
 
     log.info(f"垃圾过滤: 剔除 {sum(junk_counts.values())} 个 {junk_counts}")

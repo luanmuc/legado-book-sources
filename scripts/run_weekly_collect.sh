@@ -11,7 +11,7 @@
 #   E. 整理发布: 大厂保护 + 命名分组 + 净化规则 + 报告 + push + 发布页
 #
 # 用法:
-#   bash scripts/run_weekly_collect.sh [月份数]   # 默认 2
+#   bash scripts/run_weekly_collect.sh [月份数]   # 默认 1（只采集最近1个月，用户偏好）
 # 日志: logs/weekly_YYYYmmdd_HHMMSS.log（保留最近20份）
 # ============================================================
 set -o pipefail

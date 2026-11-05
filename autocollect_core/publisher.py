@@ -11,6 +11,7 @@ from datetime import datetime
 
 import requests
 
+from .config import CLEAN_RULES_FILE, OUTPUT_FILE, REPORT_FILE
 from .utils import log
 
 
@@ -33,7 +34,7 @@ def get_github_token():
     return None
 
 
-def publish_release(token):
+def publish_release(token, final_count, rules_count):
     """发布/更新GitHub Release，上传 books.json 和 clean_rules.json 到发布页"""
     api = f"https://api.github.com/repos/{REPO}"
     headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github+json"}
@@ -52,7 +53,7 @@ def publish_release(token):
     elif resp.status_code == 404:
         log.info(f"Release {RELEASE_TAG} 不存在，创建新Release")
         body = (f"全自动采集更新 {datetime.now().strftime('%Y-%m-%d')}\n"
-                f"{final_count}+个纯小说源 + 1176条配套净化规则\n"
+                f"{final_count}个纯小说源 + {rules_count}条配套净化规则\n"
                 f"- 12个大厂正版源\n"
                 f"- 全自动采集脚本每周自动更新")
         r2 = requests.post(f"{api}/releases", headers=headers, timeout=15,
@@ -68,18 +69,18 @@ def publish_release(token):
 
     # 上传assets（curl --data-binary 会报 size>=1，必须用requests）
     upload_headers = {"Authorization": f"token {token}", "Content-Type": "application/octet-stream"}
-    for fname in ("books.json", "clean_rules.json"):
+    for fname in (OUTPUT_FILE, CLEAN_RULES_FILE):
         if not os.path.exists(fname):
-            log.warning(f"  {fname} 不存在，跳过上传")
+            log.warning(f"  {os.path.basename(fname)} 不存在，跳过上传")
             continue
         with open(fname, "rb") as f:
             r3 = requests.post(
-                f"https://uploads.github.com/repos/{REPO}/releases/{release_id}/assets?name={fname}",
+                f"https://uploads.github.com/repos/{REPO}/releases/{release_id}/assets?name={os.path.basename(fname)}",
                 headers=upload_headers, data=f, timeout=180)
         if r3.status_code == 201:
-            log.info(f"✅ 上传 {fname} 到发布页成功")
+            log.info(f"✅ 上传 {os.path.basename(fname)} 到发布页成功")
         else:
-            log.warning(f"❌ 上传 {fname} 失败: HTTP {r3.status_code} {r3.text[:200]}")
+            log.warning(f"❌ 上传 {os.path.basename(fname)} 失败: HTTP {r3.status_code} {r3.text[:200]}")
 
 
 def auto_publish(final_count, big_count):
@@ -92,7 +93,7 @@ def auto_publish(final_count, big_count):
         subprocess.run(["git", "config", "user.email", "bot@autocollect.com"], check=True, capture_output=True)
 
         # 加文件（只添加确实存在的文件）
-        for fname in ("books.json", "clean_rules.json", "collect_report.md"):
+        for fname in (OUTPUT_FILE, CLEAN_RULES_FILE, REPORT_FILE):
             if os.path.exists(fname):
                 subprocess.run(["git", "add", fname], check=True, capture_output=True)
 
@@ -109,8 +110,15 @@ def auto_publish(final_count, big_count):
 
         # 发布到发布页（Releases）
         token = get_github_token()
+        rules_count = 0
+        if os.path.exists(CLEAN_RULES_FILE):
+            try:
+                import json
+                rules_count = len(json.load(open(CLEAN_RULES_FILE, encoding="utf-8")))
+            except Exception:
+                pass
         if token:
-            publish_release(token)
+            publish_release(token, final_count, rules_count)
         else:
             log.warning("未找到GitHub token，跳过发布页更新")
     except Exception as e:

@@ -180,10 +180,16 @@ def cmd_validate(args):
         with open(result_file, "r", encoding="utf-8") as f:
             prev = json.load(f)
     merged = prev + validated
+
+    def _src_url(item):
+        # 兼容包装结构({source,...})与裸源dict
+        s = item.get("source", {}) if isinstance(item, dict) else item
+        return (s or {}).get("bookSourceUrl", "") if isinstance(s, dict) else ""
+
     seen = set()
     unique = []
     for s in merged:
-        u = s.get("bookSourceUrl", "")
+        u = _src_url(s)
         if u and u in seen:
             continue
         if u:
@@ -201,9 +207,9 @@ def cmd_validate(args):
             prev_dead = json.load(f)
     dead_by_url = {}
     for d in prev_dead:
-        dead_by_url[d.get("bookSourceUrl", "")] = d
+        dead_by_url[_src_url(d)] = d
     for d in dead:
-        dead_by_url[d.get("bookSourceUrl", "")] = d
+        dead_by_url[_src_url(d)] = d
     with open(dead_file, "w", encoding="utf-8") as f:
         json.dump(list(dead_by_url.values()), f, ensure_ascii=False, indent=2)
     log.info(f"累计淘汰 {len(dead_by_url)} 个 → {dead_file}")

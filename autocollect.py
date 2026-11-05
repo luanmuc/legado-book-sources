@@ -45,7 +45,7 @@ def main():
     parser.add_argument("--stage", action="store_true",
                         help="整理结果合并进中间层 books_pending.json，不发布（采集层→中间层，等你确认）")
     parser.add_argument("--publish-pending", action="store_true",
-                        help="把中间层 books_pending.json 提升为正式版并保存（中间层→正式版；加 --publish 才更新Release）")
+                        help="中间层→正式版：读 books_pending.json，完整校验+垃圾过滤后与现有正式版合并（大厂12保护），加 --publish 才更新Release")
     args = parser.parse_args()
 
     log.info("=" * 50)

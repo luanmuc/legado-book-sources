@@ -7,12 +7,10 @@
 中断后只需重跑当前段，已完成的段直接从分片恢复。
 
 用法：
-  python3 scripts/collect_staged.py list              # 段1: yckceo列表 20页 → raw_list.json
-  python3 scripts/collect_staged.py heji 1 3         # 段2: 合集 1-3页 → raw_heji_1_3.json
-  python3 scripts/collect_staged.py heji 4 7         # 段3: 合集 4-7页 → raw_heji_4_7.json
-  python3 scripts/collect_staged.py heji 8 10        # 段4: 合集 8-10页 → raw_heji_8_10.json
-  python3 scripts/collect_staged.py gurus            # 段5: 4个大佬仓库 → raw_gurus.json
-  python3 scripts/collect_staged.py merge            # 段6: 合并所有分片 → raw_all_YYYYMMDD.json
+  python3 scripts/collect_staged.py list              # 段1: yckceo列表 前10页 → raw_list.json
+  python3 scripts/collect_staged.py heji 1 3         # 段2: 合集 1-3页 → raw_heji_1_3.json（--limit 前N个）
+  python3 scripts/collect_staged.py gurus            # 段5: 大佬仓库 → raw_gurus.json
+  python3 scripts/collect_staged.py merge            # 段6: 合并采集分片 → raw_all_YYYYMMDD.json
 """
 
 import argparse
@@ -57,14 +55,15 @@ def cmd_gurus(args):
 
 
 def cmd_merge(args):
-    """合并所有分片（跳过 raw_all_*）为一个完整 raw"""
+    """合并采集分片（仅 raw_list/raw_heji_*/raw_gurus，不含 cleaned/validated/dead 等中间产物）"""
     ensure_dir(RAW_DIR)
     all_sources = []
     fragments = []
+    prefixes = ("raw_list.json", "raw_heji_", "raw_gurus.json")
     for fname in sorted(os.listdir(RAW_DIR)):
         if not fname.endswith(".json"):
             continue
-        if fname.startswith("raw_all_"):
+        if not any(fname == p or fname.startswith(p) for p in prefixes):
             continue
         path = os.path.join(RAW_DIR, fname)
         try:

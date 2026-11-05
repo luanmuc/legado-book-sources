@@ -14,7 +14,7 @@ from .config import DATA_SOURCES, RAW_DIR, REQUEST_TIMEOUT, CONCURRENCY
 from .utils import ensure_dir, fetch_url, log
 
 
-def get_target_months(months=2):
+def get_target_months(months=1):
     """动态获取最近N个月的列表"""
     now = datetime.now()
     result = []
@@ -71,7 +71,8 @@ def filter_by_months(ids, times, months, now, label):
     for i, sid in enumerate(ids):
         dt = parse_update_time(times[i] if i < len(times) else "", now)
         if dt is None:
-            kept.append(sid)  # 时间解析失败不误杀，保留
+            kept.append(sid)  # 时间解析失败不误杀，保留；且视为"不确定"不置all_old，避免整页被跳
+            all_old = False
             continue
         if dt >= cutoff:
             kept.append(sid)
@@ -137,9 +138,14 @@ def collect_yckceo_list(months=1, page_start=1, page_end=10):
 
             page_sources = []
             with ThreadPoolExecutor(max_workers=CONCURRENCY) as ex:
-                for res in as_completed([ex.submit(_fetch_one, sid) for sid in kept_ids]):
-                    if res.result():
-                        page_sources.extend(res.result())
+                futs = [ex.submit(_fetch_one, sid) for sid in kept_ids]
+                for fut in as_completed(futs):
+                    try:
+                        r = fut.result()
+                        if r:
+                            page_sources.extend(r)
+                    except Exception as e:
+                        log.warning(f"  列表JSON下载异常: {e}")
             all_sources.extend(page_sources)
             log.info(f"  列表第{page}页: {len(page_sources)} 个")
 
@@ -206,19 +212,29 @@ def collect_yckceo_heji(months=1, page_start=1, page_end=1, limit=30):
     )
     log.info(f"过滤后保留 {len(kept_ids)} 个合集")
 
-    # 下载每个合集（自动跟随302跳转到CDN）
-    for cid in kept_ids:
+    # 下载每个合集（自动跟随302跳转到CDN）——并发下载（与列表页一致，跨洋提速）
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _download_heji(cid):
         json_url = f"https://www.yckceo.com/yuedu/shuyuans/json/id/{cid}.json"
         c_resp = fetch_url(json_url, timeout=REQUEST_TIMEOUT)
-        if c_resp and c_resp.status_code == 200:
-            try:
-                sources = c_resp.json()
-                if isinstance(sources, list):
-                    all_sources.extend(sources)
-                    log.info(f"    合集{cid}: {len(sources)} 个")
-            except Exception:
-                pass
-        time.sleep(0.2)
+        if not c_resp or c_resp.status_code != 200:
+            return cid, None
+        try:
+            data = c_resp.json()
+            return cid, data if isinstance(data, list) else None
+        except Exception:
+            return cid, None
+
+    with ThreadPoolExecutor(max_workers=CONCURRENCY) as ex:
+        futs = {ex.submit(_download_heji, cid): cid for cid in kept_ids}
+        for fut in as_completed(futs):
+            cid, data = fut.result()
+            if data:
+                all_sources.extend(data)
+                log.info(f"    合集{cid}: {len(data)} 个")
+            else:
+                log.warning(f"    合集{cid}: 下载/解析失败，跳过")
 
     log.info(f"yckceo书源合集采集完成，共 {len(all_sources)} 个")
     return all_sources
@@ -244,7 +260,7 @@ def collect_gurus():
     return all_sources
 
 
-def collect_all(months=2):
+def collect_all(months=1):
     """采集所有启用的数据源"""
     ensure_dir(RAW_DIR)
 

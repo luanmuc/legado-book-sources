@@ -15,7 +15,7 @@ BIG_SITES = [
     {"name": "创世中文", "url": "http://chuangshi.qq.com"},
     {"name": "红袖添香", "url": "https://hongxiua.com"},
     {"name": "书旗小说", "url": "https://www.shuqi.com/"},
-    {"name": "QQ阅读", "url": "https://ubook.reader.qq.com/"},
+    {"name": "QQ阅读", "url": "https://ubook.reader.qq.com/?g_f=4000001"},
     {"name": "纵横中文", "url": "https://m.zongheng.com"},
     {"name": "潇湘书院", "url": "https://www.xxsy.net"},
     {"name": "晋江文学", "url": "https://www.jjwxc.net"},
@@ -47,12 +47,10 @@ DATA_SOURCES = {
         "base_url": "https://www.yckceo.com/yuedu/shuyuans/index.html",
         "enabled": True
     },
-    # 大佬仓库（直链JSON）
+    # 大佬仓库（直链JSON）——曾含 XIU2精品(71e564f.json, 404失效) 与 shidahuilang(legado3.json, 仓库被GitHub封禁)，已移除
     "gurus": [
         {"name": "酷安三舞313", "url": "https://legado.aoaostar.com/sources/2a1f129b.json"},
         {"name": "关耳女频", "url": "https://legado.aoaostar.com/sources/e3e5d620.json"},
-        {"name": "XIU2精品", "url": "https://legado.aoaostar.com/sources/71e564f.json"},
-        {"name": "shidahuilang GitHub", "url": "https://raw.githubusercontent.com/shidahuilang/shuyuan/shuyuan/legado3.json"},
     ],
     # 净化规则数据源
     "clean_rules_sources": [

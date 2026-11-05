@@ -13,20 +13,23 @@ import urllib3
 from urllib.parse import urlparse
 
 from .config import (
-    BASE_DIR, LOG_FILE, REQUEST_TIMEOUT, REQUEST_RETRY,
+    BASE_DIR, REQUEST_TIMEOUT, REQUEST_RETRY,
     USER_AGENT, REFERER,
 )
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)  # 关SSL警告
 
 # ============================================================
-# 日志配置
+# 日志配置（落 logs/ 目录，仓库根不再放 autocollect.log）
 # ============================================================
+LOG_DIR = os.path.join(BASE_DIR, "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+_LOG_FILE = os.path.join(LOG_DIR, "autocollect.log")
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
     handlers=[
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
+        logging.FileHandler(_LOG_FILE, encoding="utf-8"),
         logging.StreamHandler()
     ]
 )
@@ -42,13 +45,17 @@ def ensure_dir(path):
 
 
 def clean_url(url):
-    """清理URL：去掉锚点、特殊字符、空格"""
+    """清理URL：去掉锚点、非URL字符（中文注释等）、首尾空格"""
     if not url:
         return ""
     # 去掉锚点后面的内容
     url = re.sub(r'[#＃].*$', '', url)
     # 去掉首尾空格
     url = url.strip()
+    # 剔除URL中的非URL字符：中文注释/全角符号等（如上游数据 url 尾部被手打"已整理"）
+    m = re.match(r'^(https?://[^\s\u4e00-\u9fff\uff00-\uffef]+)', url)
+    if m:
+        url = m.group(1)
     return url
 
 
