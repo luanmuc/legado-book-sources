@@ -76,12 +76,12 @@
 ### 使用方法
 ```bash
 # 一键完整流程（推荐，分步执行防中断，每周任务用这个）
-bash scripts/run_weekly_collect.sh 2     # 2=采集最近2个月，可调
+bash scripts/run_weekly_collect.sh 1     # 1=采集最近1个月（默认），可调大如2/3
 
 # 或手动分步执行（每步独立落盘、可断点恢复）：
-python3 scripts/collect_staged.py list --months 2      # A1: 采集yckceo列表20页
-python3 scripts/collect_staged.py heji 1 5 --months 2  # A2: 采集合集1-5页
-python3 scripts/collect_staged.py heji 6 10 --months 2 # A3: 采集合集6-10页
+python3 scripts/collect_staged.py list --months 1      # A1: 采集yckceo列表20页
+python3 scripts/collect_staged.py heji 1 5 --months 1  # A2: 采集合集1-5页
+python3 scripts/collect_staged.py heji 6 10 --months 1 # A3: 采集合集6-10页
 python3 scripts/collect_staged.py gurus                # A4: 4个大佬仓库直链
 python3 scripts/run_from_fragments.py clean            # B: 流式合并清洗去重(checkpoint)
 python3 scripts/run_from_fragments.py validate --start 0 --count 1000   # C: 分批两级校验
@@ -89,7 +89,7 @@ python3 scripts/filter_junk_sources.py                 # D: 垃圾过滤(成人�
 python3 scripts/run_from_fragments.py final --input raw/autocollect/validated_clean.json --publish  # E: 整理+发布
 
 # 单命令完整流程（适合交互调试，沙箱环境可能中断）
-python3 autocollect.py --publish --months 2
+python3 autocollect.py --publish --months 1
 ```
 
 ### 优化特性
@@ -135,6 +135,7 @@ scripts/
 - 按分组+域名排序，customOrder字段控制导入后顺序
 
 ## 📝 更新日志
+- v3.2.4 (2026-11-05): 全对话复盘维护——修复清洗脚本漏读raw_heji_*.json分片断链/默认采集月份改1(贴合"只采集当前一个月")/清理4个死代码脚本(crawler/pipeline/validate/rename)
 - v3.2.3 (2026-11-05): 脚本维护——months参数真正生效（按更新时间过滤，超范围自动停止）/周任务改分步执行/报告真实统计/校验淘汰落盘
 - v3.2.2 (2026-11-05): 全自动采集链路升级——两阶段采集（提取链接+批量下载）/流式清洗/两级校验/垃圾过滤/命名规范化，书源 610→929
 - v3.2.1 (2026-11-05): 脚本模块化重构，拆分为 autocollect_core/ 9模块包

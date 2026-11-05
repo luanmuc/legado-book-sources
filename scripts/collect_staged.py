@@ -91,11 +91,11 @@ def main():
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_list = sub.add_parser("list", help="采集yckceo列表20页 → raw_list.json")
-    p_list.add_argument("--months", type=int, default=2, help="只采集最近N个月（默认2）")
+    p_list.add_argument("--months", type=int, default=1, help="只采集最近N个月（默认1）")
     p_heji = sub.add_parser("heji", help="采集合集指定页范围 → raw_heji_s_e.json")
     p_heji.add_argument("start", type=int)
     p_heji.add_argument("end", type=int)
-    p_heji.add_argument("--months", type=int, default=2, help="只采集最近N个月（默认2）")
+    p_heji.add_argument("--months", type=int, default=1, help="只采集最近N个月（默认1）")
     sub.add_parser("gurus", help="采集4个大佬仓库 → raw_gurus.json")
     sub.add_parser("merge", help="合并所有分片 → raw_all_*.json")
 

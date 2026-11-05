@@ -21,7 +21,7 @@ LOG_DIR="${REPO_DIR}/logs"
 PYTHON="/usr/bin/python3"
 TS=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="${LOG_DIR}/weekly_${TS}.log"
-MONTHS=${1:-2}
+MONTHS=${1:-1}   # 默认只采集最近1个月（用户偏好），可传参调大
 
 mkdir -p "${LOG_DIR}"
 cd "${REPO_DIR}" || { echo "[FATAL] 无法进入仓库目录 ${REPO_DIR}" >> "${LOG_FILE}"; exit 1; }

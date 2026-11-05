@@ -29,7 +29,7 @@ from autocollect_core.publisher import auto_publish
 
 
 def load_fragments():
-    """合并所有分片：raw_list.json + heji/*.json + raw_gurus.json"""
+    """合并所有分片：raw_list.json + raw_heji_*.json + heji/*.json + raw_gurus.json"""
     all_sources = []
     fragments = []
 
@@ -38,6 +38,14 @@ def load_fragments():
         with open(list_file, "r", encoding="utf-8") as f:
             all_sources.extend(json.load(f))
         fragments.append("raw_list.json")
+
+    # 兼容两种采集路径：collect_staged.py(→raw_heji_s_e.json) 与 collect_heji_batch.py(→heji/*.json)
+    for fpath in sorted(glob.glob(os.path.join(RAW_DIR, "raw_heji_*.json"))):
+        with open(fpath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            all_sources.extend(data)
+        fragments.append(os.path.basename(fpath))
 
     heji_dir = os.path.join(RAW_DIR, "heji")
     for fpath in sorted(glob.glob(os.path.join(heji_dir, "*.json"))):
@@ -109,6 +117,14 @@ def cmd_clean(args):
     if os.path.exists(list_file):
         add_file(list_file, "list")
         fragments += 1
+
+    # 兼容两种采集路径（collect_staged → raw_heji_*.json；collect_heji_batch → heji/*.json）
+    heji_staged = sorted(glob.glob(os.path.join(RAW_DIR, "raw_heji_*.json")))
+    for i, fpath in enumerate(heji_staged):
+        add_file(fpath, "heji")
+        fragments += 1
+        if (i + 1) % 10 == 0:
+            checkpoint()
 
     heji_dir = os.path.join(RAW_DIR, "heji")
     heji_files = sorted(glob.glob(os.path.join(heji_dir, "*.json")))
@@ -226,6 +242,11 @@ def cmd_final(args):
     if os.path.exists(list_file):
         try:
             raw_count += len(json.load(open(list_file, encoding="utf-8")))
+        except Exception:
+            pass
+    for fpath in glob.glob(os.path.join(RAW_DIR, "raw_heji_*.json")):
+        try:
+            raw_count += len(json.load(open(fpath, encoding="utf-8")))
         except Exception:
             pass
     heji_dir = os.path.join(RAW_DIR, "heji")

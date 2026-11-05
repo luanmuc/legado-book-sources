@@ -36,7 +36,7 @@ def main():
     parser.add_argument("--validate", action="store_true", help="只执行校验")
     parser.add_argument("--merge", action="store_true", help="只执行合并整理")
     parser.add_argument("--publish", action="store_true", help="跑完自动发布到GitHub")
-    parser.add_argument("--months", type=int, default=2, help="采集最近N个月的（默认2）")
+    parser.add_argument("--months", type=int, default=1, help="采集最近N个月的（默认1，可调大如2/3）")
     args = parser.parse_args()
 
     log.info("=" * 50)
