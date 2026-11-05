@@ -175,6 +175,9 @@ scripts/
 - v2.1 (2026-10-30): 合并全网大佬书源
 - v2.0 (2026-10-30): 初始版本，9-10月合集采集
 
+## 📄 许可证
+本项目基于 [MIT License](LICENSE) 开源。书源数据来自公开渠道（yckceo.com 等），仅供学习交流使用，请遵守相关站点规则与法律法规。
+
 ## 🔗 相关链接
 - 仓库地址：https://github.com/luanmuc/legado-book-sources
 - 最新下载：https://github.com/luanmuc/legado-book-sources/releases/latest

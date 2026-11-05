@@ -189,7 +189,7 @@ raw/autocollect/                  cleaned_*.json           validated.json
 
 - **发布必须发到 GitHub 发布页（Releases）**，不止 push main
 - **发布由用户确认**；中间层合并到正式版前也必须用户确认
-- 起点问题"要修复不要删除"
+- 起点问题"要修复不要删除"（起点源使用 yckceo 7036 可用版，commit `fcac75a`）
 - 四字纯汉字命名、去表情；笔趣阁类统一「笔趣阁+数字」排序不强制四字
 - 只保留纯小说；大厂只留头部 12 个、起点第一；WAF 源（403 类）不淘汰
 - 成人内容保留、单独成组（不视为垃圾）
@@ -197,6 +197,67 @@ raw/autocollect/                  cleaned_*.json           validated.json
 - 采集月份动态（--months），默认只采最近 1 个月
 - 采集范围：列表前 10 页、合集前 30 个
 - 长任务维护 PROGRESS.md（最高规则）；完成后同步仓库全部相关文档
+
+---
+
+## 10. 数据源逆向笔记（已写进脚本，改脚本必读）
+
+### yckceo 站点结构
+```
+书源列表页   https://www.yckceo.com/yuedu/shuyuan/index.html?page=N     （每页100个id）
+详情id       /yuedu/shuyuan/content/id/(\d+).html                        （正则提取）
+JSON直链     https://www.yckceo.com/yuedu/shuyuan/json/id/{id}.json      （list格式长度1=单源，主站直连不走CDN）
+合集列表页   https://www.yckceo.com/yuedu/shuyuans/index.html?page=N    （每页100个合集id）
+合集JSON     https://www.yckceo.com/yuedu/shuyuans/json/id/{cid}.json    （302跳jsdelivr CDN，海外快）
+              → https://gcore.jsdelivr.net/gh/mumuceo/file01/YYYYMM/{hash}.json
+合集结构     顶层为list，元素是【完整书源对象】，无需二次逐条请求（一个合集含数百个源）
+时间字段     列表页/合集页均含 <p class="m-right">更新时间</p>（"3天前"/"10/26 09:26"/"2个月前"混合格式，
+             由 parse_update_time 解析）
+反爬         必须带 UA + Referer（fetch_url 已内置），裸请求返回拦截页
+```
+### 大佬仓库直链（collect_gurus）
+| 来源 | 直链 | 规模 |
+|------|------|------|
+| 酷安三舞313 | `2a1f129b.json` | 1554 条 |
+| 关耳女频 | `e3e5d620.json` | 86 条 |
+| XIU2精品 | `71e564f.json` | 22 条 |
+| shidahuilang | `legado3.json` | 939 条 |
+
+### 净化规则源
+- nyasama 书源包 `https://shuyuan.nyasama.net/shuyuan/e4a6f3324f10443a0018deba816852b3.json`（1200+条，去重后 1176 条）
+- 用户自己的 nyasama 包 `6e67d2531a9076f40e3bb59f50c13e2e.json` 已移除（用户："这是我自己的书源，删掉"）
+
+---
+
+## 11. 采集实测数据（2026-11-05 实测，非推测）
+
+| 数据 | 值 |
+|------|-----|
+| 列表每页书源数 | 100（1-20 页每页均 100，唯一 id 零重复） |
+| 列表前 20 页总量 | 2000（前 10 页 = 1000） |
+| 列表页时间字段 | 100/100（月份过滤可用） |
+| 合集第 1 页合集数 | 100（唯一 100） |
+| 合集第 1 页实际下载 | 99/100 成功 → **89,162 个书源**（平均 901 源/合集；样例 1330=794、1329=320、1328=10） |
+| 合集时间字段 | 3天前/5天前/6天前/10/26… |
+| months=1 合集第 1 页留存 | 13 个合集（months=2→30，months=6→100） |
+| 跨洋延迟（Actions 美国 runner） | 列表页 3.3s / 列表JSON 2.2s / 合集CDN 1.9s |
+
+---
+
+## 12. 大厂正版源清单（12 个，config.py 保护名单）
+
+| 序 | 名称 | URL | 序 | 名称 | URL |
+|----|------|-----|----|------|-----|
+| 1 | 起点中文 | https://www.qidian.com | 7 | 纵横中文 | https://m.zongheng.com |
+| 2 | 番茄小说 | https://fanqienovel.com | 8 | 潇湘书院 | https://www.xxsy.net |
+| 3 | 创世中文 | http://chuangshi.qq.com | 9 | 晋江文学 | https://www.jjwxc.net |
+| 4 | 红袖添香 | https://hongxiua.com | 10 | 磨铁中文 | http://api.motie.com |
+| 5 | 书旗小说 | https://www.shuqi.com/ | 11 | 黑岩阅读 | https://www.heiyan.com |
+| 6 | QQ阅读 | https://ubook.reader.qq.com/?g_f=4000001 | 12 | 刺猬猫 | https://mm.sfacg.com |
+
+- 保护逻辑：任何合并/整理环节以既有版本为准，新采集的同名大厂一律跳过不覆盖
+- customOrder 1-12 置顶，顺序原样（起点→番茄→创世→红袖→书旗→QQ阅读→纵横→潇湘→晋江→磨铁→黑岩→刺猬猫）
+- 验证基线：与 git HEAD 610 源版对比 URL 集合一致、逐字段完全一致 12/12
 
 ---
 
