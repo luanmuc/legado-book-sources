@@ -18,6 +18,7 @@
 import argparse
 import json
 import os
+from datetime import datetime
 
 from autocollect_core.config import OUTPUT_FILE, RAW_DIR
 from autocollect_core.utils import log
@@ -37,6 +38,10 @@ def main():
     parser.add_argument("--merge", action="store_true", help="只执行合并整理")
     parser.add_argument("--publish", action="store_true", help="跑完自动发布到GitHub")
     parser.add_argument("--months", type=int, default=1, help="采集最近N个月的（默认1，可调大如2/3）")
+    parser.add_argument("--collect-only", action="store_true",
+                        help="只采集+清洗+规则校验，保存到 weekly/cleaned_*.json（GitHub Actions跨洋用，不做存活探测）")
+    parser.add_argument("--from-cleaned", metavar="FILE",
+                        help="从清洗结果继续：校验+垃圾过滤+整理+发布（本地国内网络用，跳过采集/清洗）")
     args = parser.parse_args()
 
     log.info("=" * 50)
@@ -49,6 +54,32 @@ def main():
         with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
             existing = json.load(f)
         log.info(f"加载现有书源: {len(existing)} 个")
+
+    # ===== 模式0：只采集+清洗+规则校验（GitHub Actions 跨洋段） =====
+    if args.collect_only:
+        raw_sources = collect_all(months=args.months)
+        cleaned = clean_and_dedup(raw_sources)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly")
+        os.makedirs(out_dir, exist_ok=True)
+        out_file = os.path.join(out_dir, f"cleaned_{ts}.json")
+        with open(out_file, "w", encoding="utf-8") as f:
+            json.dump(cleaned, f, ensure_ascii=False, indent=2)
+        log.info(f"采集+清洗完成: 原始 {len(raw_sources)} → 清洗后 {len(cleaned)}")
+        log.info(f"保存到 {out_file}（由本地段继续校验+整理+发布）")
+        return
+
+    # ===== 模式0b：从清洗结果继续（本地国内网络段） =====
+    if args.from_cleaned:
+        if not os.path.exists(args.from_cleaned):
+            log.error(f"找不到清洗结果文件: {args.from_cleaned}")
+            return
+        with open(args.from_cleaned, "r", encoding="utf-8") as f:
+            cleaned = json.load(f)
+        raw_sources = cleaned  # 报告统计用
+        log.info(f"从清洗结果继续: {len(cleaned)} 个")
+    else:
+        cleaned = None
 
     # 第一阶段：采集
     if not args.validate and not args.merge:
@@ -64,7 +95,10 @@ def main():
 
     # 第二阶段：清洗去重
     if not args.validate and not args.merge:
-        cleaned = clean_and_dedup(raw_sources)
+        if cleaned is not None:  # --from-cleaned 已加载
+            pass
+        else:
+            cleaned = clean_and_dedup(raw_sources)
     else:
         cleaned = raw_sources
 

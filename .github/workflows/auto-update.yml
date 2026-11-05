@@ -59,8 +59,9 @@ jobs:
         continue-on-error: true
         run: |
           if [ "${{ inputs.mode || 'test' }}" = "full" ]; then
-            echo "=== full: 完整采集(列表前10页+合集前30个+大佬仓库) + 清洗/校验/整理/提交 ==="
-            python3 autocollect.py --months ${{ inputs.months || '1' }}
+            echo "=== full: 采集(列表前10页+合集前30个+大佬仓库) + 清洗 + 规则校验 → weekly/cleaned ==="
+            echo "（跨洋不做存活/搜索校验，避免误杀国内书源；校验+整理+发布由本地国内网络完成）"
+            python3 autocollect.py --collect-only --months ${{ inputs.months || '1' }}
           else
             echo "=== test: 跨洋小规模验证（列表前10页 + 合集前3个 + 大佬仓库） ==="
             python3 scripts/collect_staged.py list --months ${{ inputs.months || '1' }}
@@ -84,15 +85,23 @@ jobs:
                   print(f"  {os.path.basename(f)}: 读取失败 {e}")
           print(f"原始合计: {total}")
           EOF
+          echo "=== weekly/cleaned 统计 ==="
+          python3 - <<'EOF'
+          import json, glob, os
+          for f in sorted(glob.glob("weekly/cleaned_*.json")):
+              try:
+                  n = len(json.load(open(f, encoding="utf-8")))
+                  print(f"  {os.path.basename(f)}: {n} 个清洗后源")
+              except Exception as e:
+                  print(f"  {os.path.basename(f)}: 读取失败 {e}")
+          EOF
           echo "=== 采集脚本退出码: ${{ steps.collect.outcome }} ==="
 
-      - name: 提交更新（full 模式有产物变化时）
+      - name: 提交更新（full 模式有 cleaned 产物时）
         run: |
           set +e
-          # 只添加确实存在的文件，避免 pathspec 报错
-          for f in books.json clean_rules.json collect_report.md; do
-            if [ -f "$f" ]; then git add "$f"; fi
-          done
+          # full 模式提交 weekly/cleaned_*.json（本地段用它继续校验+发布）
+          git add weekly/ 2>/dev/null
           # 没有暂存内容就跳过
           if git diff --staged --quiet; then
             echo "没有变化，跳过提交"
@@ -100,5 +109,5 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: 自动采集更新 $(date +%Y-%m-%d) [skip ci]"
+          git commit -m "chore: 自动采集+清洗 $(date +%Y-%m-%d) [skip ci]"
           git push
