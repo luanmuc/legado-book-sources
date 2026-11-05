@@ -16,7 +16,27 @@ from .utils import log
 
 
 REPO = "luanmuc/legado-book-sources"
-RELEASE_TAG = "v3.2"
+
+
+def get_next_release_tag(token):
+    """从GitHub现有Releases取最新 vX.Y.Z tag，patch+1 作为新版本号（v3.2.7 → v3.2.8）
+
+    用户要求（2026-11-05）：每次发布都到发布页发布一个新版本，不再覆盖旧tag。
+    """
+    api = f"https://api.github.com/repos/{REPO}/releases"
+    headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github+json"}
+    try:
+        resp = requests.get(api, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            tags = [r["tag_name"] for r in resp.json()
+                    if re.match(r"^v\d+\.\d+\.\d+$", r.get("tag_name", ""))]
+            if tags:
+                latest = sorted(tags, key=lambda t: [int(x) for x in t[1:].split(".")])[-1]
+                major, minor, patch = [int(x) for x in latest[1:].split(".")]
+                return f"v{major}.{minor}.{patch + 1}"
+    except Exception as e:
+        log.warning(f"读取最新Release失败，回退 v1.0.0: {e}")
+    return "v1.0.0"
 
 
 def get_github_token():
@@ -35,29 +55,36 @@ def get_github_token():
 
 
 def publish_release(token, final_count, rules_count):
-    """发布/更新GitHub Release，上传 books.json 和 clean_rules.json 到发布页"""
+    """发布/更新GitHub Release，上传 books.json 和 clean_rules.json 到发布页
+
+    版本策略（用户要求 2026-11-05）：每次发布都创建新版本 tag（vX.Y.Z patch+1），
+    不再覆盖旧tag；若目标tag恰好存在则更新其assets（历史tag内容保持最新）。
+    """
     api = f"https://api.github.com/repos/{REPO}"
     headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github+json"}
 
+    tag = get_next_release_tag(token)
+    log.info(f"本次发布版本: {tag}")
+
     # 查找现有Release
-    resp = requests.get(f"{api}/releases/tags/{RELEASE_TAG}", headers=headers, timeout=15)
+    resp = requests.get(f"{api}/releases/tags/{tag}", headers=headers, timeout=15)
     if resp.status_code == 200:
         release = resp.json()
         release_id = release["id"]
-        log.info(f"找到现有Release {RELEASE_TAG} (ID {release_id})，更新文件")
+        log.info(f"找到现有Release {tag} (ID {release_id})，更新文件")
         # 删除同名旧assets
         for asset in release.get("assets", []):
             if asset["name"] in ("books.json", "clean_rules.json"):
                 d = requests.delete(f"{api}/releases/assets/{asset['id']}", headers=headers, timeout=15)
                 log.info(f"  删除旧asset {asset['name']} (HTTP {d.status_code})")
     elif resp.status_code == 404:
-        log.info(f"Release {RELEASE_TAG} 不存在，创建新Release")
+        log.info(f"Release {tag} 不存在，创建新Release")
         body = (f"全自动采集更新 {datetime.now().strftime('%Y-%m-%d')}\n"
                 f"{final_count}个纯小说源 + {rules_count}条配套净化规则\n"
                 f"- 12个大厂正版源\n"
                 f"- 全自动采集脚本每周自动更新")
         r2 = requests.post(f"{api}/releases", headers=headers, timeout=15,
-                           json={"tag_name": RELEASE_TAG, "name": RELEASE_TAG + " 稳定版",
+                           json={"tag_name": tag, "name": tag + " 稳定版",
                                  "body": body, "draft": False, "prerelease": False})
         if r2.status_code not in (200, 201):
             log.warning(f"创建Release失败: HTTP {r2.status_code} {r2.text[:200]}")
