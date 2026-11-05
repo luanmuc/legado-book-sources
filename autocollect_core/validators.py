@@ -345,7 +345,34 @@ import re as _re
 
 import requests as _requests
 
-from .legado_rules import parse_book_list, parse_explore_entries
+from .legado_rules import is_script_rule, parse_book_list, parse_explore_entries
+
+
+def _parse_lenient_json(text):
+    """宽松解析书源配置 JSON
+
+    实测大量书源 searchUrl 尾部配置用单引号（{'charset':'gbk','method':'POST'}），
+    标准 json.loads 直接失败 → method/body/charset 全丢，POST 变 GET、编码失效。
+    依次尝试：标准 JSON → 单引号转双引号 → 正则抠 method/body/charset。
+    """
+    if not text:
+        return {}
+    try:
+        v = _json.loads(text)
+        return v if isinstance(v, dict) else {}
+    except Exception:
+        pass
+    try:
+        v = _json.loads(text.replace("'", '"'))
+        return v if isinstance(v, dict) else {}
+    except Exception:
+        pass
+    out = {}
+    for key in ("method", "body", "charset", "headers"):
+        mm = _re.search(r"[\"']?%s[\"']?\s*:\s*[\"']([^\"']*)[\"']" % key, text)
+        if mm:
+            out[key] = mm.group(1)
+    return out
 
 
 def _build_search_request(source, keyword):
@@ -357,10 +384,8 @@ def _build_search_request(source, keyword):
     cfg = {}
     m = _re.search(r",\s*(\{.*\})\s*$", search_url, _re.S)
     if m:
-        try:
-            cfg = _json.loads(m.group(1))
-        except Exception:
-            cfg = {}
+        raw_cfg = m.group(1)
+        cfg = _parse_lenient_json(raw_cfg)
         search_url = search_url[:m.start()].strip()
     if search_url.startswith("http"):
         url = search_url
@@ -369,9 +394,15 @@ def _build_search_request(source, keyword):
     method = (cfg.get("method") or "GET").upper()
     body = cfg.get("body")
     charset = cfg.get("charset")
+    def _fill(t):
+        # 先替换带花括号的完整占位符，再处理裸 searchKey（顺序错会把 {{searchKey}} 弄成 {{词}}）
+        return (t.replace("{{searchKey}}", keyword).replace("{{key}}", keyword)
+                 .replace("{{page}}", "1").replace("{{pageNo}}", "1")
+                 .replace("searchKey", keyword))
+
     if body:
-        body = body.replace("{{key}}", keyword).replace("searchKey", keyword)
-    url = url.replace("{{key}}", keyword).replace("searchKey", keyword)
+        body = _fill(body)
+    url = _fill(url)
     return {"url": url, "method": method, "body": body, "charset": charset}
 
 
@@ -388,32 +419,52 @@ def _fetch_raw(req, timeout=8):
         "Accept-Language": "zh-CN,zh;q=0.9",
     }
     if req["method"] == "POST":
-        resp = _requests.post(req["url"], data=(req["body"] or ""), headers=headers,
+        post_headers = dict(headers)
+        post_headers["Content-Type"] = "application/x-www-form-urlencoded"
+        resp = _requests.post(req["url"], data=(req["body"] or ""), headers=post_headers,
                               timeout=timeout, verify=False)
     else:
         resp = _requests.get(req["url"], headers=headers, timeout=timeout, verify=False)
 
+    # 编码候选打分（实测大量站点 header/meta 声明与实际不符，直接信任会乱码致解析全灭）
+    cands = []
     if req.get("charset"):
-        return resp.status_code, resp.content.decode(req["charset"], errors="ignore")
-
-    enc = None
+        cands.append(req["charset"])
     ctype = (resp.headers.get("Content-Type") or "").lower()
     m = _re.search(r"charset=([a-zA-Z0-9_\-]+)", ctype)
     if m:
-        enc = m.group(1)
-    if not enc:
-        m = _re.search(rb"charset=[\"']?([a-zA-Z0-9_\-]+)", resp.content[:3000])
-        if m:
-            enc = m.group(1).decode("ascii", errors="ignore")
-    if not enc or enc.lower() in ("iso-8859-1", "ascii"):
-        try:
-            enc = resp.apparent_encoding
-        except Exception:
-            enc = "utf-8"
+        cands.append(m.group(1))
+    m = _re.search(rb"charset=[\"']?([a-zA-Z0-9_\-]+)", resp.content[:3000])
+    if m:
+        cands.append(m.group(1).decode("ascii", errors="ignore"))
     try:
-        return resp.status_code, resp.content.decode(enc or "utf-8", errors="ignore")
+        cands.append(resp.apparent_encoding)
     except Exception:
-        return resp.status_code, resp.text
+        pass
+    cands += ["utf-8", "gb18030"]
+
+    seen, score_best, text_best = set(), -1, ""
+    for enc in cands:
+        if not enc:
+            continue
+        e = enc.lower()
+        if e in seen or e in ("iso-8859-1", "ascii", "latin-1"):
+            continue
+        seen.add(e)
+        try:
+            t = resp.content.decode(enc, errors="ignore")
+        except Exception:
+            continue
+        # 打分：常见汉字命中数 - 乱码替换字符惩罚
+        score = sum(t.count(ch) for ch in "的一是在了有和人这中大为上个国我以要他时来用们")
+        score -= t.count("\ufffd") * 5
+        # GBK 误解码特征（UTF-8 内容按 GBK 解出会出现这些字）
+        score -= sum(t.count(ch) for ch in "鍚鎺鍛闃銆绔欎") * 2
+        if score > score_best:
+            score_best, text_best = score, t
+    if text_best:
+        return resp.status_code, text_best
+    return resp.status_code, resp.text
 
 
 def _search_once(source, keyword):
@@ -436,6 +487,12 @@ def _search_once(source, keyword):
         return "blocked", f"请求异常 {type(e).__name__}"
     if code != 200:
         return "blocked", f"HTTP {code}"
+    # 纯前端渲染页（React/Vue SPA）：静态 HTML 里没有结果，但阅读器 WebView 能渲染 → 不判失效
+    low_html = html.lower()
+    if len(html) < 4000 and any(k in low_html for k in (
+            "you need to enable javascript", "enable javascript to run this app",
+            "please enable javascript", "requires javascript")):
+        return "blocked", "纯JS渲染页（静态无内容，WebView可渲染，不判失效）"
     try:
         r = parse_book_list(html, book_list, rule_search.get("name"), rule_search.get("bookUrl"))
     except Exception as e:
@@ -443,6 +500,24 @@ def _search_once(source, keyword):
     if r["ok"]:
         sample = [(b["name"], b["url"]) for b in r["books"] if b["name"] or b["url"]][:2]
         return "ok", f"解析成功 matched={r['matched']} 样例={sample}"
+
+    # POST 配置过时回退（实测大量老源 method 写 POST，站点实际只认 GET）
+    if req["method"] == "POST" and req.get("body"):
+        try:
+            q = req["body"].replace("{{key}}", keyword).replace("searchKey", keyword)
+            sep = "&" if "?" in req["url"] else "?"
+            g = {"url": req["url"] + sep + q, "method": "GET", "body": None,
+                 "charset": req.get("charset")}
+            code2, html2 = _fetch_raw(g)
+            if code2 == 200:
+                r2 = parse_book_list(html2, book_list, rule_search.get("name"),
+                                     rule_search.get("bookUrl"))
+                if r2["ok"]:
+                    sample = [(b["name"], b["url"]) for b in r2["books"] if b["name"] or b["url"]][:2]
+                    return "ok", f"POST空→GET回退成功 matched={r2['matched']} 样例={sample}"
+        except Exception:
+            pass
+
     return "bad", f"解析不出书籍 matched={r['matched']}"
 
 
@@ -459,6 +534,11 @@ def check_search_parsed(source, keywords=None, max_try=3):
       bad     有接口返回 200 但所有关键词都解析不出（网站内容已换 / 规则失效）——淘汰依据
       blocked 网络异常 / 非 200（反爬、WAF、代理）——不淘汰，需人工或换网络复验
     """
+    # 规则依赖脚本/JSONPath → 静态解析无法复现，不判失效（保留待验）
+    rule = source.get("ruleSearch") if isinstance(source.get("ruleSearch"), dict) else {}
+    if is_script_rule(rule.get("bookList")):
+        return "blocked", "搜索规则依赖脚本/JSONPath（静态无法解析，不判失效）"
+
     keywords = [k for k in (keywords or GENERIC_TEST_KEYWORDS) if k][:max_try]
     if not keywords:
         keywords = [QUICK_TEST_KEYWORD]
@@ -493,6 +573,8 @@ def check_explore_parsed(source, max_entries=3, timeout=8):
     book_list = rule.get("bookList")
     if not entries or not book_list:
         return None, "无发现页配置" if not entries else "无 ruleExplore.bookList"
+    if is_script_rule(book_list):
+        return "blocked", "发现规则依赖脚本/JSONPath（静态无法解析，不判失效）"
     base = (source.get("bookSourceUrl") or "").strip().rstrip("/")
     tried = []
     got_200 = False

@@ -101,8 +101,16 @@ def classify_junk(s):
 
 
 def is_adult_source(s):
-    """是否为成人内容源"""
-    blob = _source_blob(s)
+    """是否为成人内容源（只认名字/URL/备注，不看 group）
+
+    2026-11-06 修：原实现把 bookSourceGroup 拼进匹配文本，而成人源会被打上
+    "成人书源"分组，分组里字面含"成人" → 任何源一旦归入成人组就永久自证为成人，
+    误判无法纠正（实测 55中文网 / 592书库 被锁死）。group 是判定结果，不能当输入证据。
+    """
+    name = (s.get("bookSourceName") or "").lower()
+    url = (s.get("bookSourceUrl") or "").lower()
+    comment = (s.get("bookSourceComment") or "")[:200].lower()
+    blob = name + " " + url + " " + comment
     return any(k.lower() in blob for k in JUNK_ADULT_KW)
 
 

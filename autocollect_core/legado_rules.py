@@ -36,30 +36,113 @@ def _is_xpath(rule):
     return r.startswith("/") or r.startswith("./") or "//" in head
 
 
+SCRIPT_RULE_MARKERS = ("<js>", "</js>", "@js:", "js:", "@put:", "@get:", "$.[", "$[", "$..", "{{java", "@@")
+
+def is_script_rule(rule):
+    """规则是否依赖脚本/JSONPath（静态 HTML 解析无法复现）
+
+    Legado 里 <js>…</js>、@js:、@put:/@get:、$.[*] JSONPath 都需要执行 JS 或转换 JSON，
+    纯静态解析做不到。命中这类规则的源**不能判失效**，只能标"无法静态判定"（blocked），
+    否则会把规则其实可用的源大面积误杀（实测大量源 bookList 是 <js> 提取的）。
+    """
+    if not rule or not isinstance(rule, str):
+        return False
+    low = rule.lower()
+    return any(m in low for m in SCRIPT_RULE_MARKERS)
+
+
 def _split_index(step):
-    """'h4 a.0' → ('h4 a', 0)  'a.0' → ('a', 0)；无索引返回 None"""
-    m = re.match(r"^(.*?)\s*([a-zA-Z][a-zA-Z0-9]*)[.](\d+)$", step.strip())
-    if not m:
-        return None
-    parent = m.group(1).strip()
-    tag = m.group(2)
-    idx = int(m.group(3))
-    return (parent + " " + tag if parent else tag), idx
+    """解析 Legado 索引语法，返回 (css, mode, param)
+
+    支持（对齐 Legado RuleData 索引规范，2026-11-06 补全）：
+      'a.0'      → ('a', 'index', 0)        取索引 0
+      'a.-1'     → ('a', 'index', -1)       负数倒取
+      'tag.tr!0' → ('tr', 'exclude', 0)     排除索引 0（表头行最常用）
+      'tag.tr!-1'→ ('tr', 'exclude', -1)    排除倒数第 1
+      'a[0:10]'  → ('a', 'slice', (0,10))   切片
+      'a[1:]'    → ('a', 'slice', (1,None))
+      'h4 a.0'   → ('h4 a', 'index', 0)     父选择器+索引
+    无索引语法返回 None
+    """
+    st = step.strip()
+
+    # 切片 [start:end]，支持负数（tbody tr[1:-1] 去掉首尾）
+    m = re.match(r"^(.*?)\s*\[(-?\d*):(-?\d*)\]$", st)
+    if m:
+        body = m.group(1).strip()
+        start = int(m.group(2)) if m.group(2) else 0
+        end = int(m.group(3)) if m.group(3) else None
+        if body:
+            return _convert_selector(body), "slice", (start, end)
+
+    # 排除 !N（!0 表头排除、!-1 尾部排除）
+    m = re.match(r"^(.+?)\s*!(-?\d+)$", st)
+    if m and m.group(1).strip():
+        return _convert_selector(m.group(1).strip()), "exclude", int(m.group(2))
+
+    # 索引 .N / .-N
+    m = re.match(r"^(.*?)\s*([a-zA-Z][a-zA-Z0-9]*)[.](-?\d+)$", st)
+    if m:
+        parent = m.group(1).strip()
+        tag = m.group(2)
+        idx = int(m.group(3))
+        # '.odd.0' → parent='.' + tag='odd' → 应还原为 '.odd'（class 选择器+索引）
+        if parent.endswith(".") and not parent.endswith(".."):
+            head = parent + tag
+        else:
+            head = (parent + " " + tag if parent else tag)
+        return _convert_selector(head), "index", idx
+    return None
+
+
+def _apply_index(els, mode, param):
+    """对元素列表应用索引/排除/切片"""
+    if mode == "index":
+        if -len(els) <= param < len(els):
+            return [els[param]]
+        return []
+    if mode == "exclude":
+        # 排除指定位置（支持负数）
+        try:
+            drop = param if param >= 0 else len(els) + param
+            return [e for i, e in enumerate(els) if i != drop]
+        except Exception:
+            return els
+    if mode == "slice":
+        start, end = param
+        return els[start:end]
+    return els
 
 
 def _convert_selector(sel):
-    """Legado 简化选择器 → CSS 选择器"""
+    """Legado 简化选择器 → CSS 选择器
+
+    兼容：
+      class.a            → .a
+      class.a.b          → .a.b
+      class.a b          → .a.b   （作者漏写第二个 class. 前缀，实测老站常见）
+      tag.a / id.a       → a / #a
+    """
     sel = sel.strip()
     if not sel:
         return ""
     if sel.startswith("class."):
-        return "." + sel[6:]
+        rest = sel[6:].strip()
+        parts = [x for x in rest.split() if x]
+        if len(parts) > 1:
+            return "." + ".".join(p.lstrip(".") for p in parts)
+        return "." + rest
     if sel.startswith("tag."):
         return sel[4:]
     if sel.startswith("id."):
         return "#" + sel[3:]
     if sel.startswith("@css:"):
         return sel[5:]
+    # 裸多 class 容错：'.result-item result-game-item' → '.result-item.result-game-item'
+    if sel.startswith(".") and " " in sel:
+        parts = [x for x in sel.split() if x]
+        if all(x.startswith(".") or re.match(r"^[a-zA-Z][a-zA-Z0-9_\-]*$", x) for x in parts):
+            return "." + ".".join(x.lstrip(".") for x in parts)
     return sel
 
 
@@ -71,6 +154,8 @@ def _parse_rule(rule):
     if not rule or not isinstance(rule, str):
         return [], None
     rule = rule.split("##")[0].strip()  # 去掉 ##正则替换
+    if rule.lower().startswith("@css:"):  # Legado 显式 CSS 标记：剥掉前缀后走正常拆分（动作词照常识别）
+        rule = rule[5:].strip()
     steps, action = [], None
     for part in rule.split("@"):
         p = part.strip()
@@ -82,7 +167,10 @@ def _parse_rule(rule):
         if low in _ACTION_WORDS or low.startswith("attr.") or low.startswith("data-"):
             action = p
             continue
-        if re.match(r"^[a-zA-Z]+\.\d+$", p):  # a.0 / li.1 → 标签索引
+        if re.match(r"^[a-zA-Z][a-zA-Z0-9]*\.-?\d+$", p):  # a.0 / li.-1 → 标签索引
+            steps.append(p)
+            continue
+        if re.search(r"!(?:-?\d+)$", p) or re.search(r"\[\d*:\d*\]$", p):  # tr!0 / a[0:10] → 索引/排除/切片
             steps.append(p)
             continue
         css = _convert_selector(p)
@@ -91,25 +179,36 @@ def _parse_rule(rule):
     return steps, action
 
 
-def _select_one(node, step):
-    """按步骤选单个节点（支持 tag.N 索引与 'h4 a.0' 父+索引语法）"""
+def _select_nodes(node, step):
+    """按步骤选节点，返回列表（支持 .N 索引 / !N 排除 / [a:b] 切片 / 父选择器+索引）"""
     si = _split_index(step)
     if si:
-        css, idx = si
-        els = node.select(css)
-        return els[idx] if len(els) > idx else None
-    els = node.select(step)
+        css, mode, param = si
+        base = _convert_selector(css)
+        els = node.select(base)
+        if not els and "tbody" in base:
+            # lxml 不像浏览器那样自动补 tbody，'table tbody tr' 会 0 匹配 → 退化去掉 tbody
+            els = node.select(base.replace(" tbody", ""))
+        return _apply_index(els, mode, param)
+    base = _convert_selector(step)
+    els = node.select(base)
+    if not els and "tbody" in base:
+        els = node.select(base.replace(" tbody", ""))
+    if not els and base.strip() in ("tbody", "thead"):
+        # 浏览器会自动补 tbody，lxml 不会；该层视为透明，直接沿用父节点
+        return [node]
+    return els
+
+
+def _select_one(node, step):
+    """按步骤选单个节点"""
+    els = _select_nodes(node, step)
     return els[0] if els else None
 
 
 def _select_all(node, step):
-    """按步骤选全部节点（支持 tag.N 索引与 'h4 a.0' 父+索引语法）"""
-    si = _split_index(step)
-    if si:
-        css, idx = si
-        els = node.select(css)
-        return [els[idx]] if len(els) > idx else []
-    return node.select(step)
+    """按步骤选全部节点"""
+    return _select_nodes(node, step)
 
 
 def _take_action(node, action):
