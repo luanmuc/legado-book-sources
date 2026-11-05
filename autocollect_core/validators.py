@@ -6,7 +6,8 @@ autocollect_core 校验模块（第三阶段）
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from .config import CONCURRENCY, FULL_TEST_KEYWORDS, QUICK_TEST_KEYWORD
+from .config import (CONCURRENCY, FULL_TEST_KEYWORDS, GENERIC_TEST_KEYWORDS,
+                     QUICK_TEST_KEYWORD)
 from .utils import fetch_url, get_domain, log
 
 
@@ -282,3 +283,209 @@ def validate_sources_with_checkpoint(sources, tag, batch=300):
             os.remove(f)
     log.info(f"✅ 两级校验完成: 合格 {len(validated)}，淘汰 {len(dead_acc)}（checkpoint已清理）")
     return validated, dead_acc
+
+
+# ==================== 真实规则解析校验（2026-11-06） ====================
+# 背景：用户指出"网站活着 ≠ 书源有效"——域名还在但内容已换、搜索接口返回 200
+# 也可能是无关页面。旧校验只判 HTTP 200 + 内容长度，无法识别此类失效。
+# 新校验：用书源自身规则真正解析 HTML，至少解析出一本书才算可用。
+
+import json as _json
+import re as _re
+
+import requests as _requests
+
+from .legado_rules import parse_book_list, parse_explore_entries
+
+
+def _build_search_request(source, keyword):
+    """解析 searchUrl 为请求参数（支持 GET / POST + charset + JSON 配置）"""
+    search_url = (source.get("searchUrl") or "").strip()
+    base = (source.get("bookSourceUrl") or "").strip().rstrip("/")
+    if not search_url:
+        return None
+    cfg = {}
+    m = _re.search(r",\s*(\{.*\})\s*$", search_url, _re.S)
+    if m:
+        try:
+            cfg = _json.loads(m.group(1))
+        except Exception:
+            cfg = {}
+        search_url = search_url[:m.start()].strip()
+    if search_url.startswith("http"):
+        url = search_url
+    else:
+        url = base + ("" if search_url.startswith(("/", "?")) else "/") + search_url
+    method = (cfg.get("method") or "GET").upper()
+    body = cfg.get("body")
+    charset = cfg.get("charset")
+    if body:
+        body = body.replace("{{key}}", keyword).replace("searchKey", keyword)
+    url = url.replace("{{key}}", keyword).replace("searchKey", keyword)
+    return {"url": url, "method": method, "body": body, "charset": charset}
+
+
+def _fetch_raw(req, timeout=8):
+    """按请求参数发请求，返回 (status_code, html_text)
+
+    编码策略：显式 charset > HTTP header > meta charset > apparent_encoding(chardet) > utf-8
+    中文小站大量是 GBK/GB2312，requests 默认猜成 ISO-8859-1 会乱码导致规则解析失败。
+    """
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "zh-CN,zh;q=0.9",
+    }
+    if req["method"] == "POST":
+        resp = _requests.post(req["url"], data=(req["body"] or ""), headers=headers,
+                              timeout=timeout, verify=False)
+    else:
+        resp = _requests.get(req["url"], headers=headers, timeout=timeout, verify=False)
+
+    if req.get("charset"):
+        return resp.status_code, resp.content.decode(req["charset"], errors="ignore")
+
+    enc = None
+    ctype = (resp.headers.get("Content-Type") or "").lower()
+    m = _re.search(r"charset=([a-zA-Z0-9_\-]+)", ctype)
+    if m:
+        enc = m.group(1)
+    if not enc:
+        m = _re.search(rb"charset=[\"']?([a-zA-Z0-9_\-]+)", resp.content[:3000])
+        if m:
+            enc = m.group(1).decode("ascii", errors="ignore")
+    if not enc or enc.lower() in ("iso-8859-1", "ascii"):
+        try:
+            enc = resp.apparent_encoding
+        except Exception:
+            enc = "utf-8"
+    try:
+        return resp.status_code, resp.content.decode(enc or "utf-8", errors="ignore")
+    except Exception:
+        return resp.status_code, resp.text
+
+
+def _search_once(source, keyword):
+    """单关键词搜索解析（内部使用）
+
+    返回 (status: 'ok'|'bad'|'blocked', detail: str)
+    """
+    rule_search = source.get("ruleSearch") or {}
+    if not isinstance(rule_search, dict):
+        return "bad", "ruleSearch 非对象"
+    book_list = rule_search.get("bookList")
+    if not book_list:
+        return "bad", "无 ruleSearch.bookList"
+    req = _build_search_request(source, keyword)
+    if not req:
+        return "bad", "无 searchUrl"
+    try:
+        code, html = _fetch_raw(req)
+    except Exception as e:
+        return "blocked", f"请求异常 {type(e).__name__}"
+    if code != 200:
+        return "blocked", f"HTTP {code}"
+    try:
+        r = parse_book_list(html, book_list, rule_search.get("name"), rule_search.get("bookUrl"))
+    except Exception as e:
+        return "bad", f"规则解析异常 {type(e).__name__}"
+    if r["ok"]:
+        sample = [(b["name"], b["url"]) for b in r["books"] if b["name"] or b["url"]][:2]
+        return "ok", f"解析成功 matched={r['matched']} 样例={sample}"
+    return "bad", f"解析不出书籍 matched={r['matched']}"
+
+
+def check_search_parsed(source, keywords=None, max_try=3):
+    """真实搜索解析校验（通用关键词轮试，2026-11-06 用户要求用关键字而非书名）
+
+    - 默认关键词池 GENERIC_TEST_KEYWORDS：["我的","天下","重生","总裁","王爷","系统","都市","修仙","神","爱"]
+    - 每源最多试 max_try 个关键词，任一个解析出书即 ok（降低"该书本站没有"造成的误判）
+    - 关键词逐一尝试：任一 ok → ok；有任一词返回 200 但解析不出、最终仍无 ok → bad；
+      全部网络异常/非200 → blocked
+
+    返回 (status: 'ok'|'bad'|'blocked', detail: str)
+      ok      至少一个关键词解析出一本带 name 或 url 的书（规则真正可用）
+      bad     有接口返回 200 但所有关键词都解析不出（网站内容已换 / 规则失效）——淘汰依据
+      blocked 网络异常 / 非 200（反爬、WAF、代理）——不淘汰，需人工或换网络复验
+    """
+    keywords = [k for k in (keywords or GENERIC_TEST_KEYWORDS) if k][:max_try]
+    if not keywords:
+        keywords = [QUICK_TEST_KEYWORD]
+    tried = []
+    any_200 = False
+    for kw in keywords:
+        status, detail = _search_once(source, kw)
+        if status == "ok":
+            return "ok", f"关键词[{kw}] {detail}"
+        if status == "bad":
+            any_200 = True
+        tried.append(f"[{kw}]{status}:{detail}")
+    joined = " | ".join(tried)[:160]
+    if any_200:
+        return "bad", f"{len(keywords)} 个关键词均解析不出书籍 {joined}"
+    return "blocked", f"{len(keywords)} 个关键词请求均失败 {joined}"
+
+
+def check_explore_parsed(source, max_entries=3, timeout=8):
+    """发现页校验：exploreUrl 至少一个入口能用规则解析出书
+
+    返回 (status: 'ok'|'bad'|'blocked'|None, detail: str)
+      ok      至少 1 个入口解析成功（"发现页按钮有一个能用"）
+      bad     所有入口返回 200 但都解析不出（发现页规则失效/内容已变）
+      blocked 所有入口都网络异常/非 200（反爬/WAF，无法判定）
+      None    无发现页配置（不适用，跳过该检查）
+    """
+    entries = parse_explore_entries(source.get("exploreUrl"))
+    rule = source.get("ruleExplore") or {}
+    if not isinstance(rule, dict):
+        rule = {}
+    book_list = rule.get("bookList")
+    if not entries or not book_list:
+        return None, "无发现页配置" if not entries else "无 ruleExplore.bookList"
+    base = (source.get("bookSourceUrl") or "").strip().rstrip("/")
+    tried = []
+    got_200 = False
+    for e in entries[:max_entries]:
+        u = (e["url"] or "").replace("{{page}}", "1").replace("{{pageNo}}", "1")
+        if not u:
+            continue
+        if not u.startswith("http"):
+            u = base + ("" if u.startswith("/") else "/") + u
+        tried.append(e["title"] or u)
+        try:
+            code, html = _fetch_raw({"url": u, "method": "GET", "body": None, "charset": None},
+                                    timeout=timeout)
+        except Exception:
+            continue
+        if code != 200:
+            continue
+        got_200 = True
+        try:
+            r = parse_book_list(html, book_list, rule.get("name"), rule.get("bookUrl"))
+        except Exception:
+            continue
+        if r["ok"]:
+            sample = [(b["name"], b["url"]) for b in r["books"] if b["name"] or b["url"]][:2]
+            return "ok", f"入口[{e['title']}]解析成功 样例={sample}"
+    if got_200:
+        return "bad", f"{len(tried)} 个入口用规则全部解析失败 {tried}"
+    return "blocked", f"{len(tried)} 个入口网络异常/非200 {tried}"
+
+
+def check_source_usable(source, keywords=None):
+    """可用性判定（用户标准：搜索、发现最起码有一个能用才算可用源）
+
+    返回 dict:
+      usable=True   至少一项（搜索/发现）解析出书 → 源可用
+      usable=False  搜索和发现都解析不出（且无网络阻断）→ 内容已变/规则失效，淘汰
+      usable=None   存在无法判定项（网络异常/反爬/WAF blocked）→ 保留待人工
+    """
+    s_status, s_detail = check_search_parsed(source, keywords)
+    e_status, e_detail = check_explore_parsed(source)
+    detail = f"搜索[{s_status}]{s_detail} | 发现[{e_status}]{e_detail}"
+    if s_status == "ok" or e_status == "ok":
+        return {"usable": True, "search": s_status, "explore": e_status, "detail": detail}
+    if s_status == "blocked" or e_status == "blocked":
+        return {"usable": None, "search": s_status, "explore": e_status, "detail": detail}
+    return {"usable": False, "search": s_status, "explore": e_status, "detail": detail}
