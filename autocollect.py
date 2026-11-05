@@ -141,22 +141,29 @@ def main():
             log.info("=" * 50)
             return
 
-        # ===== 中间层提升正式版模式：books_pending.json → books.json =====
+        # ===== 中间层提升正式版模式：books_pending.json → 完整校验 → books.json =====
         if args.publish_pending:
             if not os.path.exists(PENDING_FILE):
                 log.error("中间层 books_pending.json 不存在，先运行 --stage 合并采集结果")
                 return
             with open(PENDING_FILE, "r", encoding="utf-8") as f:
-                final_sources = json.load(f)
-            log.info(f"中间层提升为正式版: {len(final_sources)} 个")
+                pending_sources = json.load(f)
+            # 大厂保护：12个大厂原样保留（手动调好的版本），其余全部重新完整校验
+            big_sites = [s for s in pending_sources if is_big_site(s)]
+            rest_sources = [s for s in pending_sources if not is_big_site(s)]
+            log.info(f"发布前完整校验: 中间层 {len(pending_sources)} 个 = 大厂保护 {len(big_sites)} + 待校验 {len(rest_sources)}")
+            validated, dead = validate_sources(rest_sources)          # 两级校验：快速存活 + 完整搜索
+            validated = filter_junk_sources(validated)                # 垃圾过滤（成人保留归组，与正常流程一致）
+            final_sources = organize_sources(validated, big_sites)    # 大厂最顶保护 + 规范化整理
+            log.info(f"发布校验完成: {len(rest_sources)} → 合格 {len([v for v in validated if v.get('pass_rate',0)>=1])}，淘汰 {len(dead)}")
             with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
                 json.dump(final_sources, f, ensure_ascii=False, indent=2)
-            # 配套净化规则 + 报告
+            # 配套净化规则 + 报告（真实统计：中间层/发布校验淘汰/最终发布）
             collected_rules = collect_clean_rules()
             generate_clean_rules(final_sources, collected_rules)
             big_count = len([s for s in final_sources if is_big_site(s)])
-            generate_report(len(final_sources), len(final_sources), [], len(final_sources), big_count)
-            log.info(f"正式版已更新: {OUTPUT_FILE}（{len(final_sources)} 个）")
+            generate_report(len(pending_sources), len(pending_sources), dead, len(final_sources), big_count)
+            log.info(f"正式版已更新: {OUTPUT_FILE}（{len(final_sources)} 个，发布校验淘汰 {len(dead)}）")
             if args.publish:
                 auto_publish(len(final_sources), big_count)
             return
