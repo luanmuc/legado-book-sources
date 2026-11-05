@@ -37,6 +37,18 @@
 采集可行（实测列表页 3.3s / JSON 2.2s / CDN 1.9s），但存活/搜索校验针对国内书源站
 跨洋大量误判（合格率 72% → 27%）。因此：**采集在 Actions，校验必须国内网络**。
 
+**断点续传矩阵（2026-11-05 补全，豆包对话/沙箱中断均可持续）**：
+
+| 环节 | 断点机制 | 中断后 |
+|------|----------|--------|
+| 采集分片（collect_staged） | 每段独立落盘 raw_list/raw_heji_*/raw_gurus.json | 重跑当前段即可，已完成段不动 |
+| 合集ID提取（collect_heji_ids） | 每页落盘 heji_ids.json + 已有ID续爬 | 只补缺失页 |
+| 合集批量下载（collect_heji_batch） | heji/{cid}.json 已存在跳过 | 只补缺失合集 |
+| 流式清洗（run_from_fragments clean） | clean_tmp.json checkpoint（每10/50分片） | 从checkpoint继续 |
+| 分批校验（run_from_fragments validate） | validated.json/dead.json 每批追加+URL去重 | 从 --start 继续 |
+| **两级校验（--stage/--publish/--publish-pending）** | **ckpt_{tag}_{validated,dead}.json 每批落盘（batch=300/200）** | **重启跳过已验源（含已淘汰），只补未验** |
+| 整理/过滤/报告 | 秒级操作 | 无需断点 |
+
 ---
 
 ## 2. 模块职责

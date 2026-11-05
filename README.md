@@ -70,6 +70,7 @@
 - **采集层**：GitHub Actions 每周日自动采集+清洗（跨洋已优化：30s超时+20并发+重试），结果 push 到 `weekly/cleaned_*.json`，全程无人值守
 - **中间层**：本地（国内网络）从 cleaned 继续：校验+垃圾过滤+整理 → 合并进 `books_pending.json`（不碰正式版）
 - **正式版**：确认后把中间层提升为 books.json + clean_rules，并自动更新 GitHub 发布页（Releases）
+- **断点续传**：采集/清洗/校验全链路支持中断恢复——校验每批落盘 checkpoint（`raw/autocollect/ckpt_*.json`），对话中断或沙箱重置后重跑同一命令自动跳过已验源，只补未验部分（详见 DEVELOPMENT.md 断点矩阵）
 
 > ⚠️ 采集与校验分离的原因：GitHub Actions 免费 runner 位于美国，访问国内站点**采集**已通过加大超时+并发+重试跑通（实测单请求 2-3s）；但**存活/搜索校验**针对国内书源站点，跨洋会大量误判（合格率 72%→27%），因此校验必须在国内网络执行。
 
