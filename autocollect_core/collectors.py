@@ -10,7 +10,7 @@ import re
 import time
 from datetime import datetime, timedelta
 
-from .config import DATA_SOURCES, RAW_DIR
+from .config import DATA_SOURCES, RAW_DIR, REQUEST_TIMEOUT, CONCURRENCY
 from .utils import ensure_dir, fetch_url, log
 
 
@@ -117,23 +117,31 @@ def collect_yckceo_list(months=1, page_start=1, page_end=10):
             if not kept_ids:
                 break
 
-            # 直接拼接JSON链接下载（id是一样的）
-            for sid in kept_ids:
+            # 直接拼接JSON链接下载（id是一样的）——并发下载加速（跨洋场景配大超时）
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+
+            def _fetch_one(sid):
                 json_url = f"https://www.yckceo.com/yuedu/shuyuan/json/id/{sid}.json"
-                s_resp = fetch_url(json_url, timeout=8)
-                if s_resp and s_resp.status_code == 200:
-                    try:
-                        data = s_resp.json()
-                        if isinstance(data, list):
-                            # 单个书源也是列表格式
-                            for s in data:
-                                if isinstance(s, dict) and s.get("bookSourceUrl"):
-                                    all_sources.append(s)
-                        elif isinstance(data, dict) and data.get("bookSourceUrl"):
-                            all_sources.append(data)
-                    except Exception:
-                        pass
-                time.sleep(0.1)
+                s_resp = fetch_url(json_url, timeout=REQUEST_TIMEOUT)
+                if not s_resp or s_resp.status_code != 200:
+                    return None
+                try:
+                    data = s_resp.json()
+                    if isinstance(data, list):
+                        return [s for s in data if isinstance(s, dict) and s.get("bookSourceUrl")]
+                    if isinstance(data, dict) and data.get("bookSourceUrl"):
+                        return [data]
+                except Exception:
+                    pass
+                return None
+
+            page_sources = []
+            with ThreadPoolExecutor(max_workers=CONCURRENCY) as ex:
+                for res in as_completed([ex.submit(_fetch_one, sid) for sid in kept_ids]):
+                    if res.result():
+                        page_sources.extend(res.result())
+            all_sources.extend(page_sources)
+            log.info(f"  列表第{page}页: {len(page_sources)} 个")
 
             page += 1
             time.sleep(0.5)
@@ -201,7 +209,7 @@ def collect_yckceo_heji(months=1, page_start=1, page_end=1, limit=30):
     # 下载每个合集（自动跟随302跳转到CDN）
     for cid in kept_ids:
         json_url = f"https://www.yckceo.com/yuedu/shuyuans/json/id/{cid}.json"
-        c_resp = fetch_url(json_url, timeout=15)
+        c_resp = fetch_url(json_url, timeout=REQUEST_TIMEOUT)
         if c_resp and c_resp.status_code == 200:
             try:
                 sources = c_resp.json()

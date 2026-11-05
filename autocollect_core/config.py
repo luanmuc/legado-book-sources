@@ -93,11 +93,14 @@ JUNK_DEAD_KW = [
 ]
 
 # ============================================================
-# 请求配置
+# 请求配置（支持环境变量覆盖：GitHub Actions 跨洋场景可调大超时/重试）
+#   YCKCEO_TIMEOUT     单请求超时秒数（本地10s；跨洋Actions建议30s）
+#   YCKCEO_RETRY       失败重试次数（本地2次；跨洋建议3次）
+#   YCKCEO_CONCURRENCY 批量下载并发（默认20）
 # ============================================================
-REQUEST_TIMEOUT = 10
-REQUEST_RETRY = 2
-CONCURRENCY = 20  # 校验并发（IO密集，20并发加速批量探测）
+REQUEST_TIMEOUT = int(os.environ.get("YCKCEO_TIMEOUT", "10"))
+REQUEST_RETRY = int(os.environ.get("YCKCEO_RETRY", "2"))
+CONCURRENCY = int(os.environ.get("YCKCEO_CONCURRENCY", "20"))  # 校验/下载并发（IO密集）
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 REFERER = "https://www.google.com/"
 

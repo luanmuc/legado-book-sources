@@ -9,6 +9,14 @@ on:
         description: '采集最近N个月'
         required: false
         default: '1'
+      mode:
+        description: 'test=跨洋连通性验证(列表10页+合集3个)；full=完整采集+提交'
+        required: false
+        default: 'test'
+        type: choice
+        options:
+          - test
+          - full
 
 # 关键：仓库级默认 GITHUB_TOKEN 是只读，必须在这里声明写权限，否则 git push 必然失败
 permissions:
@@ -17,7 +25,13 @@ permissions:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 300   # 跨洋慢速采集需要更长上限（原120分钟太紧）
+
+    # 跨洋优化：加大单请求超时+失败重试，用并发下载抵消慢速
+    env:
+      YCKCEO_TIMEOUT: '30'
+      YCKCEO_RETRY: '3'
+      YCKCEO_CONCURRENCY: '20'
 
     steps:
       - uses: actions/checkout@v4
@@ -29,23 +43,50 @@ jobs:
       - name: 安装依赖
         run: pip install requests beautifulsoup4 lxml
 
-      - name: 运行全自动采集脚本
+      - name: 连通性诊断（跨洋到yckceo实测延迟）
+        run: |
+          echo "=== 1. yckceo主站(列表页, 跨洋慢) ==="
+          curl -s -o /dev/null -w "  耗时 %{time_total}s | HTTP %{http_code}\n" -A "Mozilla/5.0" --max-time 60 "https://www.yckceo.com/yuedu/shuyuan/index.html?page=1" || echo "  主站超时/拒连"
+          echo "=== 2. 列表JSON直链(主站) ==="
+          curl -s -o /dev/null -w "  耗时 %{time_total}s | HTTP %{http_code}\n" -A "Mozilla/5.0" --max-time 60 "https://www.yckceo.com/yuedu/shuyuan/json/id/7036.json" || echo "  列表JSON超时/拒连"
+          echo "=== 3. 合集JSON(jsdelivr CDN, 海外快) ==="
+          curl -sL -o /dev/null -w "  耗时 %{time_total}s | HTTP %{http_code}\n" -A "Mozilla/5.0" --max-time 30 "https://www.yckceo.com/yuedu/shuyuans/json/id/1330.json" || echo "  CDN超时"
+          echo "=== 4. 大佬仓库直链 ==="
+          curl -s -o /dev/null -w "  耗时 %{time_total}s | HTTP %{http_code}\n" -A "Mozilla/5.0" --max-time 30 "https://raw.githubusercontent.com/shidahuilang/shuyuan/gh-pages/legado3.json" || echo "  github raw 超时"
+
+      - name: 运行采集（${{ inputs.mode || 'test' }} 模式）
         id: collect
         continue-on-error: true
-        run: python3 autocollect.py --months ${{ inputs.months || '1' }}
+        run: |
+          if [ "${{ inputs.mode || 'test' }}" = "full" ]; then
+            echo "=== full: 完整采集(列表前10页+合集前30个+大佬仓库) + 清洗/校验/整理/提交 ==="
+            python3 autocollect.py --months ${{ inputs.months || '1' }}
+          else
+            echo "=== test: 跨洋小规模验证（列表前10页 + 合集前3个 + 大佬仓库） ==="
+            python3 scripts/collect_staged.py list --months ${{ inputs.months || '1' }}
+            python3 scripts/collect_staged.py heji 1 1 --months ${{ inputs.months || '1' }} --limit 3
+            python3 scripts/collect_staged.py gurus
+          fi
 
       - name: 输出采集结果
         if: always()
         run: |
-          echo "=== 采集报告 ==="
-          cat collect_report.md 2>/dev/null || echo "报告未生成"
-          echo
-          echo "=== 当前书源数 ==="
-          python3 -c "import json; d=json.load(open('books.json')); print(f'{len(d)} 个')" 2>/dev/null || echo "books.json 读取失败"
-          echo
+          echo "=== raw 分片统计 ==="
+          python3 - <<'EOF'
+          import json, glob, os
+          total = 0
+          for f in sorted(glob.glob("raw/autocollect/raw_*.json")):
+              try:
+                  n = len(json.load(open(f, encoding="utf-8")))
+                  total += n
+                  print(f"  {os.path.basename(f)}: {n}")
+              except Exception as e:
+                  print(f"  {os.path.basename(f)}: 读取失败 {e}")
+          print(f"原始合计: {total}")
+          EOF
           echo "=== 采集脚本退出码: ${{ steps.collect.outcome }} ==="
 
-      - name: 提交更新
+      - name: 提交更新（full 模式有产物变化时）
         run: |
           set +e
           # 只添加确实存在的文件，避免 pathspec 报错
