@@ -7,7 +7,7 @@ autocollect_core 整理模块（第四阶段）
 import re
 
 from .config import ADULT_GROUP
-from .utils import get_domain, log
+from .utils import clean_url, get_domain, log
 from .cleaner import is_big_site
 
 
@@ -82,6 +82,18 @@ def classify_source(source):
 def organize_sources(validated_sources, existing_sources):
     """整理：改名、分组、排序（大厂源强制保护，不被新采集覆盖）"""
     log.info("=== 开始整理 ===")
+
+    # 0. 统一清理URL（防上游"已整理/已校验"等中文注释污染，覆盖 --stage/--publish-pending 全部路径）
+    def _clean(src):
+        # 兼容两种结构：校验输出为 {"source": {...}} 包装，正式版为裸源 dict
+        item = src.get("source", src) if isinstance(src, dict) else src
+        u = item.get("bookSourceUrl")
+        if u:
+            item["bookSourceUrl"] = clean_url(u)
+        return src
+
+    validated_sources = [_clean(s) for s in validated_sources]
+    existing_sources = [_clean(s) for s in existing_sources]
 
     used_names = set()
     result = []
