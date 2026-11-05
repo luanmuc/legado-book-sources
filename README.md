@@ -64,9 +64,13 @@
 - 4个直链大佬仓库（酷安三舞313/关耳女频/XIU2精品/shidahuilang）
 
 ### 自动更新
-- 每周日凌晨2点GitHub Actions自动运行采集
-- 跑完自动提交推送到main分支
-- 不需要人工干预，自动获取最新书源
+- 采集脚本在本地/云电脑执行（国内网络访问数据源秒级响应）
+- 跑完自动提交推送到 main 分支，并自动更新 GitHub 发布页（Releases）
+- 每周自动触发由定时任务调度，不需要人工干预
+
+> ⚠️ 说明：GitHub Actions 服务器位于海外，访问国内书源站点（如 yckceo）单请求频繁超时，
+> 2 小时只能爬完 20 页列表，无法完成全量校验，因此自动采集不在 GitHub Actions 上执行，
+> 改为本地执行 + 自动推送发布。
 
 ### 使用方法
 ```bash
@@ -93,6 +97,23 @@ python3 autocollect.py --merge      # 只合并整理
 - **大厂保护**：12个正版大站单独保护，不被自动更新覆盖
 - **自动报告**：每次跑完生成采集报告，新增/淘汰一目了然
 
+### 模块化结构（v3.2.1）
+脚本已拆分为 `autocollect_core/` 包，主入口 `autocollect.py` 命令行接口保持不变：
+
+```
+autocollect.py              # 主入口（五阶段编排）
+autocollect_core/
+├── config.py               # 配置区：数据源/关键词/路径
+├── utils.py                # 日志 + 工具（fetch_url/clean_url/get_domain）
+├── collectors.py           # 采集：yckceo列表/合集/大佬仓库
+├── cleaner.py              # 清洗去重 + 大厂判断
+├── validators.py           # 规则完整性/快速/完整/两级校验
+├── organizer.py            # 四字改名/分组/customOrder/大厂保护
+├── cleanrules.py           # 净化规则采集/优化/生成
+├── report.py               # 采集报告
+└── publisher.py            # git推送 + 发布页Release
+```
+
 ## ✏️ 命名规范
 - 全部为四字纯汉字
 - 去掉表情符号和特殊字符
@@ -100,6 +121,7 @@ python3 autocollect.py --merge      # 只合并整理
 - customOrder字段控制导入后顺序
 
 ## 📝 更新日志
+- v3.2.1 (2026-11-05): 脚本模块化重构，拆分为 autocollect_core/ 9模块包
 - v3.2 (2026-11-01): 修复起点书源分类页加载为空的问题
 - v3.1 (2026-11-01): 全自动脚本升级：真实搜索校验/净化规则自动优化/两级过滤/自动发布
 - v3.0 (2026-10-31): 新增全自动采集脚本，每周日自动跑
