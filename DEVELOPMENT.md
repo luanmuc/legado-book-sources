@@ -11,7 +11,7 @@
 ┌─ 采集层（GitHub Actions 每周日自动，无人值守）─────────────────────────┐
 │ .github/workflows/auto-update.yml                                     │
 │   → collect_staged 逻辑（collectors.py）                               │
-│   → yckceo列表(前10页) + 合集(前30个) + 大佬仓库(4个)                  │
+│   → yckceo列表(前10页) + 合集(前30个) + 大佬仓库(2个存活)              │
 │   → clean_and_dedup（流式清洗/域名去重/规则完整性）                    │
 │   → 产物 weekly/cleaned_YYYYMMDD_HHMMSS.json 自动 commit+push          │
 └──────────────────────────────────────────────────────────────────────┘
@@ -182,6 +182,12 @@ raw/autocollect/                  cleaned_*.json           validated.json
 | Release 上传 curl 失败 | curl --data-binary 限制 | 必须 python requests 上传 |
 | push 被拒 non-fast-forward | 远端有 Actions commit | fetch + pull --rebase，核对 books.json 后再推 |
 | 番茄第三方听书 API 全挂 | 非主线 | 已放弃，用户接受手机系统 TTS |
+| URL 尾部混入中文/emoji（"已整理""🔞"） | 上游源作者手打注释，raw 数据脏 | clean_url 增强：剔除 URL 内中文/全角/emoji；正式版已清 24 个污染 URL |
+| 失效标记大写（BAD/INVALID）漏判 | 关键词表小写、比对未统一小写 | 比对改 `k.lower() in blob` |
+| 成人源被"非小说"词误剔（成人漫画等） | 垃圾分类先于成人判断 | 成人优先：先 `is_adult_source` 保留归组，再分类剔除 |
+| 月份过滤解析失败整页丢弃 | all_old 误置 True | 解析失败视为不确定：保留且不置 all_old |
+| 分批校验重复累计/淘汰记录丢失 | 包装结构取键用顶层 bookSourceUrl | 去重键兼容 `{source,...}` 包装结构与裸源 |
+| Release 新建分支 NameError | 文案用未定义 final_count | 签名加 `final_count, rules_count`，规则数动态读取 |
 
 ---
 
@@ -216,12 +222,16 @@ JSON直链     https://www.yckceo.com/yuedu/shuyuan/json/id/{id}.json      （li
 反爬         必须带 UA + Referer（fetch_url 已内置），裸请求返回拦截页
 ```
 ### 大佬仓库直链（collect_gurus）
+> 2026-11-05 实测：原 4 个源中 2 个已失效并移除——
+> **XIU2精品** `71e564f.json` 返回 HTTP 404（aoaostar 聚合站已删除该 id）；
+> **shidahuilang** `legado3.json` 在 shuyuan/gh-pages 两个分支均 404，且仓库被 GitHub 以 tos 理由封禁
+> （API 返回 "Repository access blocked"，reason=tos，网页 200 为封禁提示页）。
+> 仅保留以下 2 个存活源。
+
 | 来源 | 直链 | 规模 |
 |------|------|------|
 | 酷安三舞313 | `2a1f129b.json` | 1554 条 |
 | 关耳女频 | `e3e5d620.json` | 86 条 |
-| XIU2精品 | `71e564f.json` | 22 条 |
-| shidahuilang | `legado3.json` | 939 条 |
 
 ### 净化规则源
 - nyasama 书源包 `https://shuyuan.nyasama.net/shuyuan/e4a6f3324f10443a0018deba816852b3.json`（1200+条，去重后 1176 条）

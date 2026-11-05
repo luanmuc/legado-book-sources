@@ -64,7 +64,7 @@
 ### 数据源池
 - yckceo.com 书源列表（前10页最新上传的源，每页100个）
 - yckceo.com 书源合集（列表前30个大佬整理的合集，每个合集含数百个源）
-- 4个直链大佬仓库（酷安三舞313/关耳女频/XIU2精品/shidahuilang）
+- 2个直链大佬仓库（酷安三舞313/关耳女频；原XIU2精品与shidahuilang已于2026-11失效：71e564f.json 404、shidahuilang/shuyuan 被GitHub以tos封禁）
 
 ### 自动更新
 - **采集层**：GitHub Actions 每周日自动采集+清洗（跨洋已优化：30s超时+20并发+重试），结果 push 到 `weekly/cleaned_*.json`，全程无人值守
@@ -99,7 +99,7 @@ bash scripts/run_weekly_collect.sh 1
 # 或手动分步执行（每步独立落盘、可断点恢复）：
 python3 scripts/collect_staged.py list --months 1      # A1: 采集yckceo书源列表前10页
 python3 scripts/collect_staged.py heji 1 1 --months 1 --limit 30  # A2: 合集只采列表前30个（每个含多源）
-python3 scripts/collect_staged.py gurus                # A3: 4个大佬仓库直链
+python3 scripts/collect_staged.py gurus                # A3: 2个存活大佬仓库直链
 python3 scripts/run_from_fragments.py clean            # B: 流式合并清洗去重(checkpoint)
 python3 scripts/run_from_fragments.py validate --start 0 --count 1000   # C: 分批两级校验
 python3 scripts/filter_junk_sources.py                 # D: 垃圾过滤(成人单独分组)
@@ -156,6 +156,7 @@ scripts/
 - 按分组+域名排序，customOrder字段控制导入后顺序
 
 ## 📝 更新日志
+- v3.2.7 (2026-11-05): 全代码审计修复——移除失效gurus源(XIU2 404/shidahuilang仓库tos封禁)/失效标记关键词大小写漏判修复/成人源优先保留(名字含漫画等不再误剔)/月份过滤解析失败不再误停整页/合集下载改并发/publisher Release文案NameError修复/分批校验与淘汰落盘去重键修复/merge不再混入中间产物/日志统一落logs/；数据修复：books.json清理24个URL污染(上游手打"已整理/昵称"注释)，clean_url增强剔除中文与emoji污染
 - v3.2.6 (2026-11-05): 三层架构（采集→中间层→正式版）+ 跨洋采集打通——GitHub Actions 每周自动采集+清洗 push weekly/cleaned（30s超时+20并发+重试解决跨洋）；本地 --stage 合并进 books_pending.json 等你确认，--publish-pending 确认后提升正式版+发布
 - v3.2.5 (2026-11-05): 采集范围收敛——书源列表只采前10页、书源合集只采列表前30个（每个合集含数百个源；实测第1页100合集=约8.9万源）
 - v3.2.4 (2026-11-05): 全对话复盘维护——修复清洗脚本漏读raw_heji_*.json分片断链/默认采集月份改1(贴合"只采集当前一个月")/清理4个死代码脚本(crawler/pipeline/validate/rename)
