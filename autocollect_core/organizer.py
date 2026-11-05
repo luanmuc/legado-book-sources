@@ -6,7 +6,7 @@ autocollect_core 整理模块（第四阶段）
 
 import re
 
-from .config import ADULT_GROUP
+from .config import ADULT_GROUP, BIG_SITES
 from .utils import clean_url, get_domain, log
 from .cleaner import is_big_site
 
@@ -110,7 +110,16 @@ def organize_sources(validated_sources, existing_sources):
 
     # 1. 大厂源：强制从现有仓库拿，新采集的一律跳过不覆盖
     big_sites = [s for s in existing_sources if is_big_site(s)]
-    log.info(f"大厂源: {len(big_sites)} 个（强制保护，保留手动调好的配置）")
+    # 大厂顺序固定按 config.BIG_SITES（手动调好的顺序），不允许被名字排序或采集顺序覆盖
+    def _big_key(x):
+        u = (x.get("bookSourceUrl") or "").rstrip("/")
+        for i, bt in enumerate(BIG_SITES):
+            ou = bt["url"].rstrip("/")
+            if u == ou or u.startswith(ou):
+                return i
+        return 99
+    big_sites.sort(key=_big_key)
+    log.info(f"大厂源: {len(big_sites)} 个（强制保护，保留手动调好的配置与顺序）")
 
     for s in big_sites:
         s["customOrder"] = custom_order
