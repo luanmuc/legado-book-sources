@@ -4,7 +4,7 @@
 这是一个开源阅读（Legado）书源整理仓库，持续更新维护。
 
 ## 📊 当前版本
-- **版本**: v3.2.2
+- **版本**: v3.2.6
 - **更新日期**: 2026-11-05
 - **书源总数**: 929 个（纯小说）
 - **净化规则**: 1176 条配套净化
@@ -53,25 +53,25 @@
 所有书源都经过以下四阶段校验：
 1. **基础结构校验**：必填字段、URL格式、域名去重
 2. **网站存活校验**：首页可达性检测（WAF盾站不淘汰）
-3. **搜索接口校验**：10个关键词分两轮实测（快速过滤+精测）
+3. **搜索接口校验**：3个关键词实测搜索（快速连通性过滤 + 完整搜索测试）
 4. **规则完整性校验**：详情/目录/正文规则完整性
+
+> 发布（`--publish-pending`）时同样全量执行上述校验，一步不少。
 
 ## 🤖 自动采集脚本
 本仓库内置全自动采集脚本 `autocollect.py`，可一键采集、校验、合并书源。
 
 ### 数据源池
-- yckceo.com 书源列表（前20页最新上传的源）
-- yckceo.com 书源合集（前10页大佬整理的精品合集）
+- yckceo.com 书源列表（前10页最新上传的源，每页100个）
+- yckceo.com 书源合集（列表前30个大佬整理的合集，每个合集含数百个源）
 - 4个直链大佬仓库（酷安三舞313/关耳女频/XIU2精品/shidahuilang）
 
 ### 自动更新
-- 采集脚本在本地/云电脑执行（国内网络访问数据源秒级响应）
-- 跑完自动提交推送到 main 分支，并自动更新 GitHub 发布页（Releases）
-- 每周自动触发由定时任务调度，不需要人工干预
+- **采集层**：GitHub Actions 每周日自动采集+清洗（跨洋已优化：30s超时+20并发+重试），结果 push 到 `weekly/cleaned_*.json`，全程无人值守
+- **中间层**：本地（国内网络）从 cleaned 继续：校验+垃圾过滤+整理 → 合并进 `books_pending.json`（不碰正式版）
+- **正式版**：确认后把中间层提升为 books.json + clean_rules，并自动更新 GitHub 发布页（Releases）
 
-> ⚠️ 说明：GitHub Actions 服务器位于海外，访问国内书源站点（如 yckceo）单请求频繁超时，
-> 2 小时只能爬完 20 页列表，无法完成全量校验，因此自动采集不在 GitHub Actions 上执行，
-> 改为本地执行 + 自动推送发布。
+> ⚠️ 采集与校验分离的原因：GitHub Actions 免费 runner 位于美国，访问国内站点**采集**已通过加大超时+并发+重试跑通（实测单请求 2-3s）；但**存活/搜索校验**针对国内书源站点，跨洋会大量误判（合格率 72%→27%），因此校验必须在国内网络执行。
 
 ### 三层架构（采集 → 中间层 → 正式版）
 ```
@@ -111,38 +111,42 @@ python3 autocollect.py --publish --months 1
 
 ### 优化特性
 - **增量采集**：`--months N` 按更新时间过滤，只采集最近N个月的列表/合集，超范围自动停止翻页
-- **两级过滤**：1个词快速筛，10个词精测，节省时间
+- **两级过滤**：快速连通性过滤 + 完整搜索测试（3关键词），节省时间
 - **域名去重**：同一站多域名自动合并，保留最优规则
 - **WAF友好**：403盾站不淘汰，能搜出书就保留
-- **大厂保护**：12个正版大站单独保护，不被自动更新覆盖
+- **大厂保护**：12个正版大站单独保护，任何环节不被覆盖
 - **垃圾过滤**：剔除失效标记/测试占位/非小说，成人内容单独归组
 - **自动报告**：每次跑完生成采集报告，采集/清洗/淘汰/入库一目了然
 - **断点恢复**：采集分片独立落盘、清洗checkpoint、校验分批追加，中断零损失
+- **跨洋优化**：超时/重试/并发可环境变量调节（YCKCEO_TIMEOUT/RETRY/CONCURRENCY）
+- **三层隔离**：采集→中间层（待确认）→正式版，正式版不被自动更新直接覆盖
 
-### 模块化结构（v3.2.3）
+### 模块化结构（v3.2.6）
 核心逻辑在 `autocollect_core/` 包，主入口 `autocollect.py`；`scripts/` 提供分步执行脚本（每周任务主路径）：
 
 ```
-autocollect.py              # 主入口（五阶段编排，单命令模式）
+autocollect.py              # 主入口（五阶段编排 + 三层架构：--collect-only/--stage/--publish-pending）
 autocollect_core/
-├── config.py               # 配置区：数据源/关键词/路径
-├── utils.py                # 日志 + 工具（fetch_url/clean_url/get_domain）
-├── collectors.py           # 采集：yckceo列表/合集(按月份过滤)/大佬仓库
+├── config.py               # 配置区：数据源/关键词/路径/请求参数(支持环境变量覆盖)
+├── utils.py                # 日志 + 工具（fetch_url带反爬头/clean_url/get_domain）
+├── collectors.py           # 采集：yckceo列表/合集(按月份过滤+前N个)/大佬仓库
 ├── cleaner.py              # 清洗去重 + 大厂判断 + 垃圾过滤/成人归组
 ├── validators.py           # 规则完整性/快速/完整/两级校验
 ├── organizer.py            # 四字改名/分组/customOrder/大厂保护
 ├── cleanrules.py           # 净化规则采集/优化/生成
-├── report.py               # 采集报告
-└── publisher.py            # git推送 + 发布页Release
+├── report.py               # 采集报告（真实统计）
+└── publisher.py            # git推送 + 发布页Release更新
 scripts/
-├── run_weekly_collect.sh   # 每周任务入口（crontab调用，分步全流程+发布）
-├── collect_staged.py       # 分段采集（list/heji/gurus/merge，--months过滤）
-├── collect_heji_ids.py     # 阶段A: 提取全部合集链接ID
-├── collect_heji_batch.py   # 阶段B: 逐合集独立落盘批量下载
+├── run_weekly_collect.sh   # 一键分步全流程（采集→清洗→校验→过滤→整理→发布）
+├── collect_staged.py       # 分段采集（list/heji/gurus，--months/--limit）
+├── collect_heji_ids.py     # 阶段A: 提取合集列表全部ID
+├── collect_heji_batch.py   # 阶段B: 逐合集独立落盘批量下载（断点续传）
 ├── run_from_fragments.py   # 分片恢复: clean/validate/final(可--publish)
-├── filter_junk_sources.py  # 垃圾过滤+成人分组
-└── collect_heji_batch.py   # 逐合集批量下载（断点续传）
+├── filter_junk_sources.py  # 垃圾过滤+成人分组（复用核心函数）
+└── install_cron.sh         # 一键重建本地crontab（备用触发）
 ```
+
+> 完整开发文档见 [DEVELOPMENT.md](DEVELOPMENT.md)：模块职责、数据流、CLI 参数全集、发布流程、故障排查。
 
 ## ✏️ 命名规范
 - 大厂正版保留原名（起点中文/番茄小说等）
