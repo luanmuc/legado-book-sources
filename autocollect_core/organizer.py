@@ -147,8 +147,19 @@ def organize_sources(validated_sources, existing_sources):
         for s in items:
             # 规范化分组写回（覆盖原始乱分组/emoji/状态标记）
             s["bookSourceGroup"] = group_name
-            # 改名
-            s["bookSourceName"] = generate_chinese_name(s, used_names, group_name)
+            if group_name == ADULT_GROUP:
+                # 成人源豁免改名（2026-11-06 用户要求）：保留原名，仅重名时追加序号去重
+                name = (s.get("bookSourceName") or "").strip() or "成人书源"
+                if name in used_names:
+                    i = 2
+                    while f"{name}{i}" in used_names:
+                        i += 1
+                    name = f"{name}{i}"
+                s["bookSourceName"] = name
+                used_names.add(name)
+            else:
+                # 改名
+                s["bookSourceName"] = generate_chinese_name(s, used_names, group_name)
 
         # 改名后按"名字族+数值"自然排序：同族名字（笔趣阁/笔趣阁2/...）聚合相邻，
         # 序号按数值递增（笔趣阁2 在 笔趣阁3 前，而非字典序 笔趣阁10<笔趣阁2）
