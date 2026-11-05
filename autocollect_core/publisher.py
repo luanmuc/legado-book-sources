@@ -52,7 +52,7 @@ def publish_release(token):
     elif resp.status_code == 404:
         log.info(f"Release {RELEASE_TAG} 不存在，创建新Release")
         body = (f"全自动采集更新 {datetime.now().strftime('%Y-%m-%d')}\n"
-                f"612+个纯小说源 + 1176条配套净化规则\n"
+                f"{final_count}+个纯小说源 + 1176条配套净化规则\n"
                 f"- 12个大厂正版源\n"
                 f"- 全自动采集脚本每周自动更新")
         r2 = requests.post(f"{api}/releases", headers=headers, timeout=15,
