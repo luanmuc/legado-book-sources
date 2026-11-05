@@ -113,7 +113,7 @@ def main():
         dead = []
     elif not args.merge:
         ckpt_tag = os.path.basename(args.from_cleaned).replace(".json", "") if args.from_cleaned else "collect"
-        validated, dead = validate_sources_with_checkpoint(cleaned, ckpt_tag)
+        validated, dead = validate_sources_with_checkpoint(cleaned, ckpt_tag, mode="quick")  # 采集池第一遍：只做存活校验（量大快筛，真实性校验留到发布前）
     else:
         validated = [{"source": s, "pass_rate": 1.0} for s in cleaned]
         dead = []
@@ -157,7 +157,7 @@ def main():
             big_sites = [s for s in current_sources if is_big_site(s)]
             rest_pending = [s for s in pending_sources if not is_big_site(s)]
             log.info(f"发布前完整校验: 中间层 {len(pending_sources)} 个 + 正式版 {len(current_sources)} 个（大厂保护 {len(big_sites)}，中间层待校验 {len(rest_pending)}）")
-            validated, dead = validate_sources_with_checkpoint(rest_pending, "pending", batch=200)  # 两级校验：快速存活 + 完整搜索（断点续传）
+            validated, dead = validate_sources_with_checkpoint(rest_pending, "pending", batch=200, mode="full")  # 发布前完整校验：存活 + 真实性（搜索/发现至少一项可用），一步不少
             validated = filter_junk_sources(validated)                # 垃圾过滤（成人保留归组，与正常流程一致）
             # 合并：正式版全部保留 + 校验合格新源按 bookSourceUrl 去重追加
             existing_urls = {s.get("bookSourceUrl") for s in current_sources}

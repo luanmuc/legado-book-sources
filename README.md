@@ -50,11 +50,25 @@
 3. 自动过滤网页广告、弹窗、无用内容
 
 ## 🔍 校验流程
-所有书源都经过以下四阶段校验：
-1. **基础结构校验**：必填字段、URL格式、域名去重
-2. **网站存活校验**：首页可达性检测（WAF盾站不淘汰）
-3. **搜索接口校验**：3个关键词实测搜索（快速连通性过滤 + 完整搜索测试）
+校验分两档（2026-11 用户明确要求）：
+
+| 档位 | 时机 | 内容 | 特点 |
+|------|------|------|------|
+| **快速存活**（quick） | 采集池第一遍（`--collect` / `validate` 默认） | 首页可达性 + WAF 识别，快速剔除死站 | 量大也能几分钟跑完 |
+| **完整真实性**（full） | **发布前**（`--publish-pending` / `validate --full` / `final --publish`） | 存活 + 搜索/发现至少一项可用 + 全部过滤规则 | 一步不少，慢但发布必跑 |
+
+发布前完整执行以下校验（一步不少）：
+
+1. **基础结构校验**：必填字段、URL 格式、域名去重
+2. **网站存活校验**：首页可达性（WAF 盾站 403/405/503 不淘汰）
+3. **真实性校验——搜索/发现至少一项可用**（2026-11 新增，解决"网站活着 ≠ 书源有效"）：
+   - **搜索**：通用关键词轮试（我的/天下/重生/总裁/王爷/系统/都市/修仙/神/爱），用书源自身 `ruleSearch.bookList` 规则**真实解析 HTML**，解析出 ≥1 本书才算可用
+   - **发现**：`exploreUrl` 前 3 个入口轮试，用 `ruleExplore.bookList` 解析，**至少 1 个入口解析出书才算可用**（发现页按钮至少一个能用）
+   - **判定**：搜索或发现任一可用 → 保留；两者都解析不出 → 淘汰（识别"域名还在但内容已换/域名挂售"的失效源）；网络/反爬无法判定 → 保留待验
+   - **成人源按实际情况校验（宽松豁免）**：成人组混有漫画/短剧/影视/图片/听书站，本来就没有"书名"可解析，拿书籍规则硬卡必然误杀。改为判"至少有一条能取内容的规则链"（正文/目录/搜索/发现任一条非空）→ 可用保留；四条全空的空壳规则才淘汰；死站仍照常淘汰（失效不保留）
+   - 12 个大厂源永不淘汰（反爬环境判定不可靠，阅读器端可用）
 4. **规则完整性校验**：详情/目录/正文规则完整性
+5. **垃圾过滤**：非小说/测试/失效标记剔除；**成人内容一律保留**（含成人漫画/影视等非小说类），成人组排序最末、豁免改名与符号清理
 
 > 发布（`--publish-pending`）时同样全量执行上述校验，一步不少。
 
@@ -68,8 +82,8 @@
 
 ### 自动更新
 - **采集层**：GitHub Actions 每周日自动采集+清洗（跨洋已优化：30s超时+20并发+重试），结果 push 到 `weekly/cleaned_*.json`，全程无人值守
-- **中间层**：本地（国内网络）从 cleaned 继续：校验+垃圾过滤+整理 → 合并进 `books_pending.json`（不碰正式版）
-- **正式版**：确认后把中间层提升为 books.json + clean_rules，并自动更新 GitHub 发布页（Releases）
+- **中间层**：本地（国内网络）从 cleaned 继续：**快速存活校验（quick，量大只判站点活着）** + 垃圾过滤（成人豁免）+ 整理 → 合并进 `books_pending.json`（不碰正式版）
+- **正式版**：确认后把中间层提升为 books.json + clean_rules，**发布前自动跑完整真实性校验（full，一步不少）**，并自动发新版本 Release（vX.Y.Z patch+1）
 - **断点续传**：采集/清洗/校验全链路支持中断恢复——校验每批落盘 checkpoint（`raw/autocollect/ckpt_*.json`），对话中断或沙箱重置后重跑同一命令自动跳过已验源，只补未验部分（详见 DEVELOPMENT.md 断点矩阵）
 
 > ⚠️ 采集与校验分离的原因：GitHub Actions 免费 runner 位于美国，访问国内站点**采集**已通过加大超时+并发+重试跑通（实测单请求 2-3s）；但**存活/搜索校验**针对国内书源站点，跨洋会大量误判（合格率 72%→27%），因此校验必须在国内网络执行。
@@ -79,9 +93,9 @@
 采集层（GitHub Actions 每周自动，跨洋已优化）     中间层（本地国内网络）        正式版
 list前10页+合集前30个+大佬仓库  → 清洗去重 → weekly/cleaned_*.json
                                                         ↓
-校验+垃圾过滤+整理 → 合并进 books_pending.json（待你确认，不动正式版）
+快速存活校验(quick) + 垃圾过滤 + 整理 → 合并进 books_pending.json（待你确认，不动正式版）
                                                         ↓ 你确认后
-books_pending.json 提升为 books.json + clean_rules + Release 更新
+books_pending.json 完整真实性校验(full) → books.json + clean_rules + Release 新版本
 ```
 
 ### 使用方法
@@ -94,7 +108,7 @@ python3 autocollect.py --from-cleaned weekly/cleaned_XXX.json --stage
 # ③ 本地：确认后把中间层提升为正式版并发布（发布由你确认）
 python3 autocollect.py --publish-pending --publish
 
-# 一键完整流程（不分层，直接出正式版，适合交互调试）
+# 一键（cron 每周自动）：采集 → 清洗 → 并入中间层（quick 存活校验，不发布）
 bash scripts/run_weekly_collect.sh 1
 
 # 或手动分步执行（每步独立落盘、可断点恢复）：
@@ -102,9 +116,9 @@ python3 scripts/collect_staged.py list --months 1      # A1: 采集yckceo书源�
 python3 scripts/collect_staged.py heji 1 1 --months 1 --limit 30  # A2: 合集只采列表前30个（每个含多源）
 python3 scripts/collect_staged.py gurus                # A3: 2个存活大佬仓库直链
 python3 scripts/run_from_fragments.py clean            # B: 流式合并清洗去重(checkpoint)
-python3 scripts/run_from_fragments.py validate --start 0 --count 1000   # C: 分批两级校验
+python3 scripts/run_from_fragments.py validate --start 0 --count 1000   # C: 分批快速存活校验（发布前用 --full 切完整真实性）
 python3 scripts/filter_junk_sources.py                 # D: 垃圾过滤(成人单独分组)
-python3 scripts/run_from_fragments.py final --input raw/autocollect/validated_clean.json --publish  # E: 整理+发布
+python3 scripts/run_from_fragments.py final --input raw/autocollect/validated_clean.json --publish  # E: 整理+发布（--publish 时自动跑发布前 full 复检）
 
 # 单命令完整流程（适合交互调试，沙箱环境可能中断）
 python3 autocollect.py --publish --months 1
@@ -154,6 +168,8 @@ scripts/
 - 其他源四字纯汉字（不足补足、无中文兜底），重名加数字
 - 笔趣阁类统一「笔趣阁+数字」排序
 - 去掉表情符号和特殊字符
+- **成人书源豁免**：保留原名原样（含特殊符号/表情），仅重名时加数字；仍参与名字族排序，整组排在最后
+- 同名族聚合：同名前缀的源（笔趣阁1/2/3…）相邻排序，序号按数值递增
 - **同族名字聚合排序**：组内按"名字族+数值"自然排序（笔趣阁 → 笔趣阁2 → … → 笔趣阁141 相邻且数值递增），customOrder 字段控制导入后顺序
 - 分组顺序固定：大厂正版（12，手动顺序保护）→ 笔趣阁类 → 玄幻武侠 → 言情女频 → 综合其他 → 成人书源
 

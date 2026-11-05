@@ -1,14 +1,21 @@
 #!/bin/bash
 # ============================================================
-# 每周自动采集书源（crontab 调用）
+# 每周自动采集书源（crontab 调用）—— 三层架构版（2026-11）
 # 由系统 cron 每周日 02:00 执行，不依赖豆包定时任务/额度
+#
+# 核心原则（用户硬约束）：
+#   1. 采集池第一遍量太大 → 只做【快速存活校验】（quick），不跑真实性解析
+#   2. 所有需求（真实性/关键词/成人豁免/排序）在【发布前】一步不少（full）
+#   3. 采集结果只并入【中间层 books_pending.json】，正式版发布必须用户确认
 #
 # 分步执行（每步独立落盘、可断点恢复，防沙箱重置/内存爆中断）:
 #   A. 采集: 列表(--months过滤) + 合集(--months过滤) + 大佬仓库 → 分片JSON
 #   B. 流式清洗: 合并分片 + 域名去重 + 非小说过滤 + 规则完整性 → cleaned_*.json
-#   C. 两级校验: 全量分批真实搜索校验 → validated.json / dead.json
-#   D. 垃圾过滤: 剔除失效/测试/非小说，成人内容单独分组 → validated_clean.json
-#   E. 整理发布: 大厂保护 + 命名分组 + 净化规则 + 报告 + push + 发布页
+#   C. 并入中间层: 快速存活校验(quick) + 垃圾过滤(成人豁免) + 整理 → books_pending.json
+#      （不发布！正式版 books.json 纹丝不动）
+#
+# 发布（用户确认后手动执行，发布前自动跑完整真实性校验 full + 发新版本）:
+#   python3 autocollect.py --publish-pending --publish
 #
 # 用法:
 #   bash scripts/run_weekly_collect.sh [月份数]   # 默认 1（只采集最近1个月，用户偏好）
@@ -39,32 +46,26 @@ echo "===== 阶段A: 采集 yckceo列表 + 合集 + 大佬仓库 =====" >> "${LO
 echo "===== 阶段B: 流式清洗 =====" >> "${LOG_FILE}"
 "${PYTHON}" scripts/run_from_fragments.py clean >> "${LOG_FILE}" 2>&1 || { echo "[FAIL] 清洗失败" >> "${LOG_FILE}"; exit 1; }
 
-# ===== 阶段C: 两级校验（全量分批追加，每批1000）=====
-echo "===== 阶段C: 两级校验（分批） =====" >> "${LOG_FILE}"
-rm -f raw/autocollect/validated.json raw/autocollect/dead.json   # 每周全新校验，清掉上周结果
-TOTAL=$("${PYTHON}" -c "
-import glob, json, os, sys
+# ===== 阶段C: 并入中间层（快速存活校验 quick + 垃圾过滤成人豁免 + 整理）=====
+# 说明：quick = 只判首页存活/WAF，量大也能跑完；真实性校验留到 --publish-pending 发布前
+echo "===== 阶段C: 并入中间层（quick 存活校验，不发布） =====" >> "${LOG_FILE}"
+LATEST=$("${PYTHON}" -c "
+import glob, os, sys
 sys.path.insert(0, os.getcwd())
 from autocollect_core.config import RAW_DIR
 fs = sorted(glob.glob(os.path.join(RAW_DIR, 'cleaned_*.json')), reverse=True)
-print(len(json.load(open(fs[0], encoding='utf-8'))) if fs else 0)
+print(fs[0] if fs else '')
 ")
-echo "清洗后待校验: ${TOTAL} 个，分批(1000/批)执行" >> "${LOG_FILE}"
-BATCH=1000
-for ((start=0; start<TOTAL; start+=BATCH)); do
-  echo "  校验批次 [${start}:$((start+BATCH))]" >> "${LOG_FILE}"
-  "${PYTHON}" scripts/run_from_fragments.py validate --start ${start} --count ${BATCH} >> "${LOG_FILE}" 2>&1
-done
-
-# ===== 阶段D: 垃圾过滤（成人单独分组）=====
-echo "===== 阶段D: 垃圾过滤 =====" >> "${LOG_FILE}"
-"${PYTHON}" scripts/filter_junk_sources.py >> "${LOG_FILE}" 2>&1 || { echo "[FAIL] 垃圾过滤失败" >> "${LOG_FILE}"; exit 1; }
-
-# ===== 阶段E: 整理+净化规则+报告+发布（push main + 发布页）=====
-echo "===== 阶段E: 整理 + 净化规则 + 报告 + 发布 =====" >> "${LOG_FILE}"
-"${PYTHON}" scripts/run_from_fragments.py final --input raw/autocollect/validated_clean.json --publish >> "${LOG_FILE}" 2>&1 || { echo "[FAIL] 整理发布失败" >> "${LOG_FILE}"; exit 1; }
+if [ -z "${LATEST}" ]; then
+  echo "[FAIL] 未找到 cleaned_*.json" >> "${LOG_FILE}"
+  exit 1
+fi
+echo "中间层合并输入: ${LATEST}" >> "${LOG_FILE}"
+"${PYTHON}" autocollect.py --from-cleaned "${LATEST}" --stage >> "${LOG_FILE}" 2>&1 || { echo "[FAIL] 并入中间层失败" >> "${LOG_FILE}"; exit 1; }
 
 echo "===== 采集结束 exit=0 $(date '+%Y-%m-%d %H:%M:%S') =====" >> "${LOG_FILE}"
+echo "提示：正式版未动。确认中间层后执行:" >> "${LOG_FILE}"
+echo "  python3 autocollect.py --publish-pending --publish   # 发布前完整校验(full) + 发新版" >> "${LOG_FILE}"
 
 # 清理：只保留最近20份日志
 ls -t "${LOG_DIR}"/weekly_*.log 2>/dev/null | tail -n +21 | xargs -r rm -f

@@ -171,7 +171,9 @@ def cmd_validate(args):
     batch = sources[start:end]
     log.info(f"校验范围 [{start}:{end}]，共 {len(batch)} 个")
 
-    validated, dead = validate_sources(batch)
+    mode = "full" if getattr(args, "full", False) else "quick"
+    log.info(f"校验档位: {'完整真实性（搜索/发现至少一项可用）' if mode == 'full' else '快速存活（采集池）'}")
+    validated, dead = validate_sources(batch, mode=mode)
 
     # 结果落盘（与已有合格源合并 + 按URL去重，支持分批追加）
     result_file = os.path.join(RAW_DIR, "validated.json")
@@ -234,6 +236,20 @@ def cmd_final(args):
         with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
             existing = json.load(f)
     log.info(f"现有书源 {len(existing)} 个")
+
+    # 发布前完整校验（2026-11-06 用户要求：中间层合并到正式版发布时也要做一遍校验，一步不少）
+    # 对 合格源 + 现有正式版（大厂保护） 的合并池执行真实性校验（搜索/发现至少一项可用）
+    if args.publish:
+        from autocollect_core.validators import validate_sources_with_checkpoint
+        pool = list(existing) + [
+            (v["source"] if isinstance(v, dict) and isinstance(v.get("source"), dict) else v)
+            for v in validated
+        ]  # 统一为裸源 dict（quick_validate/check_source_usable 都吃裸源）
+        log.info(f"发布前完整校验: 合并池 {len(pool)} 个（现有 {len(existing)} + 新合格 {len(validated)}）")
+        rechecked, dead2 = validate_sources_with_checkpoint(pool, "final_prepublish", batch=200, mode="full")
+        if dead2:
+            log.info(f"发布前校验淘汰: {len(dead2)} 个（大厂已保护）")
+        validated = rechecked
 
     # 整理（大厂保护 + 改名 + 分组 + customOrder）
     final = organize_sources(validated, existing)
@@ -301,7 +317,8 @@ def main():
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("clean", help="合并分片+清洗去重落盘")
-    p_v = sub.add_parser("validate", help="校验cleaned（可分批）")
+    p_v = sub.add_parser("validate", help="校验cleaned（可分批；默认快速存活，--full 完整真实性）")
+    p_v.add_argument("--full", action="store_true", help="完整真实性校验（搜索/发现至少一项可用，发布前用）")
     p_v.add_argument("--start", type=int, default=0, help="起始索引")
     p_v.add_argument("--count", type=int, default=0, help="本批数量（0=全部）")
     p_f = sub.add_parser("final", help="整理+净化规则+报告+发布")

@@ -58,19 +58,20 @@
 
 ## 2. 模块职责
 
-### autocollect_core/（9 模块，核心逻辑单一数据源）
+### autocollect_core/（10 模块，核心逻辑单一数据源）
 
 | 模块 | 职责 | 关键函数 |
 |------|------|----------|
-| `config.py` | 常量：大厂12清单、垃圾/成人关键词表、数据源URL、路径、请求参数 | `BIG_SITE_*`、`JUNK_*`、`ADULT_GROUP`、`REQUEST_TIMEOUT/RETRY/CONCURRENCY`（支持 `YCKCEO_*` 环境变量覆盖） |
+| `config.py` | 常量：大厂12清单、垃圾/成人关键词表、数据源URL、路径、请求参数 | `BIG_SITE_*`、`JUNK_*`、`ADULT_GROUP`、`GENERIC_TEST_KEYWORDS`（我的/天下/重生…）、`REQUEST_TIMEOUT/RETRY/CONCURRENCY`（支持 `YCKCEO_*` 环境变量覆盖） |
 | `utils.py` | 日志、反爬请求、域名工具 | `fetch_url(url, timeout, retry)`（UA+Referer+verify=False）、`clean_url`、`get_domain` |
 | `collectors.py` | 采集三路数据源 | `collect_yckceo_list(months, page_start, page_end)`、`collect_yckceo_heji(months, page_start, page_end, limit)`、`collect_gurus()`、`collect_all(months)`；`parse_update_time`/`extract_update_times`/`filter_by_months`（时间过滤） |
-| `cleaner.py` | 清洗去重 + 分类判定 | `clean_and_dedup(raw)`（流式+checkpoint）、`is_big_site`、`classify_junk`/`is_adult_source`/`filter_junk_sources` |
-| `validators.py` | 两级校验 | `check_rule_integrity`（详情/目录/正文规则）、`quick_validate`（连通性，WAF 403 不淘汰）、`full_validate`（3 关键词搜索）、`validate_sources(cleaned)` → `(validated, dead)` |
-| `organizer.py` | 整理输出 | `organize_sources(validated, existing)`（大厂保护最顶 + 四字改名 + 分组排序 + customOrder） |
+| `cleaner.py` | 清洗去重 + 分类判定 | `clean_and_dedup(raw)`（流式+checkpoint）、`is_big_site`、`classify_junk`/`is_adult_source`/`filter_junk_sources`（失效/测试先剔→成人无条件保留→其余非小说剔） |
+| `legado_rules.py` | **Legado 规则解析引擎**（真实性校验用） | `parse_book_list(html, bookList, name, url)`（CSS+XPath 双引擎、`||` 多候选）、`parse_explore_entries(exploreUrl)`（JSON数组/`标题::URL` 两种格式） |
+| `validators.py` | 两级校验 + 真实性校验 | `check_rule_integrity`、`quick_validate`（首页连通性，WAF 不淘汰）、`check_search_parsed`（通用关键词轮试+规则解析，三态 ok/bad/blocked）、`check_explore_parsed`（发现页前3入口轮试至少1个解析出书）、`check_source_usable`（搜索/发现至少一项可用）、`validate_sources(cleaned)` → `(validated, dead)`（大厂保护） |
+| `organizer.py` | 整理输出 | `organize_sources(validated, existing)`（大厂保护最顶 + 四字改名 + **成人豁免改名/符号清理** + 名字族自然排序 + customOrder） |
 | `cleanrules.py` | 净化规则 | `collect_clean_rules()`（nyasama 包）、`generate_clean_rules(final, rules)`（去重优化输出） |
 | `report.py` | 采集报告 | `generate_report(raw, cleaned, dead, final, big_count)`（真实统计） |
-| `publisher.py` | 发布 | `auto_publish(final_count, big_count)`（git 配置→add→commit→push→删旧 assets→requests 上传 Release） |
+| `publisher.py` | 发布 | `publish_release()`（**每次发新版 vX.Y.Z**，patch+1）、`auto_publish(final_count, big_count)`（git→push→Release→assets 上传 uploads.github.com） |
 
 ### scripts/（分步执行，断点恢复友好）
 
@@ -80,8 +81,9 @@
 | `collect_staged.py` | 分段采集：`list`（前10页）/ `heji start end`（--limit 默认30）/ `gurus` |
 | `collect_heji_ids.py` | 提取合集列表全部 id → `heji_ids.json` |
 | `collect_heji_batch.py` | 逐合集独立落盘下载（断点续传，中断零损失） |
-| `run_from_fragments.py` | 分片恢复：`clean`（合并分片+清洗，兼容 raw_heji_*.json 与 heji/*.json 两种路径）/ `validate --start --count`（分批）/ `final --input --publish` |
+| `run_from_fragments.py` | 分片恢复：`clean`（合并分片+清洗+成人豁免，兼容 raw_heji_*.json 与 heji/*.json 两种路径）/ `validate --start --count`（分批）/ `final --input --publish` |
 | `filter_junk_sources.py` | 垃圾过滤+成人归组（复用 cleaner 核心函数） |
+| `check_usable.py` | 真实性专项检测：全量/抽样跑 `check_source_usable`，输出 usable_report + 断点 ckpt_usable.json |
 | `install_cron.sh` | 一键重建本地 crontab（每周日 02:00，VM 重置后恢复用） |
 
 ---
@@ -149,13 +151,60 @@ raw/autocollect/                  cleaned_*.json           validated.json
 
 ## 5. 校验体系（发布前一步不少）
 
+> **分档原则（2026-11 用户明确要求）**：采集池第一遍量太大，只做存活校验（quick）；
+> 所有需求（真实性/关键词/成人规则/排序）在**发布前**完整执行（full），一步不少。
+> - `validate_sources(sources, mode="quick"|"full")`，默认 quick
+> - `validate_sources_with_checkpoint(..., mode=)`，两种档位 ckpt 文件自动分名，互不覆盖
+> - quick 档：首页可达性 + WAF 识别（死站直接淘汰，pass_rate=1.0）
+> - full 档：quick + 真实性校验（下文第 4 条）
+> - 接入点：`autocollect.py` 采集校验=quick，`--publish-pending`=full；`run_from_fragments.py` `validate`=quick（`--full` 可切），`final --publish` 自动跑发布前 full 复检；`scripts/check_usable.py` 专项全量检测
+
 1. **格式校验**：必填字段（bookSourceUrl/searchUrl）、JSON 结构
 2. **规则完整性**：ruleBookInfo/ruleSearch/ruleDetail/ruleContent 等非空、类型正确（dict 防御）
-3. **快速存活过滤**：首页 + 搜索接口连通性；**WAF（403/405/503）不淘汰**（能搜出书就保留）
-4. **完整搜索校验**：3 个关键词搜索测试，淘汰低质量
-5. **垃圾过滤**：非小说/测试占位/失效标记剔除；**成人内容保留归组** `bookSourceGroup="成人书源"`
+3. **快速存活过滤**：首页连通性；**WAF（403/405/503）不淘汰**（能搜出书就保留）
+4. **真实性校验（核心，2026-11 新增）**：`validators.check_source_usable()`
+   - **搜索**：`check_search_parsed()` —— 构造 searchUrl 请求（支持 GET/POST/charset/JSON 配置），编码探测（charset header/meta/apparent_encoding，修复 GBK 小站乱码），用 `ruleSearch.bookList` + `name`/`bookUrl` 规则真实解析 HTML
+     - 通用关键词轮试（`config.GENERIC_TEST_KEYWORDS`：我的/天下/重生/总裁/王爷/系统/都市/修仙/神/爱），每源最多试 3 个，任一解析出书即 ok
+     - 用关键字而非具体书名——降低"该书本站没有"造成的误判（对齐 Legado 官方校验默认词"我的"）
+   - **发现**：`check_explore_parsed()` —— `exploreUrl`（支持 JSON 数组 / `标题::URL` 多行两种格式）前 3 个入口轮试（`{{page}}` 替换为 1），用 `ruleExplore.bookList` 解析，**至少 1 个入口解析出书才算可用**
+   - **判定（用户标准）**：搜索、发现**最起码有一个能用**才算可用源
+     | 搜索 | 发现 | 结论 |
+     |---|---|---|
+     | ok | 任意 | ✓ 可用 pass_rate=1.0 |
+     | bad/无配置 | ok | ✓ 可用 pass_rate=1.0 |
+     | bad | bad | ✗ 淘汰（内容已换/域名挂售/规则失效） |
+     | blocked（网络/反爬） | 任意 | ? 保留待验 pass_rate=0.6 |
+     | 任意 | blocked | ? 保留待验 pass_rate=0.6 |
+   - **成人源宽松豁免**：`check_adult_content_ready()` —— 成人组含漫画/短剧/影视/图片/听书站，用 `ruleSearch.bookList` 要求"解析出书名"必然失败。改为判"至少一条能取内容的规则链"（`ruleContent.content` / `ruleToc.bookList|chapterList` / `ruleSearch.bookList` / `ruleExplore.bookList|exploreUrl`）任一非空即可用，四条全空才算空壳淘汰；**死站仍由第一遍存活校验淘汰（成人也不豁免失效）**
+   - **大厂保护**：12 个 BIG_SITES 永不淘汰（即使 usable=False 也保留，标记 big_protected）
+   - 三态返回：`ok` / `bad`（200 但解析不出，淘汰依据）/ `blocked`（非 200/异常，不淘汰）
+5. **垃圾过滤**：非小说/测试占位/失效标记剔除；**成人内容一律保留**（含成人漫画/影视等非小说类）→ `bookSourceGroup="成人书源"`，排序最末、豁免改名与符号清理
 6. **大厂保护**：12 个大厂任何环节不覆盖（合并时以既有版本为准）
 7. 校验淘汰原因落盘 `dead.json`，报告真实统计
+
+### 规则解析器（legado_rules.py，真实性校验的引擎）
+
+支持 Legado 规则常用子集（够判断"至少能解析出一本书"）：
+- **选择器**：`class.x` / `tag.x` / `id.x` / `.x` / `#x` / 标签名 / `tag.N` 索引 / `h4 a.0`（父选择器+索引）
+- **XPath**：以 `/` 开头或含 `//` 的规则走 lxml 引擎（`//div[@class="round"]`、`//h3/a/text()`、`//h3/a/@href`）
+- **动作**：`@text` `@ownText` `@textNodes` `@html` `@href` `@src` `@attr.x` `@data-x`
+- **容错**：`||` 多候选逐个尝试、`##` 正则替换剥离、CSS 语法非法按解析失败处理
+- 不支持 `@js:` / `@put:` / `@get:`（返回空，不影响"是否至少有一本能解析"的判断）
+
+### 专项检测脚本（scripts/check_usable.py）
+
+```bash
+python3 scripts/check_usable.py                # 全量检测 books.json（带断点续传）
+python3 scripts/check_usable.py --limit 50     # 抽样
+```
+- 输出 `raw/autocollect/usable_report_<ts>.json`（每源 usable/search/explore/detail）
+- 断点 `raw/autocollect/ckpt_usable.json`（已处理 URL 集合，中断重跑自动跳过）
+
+### 已验证的实战案例（2026-11-06）
+
+- `笔趣阁119`（biqugewu.com）：搜索接口返回 200 且页面 44KB，但内容是 **"BiqugeWu.com is for sale | HugeDomains"（域名挂售页）** → 旧校验（200+长度）必判合格，新校验正确判失效
+- `书旗小说`：搜索规则解析不出（站点改版），但发现页"全部"入口解析出《剑来》《北派盗墓笔记》 → 判可用（符合"搜索/发现至少一个能用"）
+- `潇湘书院`：XPath+索引语法支持后，搜索解析出 20 本 → 从误判 bad 转为 ok
 
 ---
 

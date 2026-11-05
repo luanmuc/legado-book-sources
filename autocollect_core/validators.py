@@ -176,13 +176,28 @@ def full_validate(source):
     }
 
 
-def validate_sources(sources):
-    """批量校验：两级过滤"""
-    log.info("=== 开始校验 ===")
-    log.info(f"待校验: {len(sources)} 个")
+def validate_sources(sources, mode="quick"):
+    """批量校验，分两档（2026-11-06 用户明确要求分级）
 
-    # 第一遍：快速过滤
-    log.info("第一遍：快速过滤（首页+搜索接口连通性）...")
+    档位由调用阶段决定：
+      mode="quick"（采集池第一遍，量级大）：只做存活校验——首页可达性 + WAF 识别，
+                    快速剔除死站，不解析规则（1345+ 源也能几分钟跑完）
+      mode="full"（发布前，一步不少）：存活校验 + 真实性校验
+                    （搜索/发现至少一项能用规则解析出书才算可用）
+
+    full 档判定：
+      - usable=True   → 合格 pass_rate=1.0
+      - usable=None   → 网络/反爬无法判定（blocked）→ 保留待验 pass_rate=0.6
+      - usable=False  → 搜索和发现都解析不出（内容已换/规则失效）→ 淘汰
+      - 大厂源（BIG_SITES）永不淘汰（本机网络/反爬环境判定不可靠，阅读器端可用）
+    """
+    from .cleaner import is_big_site
+
+    log.info("=== 开始校验 ===")
+    log.info(f"待校验: {len(sources)} 个 | 档位: {'快速存活（采集池）' if mode == 'quick' else '完整真实性（发布前）'}")
+
+    # 第一遍：快速过滤（两档共用）
+    log.info("第一遍：快速过滤（首页连通性/WAF 识别）...")
     quick_results = []
     with ThreadPoolExecutor(max_workers=CONCURRENCY) as executor:
         futures = {executor.submit(quick_validate, s): s for s in sources}
@@ -194,23 +209,56 @@ def validate_sources(sources):
     dead_sources = [r for r in quick_results if not r["alive"]]
     log.info(f"快速过滤: 存活 {len(alive_sources)} 个，淘汰 {len(dead_sources)} 个")
 
-    # 第二遍：完整校验（多关键词搜索测试，并发执行）
-    log.info("第二遍：完整校验（3个关键词搜索测试）...")
+    # 快速档：采集池第一遍到此为止（量大，只做存活）
+    if mode == "quick":
+        results = [{"source": r["source"], "pass_rate": 1.0, "alive": True} for r in alive_sources]
+        log.info(f"快速存活校验完成: 合格 {len(results)} 个（规则真实性校验留到发布前）")
+        return results, dead_sources
+
+    # 完整档：真实可用性校验（搜索/发现至少一项能解析出书）
+    log.info("第二遍：真实规则解析校验（搜索/发现至少一项可用；大厂保护不淘汰）...")
     full_results = []
     low_pass = []
     with ThreadPoolExecutor(max_workers=CONCURRENCY) as executor:
-        futures = {executor.submit(full_validate, r["source"]): r for r in alive_sources}
+        futures = {executor.submit(check_source_usable, r["source"]): r for r in alive_sources}
         for future in as_completed(futures):
-            r = futures[future]
-            full_r = future.result()
-            # 通过率低于30%的，标记为低质量
-            if full_r["pass_rate"] >= 0.3:
-                full_results.append(full_r)
-            else:
-                low_pass.append({"source": r["source"], "reason": f"搜索通过率低({full_r['pass_rate']*100:.0f}%)"})
+            base = futures[future]
+            src = base["source"]
+            try:
+                r = future.result()
+            except Exception as e:
+                r = {"usable": None, "search": "error", "explore": None,
+                     "detail": f"校验异常 {type(e).__name__}"}
+            usable = r.get("usable")
+            is_big = is_big_site(src)
+            if usable is True:
+                item = {"source": src, "pass_rate": 1.0,
+                        "usable": True, "detail": r.get("detail", "")}
+                if r.get("relaxed_adult"):
+                    item["relaxed_adult"] = True
+                full_results.append(item)
+            elif usable is None:
+                # blocked（网络异常/反爬/WAF）：无法判定，保留；大厂直接按合格处理
+                full_results.append({"source": src, "pass_rate": 1.0 if is_big else 0.6,
+                                     "usable": None,
+                                     "big_protected": is_big,
+                                     "detail": r.get("detail", "")})
+            else:  # usable is False
+                if is_big:
+                    # 大厂永不淘汰
+                    full_results.append({"source": src, "pass_rate": 0.5,
+                                         "usable": False, "big_protected": True,
+                                         "detail": r.get("detail", "")})
+                else:
+                    low_pass.append({"source": src,
+                                     "reason": f"搜索/发现均失效: {r.get('detail', '')[:100]}"})
 
     dead_sources.extend(low_pass)
-    log.info(f"完整校验: 合格 {len(full_results)} 个，淘汰低质量 {len(low_pass)} 个")
+    log.info(f"可用性校验: 合格 {len(full_results)} 个（其中无法判定保留 "
+             f"{len([x for x in full_results if x.get('usable') is None])}、"
+             f"成人宽松豁免 {len([x for x in full_results if x.get('relaxed_adult')])}、"
+             f"大厂保护 {len([x for x in full_results if x.get('big_protected')])}），"
+             f"淘汰失效 {len(low_pass)} 个")
 
     # 按通过率排序
     full_results.sort(key=lambda x: x["pass_rate"], reverse=True)
@@ -218,7 +266,7 @@ def validate_sources(sources):
     return full_results, dead_sources
 
 
-def validate_sources_with_checkpoint(sources, tag, batch=300):
+def validate_sources_with_checkpoint(sources, tag, batch=300, mode="quick"):
     """两级校验 + 断点续传（主流程 --stage/--publish/--publish-pending 使用）
 
     每批校验结果立即落盘 raw/autocollect/ckpt_{tag}_validated.json / ckpt_{tag}_dead.json；
@@ -226,6 +274,8 @@ def validate_sources_with_checkpoint(sources, tag, batch=300):
     全部校验完成后删除checkpoint文件，下次同一tag从头开始。
 
     tag: 输入标识（如 cleaned文件名、pending），输入不同tag不同，互不干扰。
+    mode: "quick"=只存活（采集池第一遍，量大快筛）| "full"=存活+真实性（发布前一步不少）
+          两种档位 checkpoint 文件自动分名（ckpt_{tag}_{mode}_*.json），互不覆盖。
     """
     import json
     import os
@@ -240,8 +290,8 @@ def validate_sources_with_checkpoint(sources, tag, batch=300):
             return item["source"].get("bookSourceUrl", "")
         return item.get("bookSourceUrl", "")
 
-    vfile = os.path.join(RAW_DIR, f"ckpt_{tag}_validated.json")
-    dfile = os.path.join(RAW_DIR, f"ckpt_{tag}_dead.json")
+    vfile = os.path.join(RAW_DIR, f"ckpt_{tag}_{mode}_validated.json")
+    dfile = os.path.join(RAW_DIR, f"ckpt_{tag}_{mode}_dead.json")
     os.makedirs(RAW_DIR, exist_ok=True)
 
     validated, dead_acc = [], []
@@ -269,7 +319,7 @@ def validate_sources_with_checkpoint(sources, tag, batch=300):
         log.info("全部已校验，直接复用结果")
     for i in range(0, len(todo), batch):
         batch_sources = todo[i:i + batch]
-        v, d = validate_sources(batch_sources)
+        v, d = validate_sources(batch_sources, mode=mode)
         validated.extend(v)
         dead_acc.extend(d)
         with open(vfile, "w", encoding="utf-8") as f:
@@ -281,7 +331,7 @@ def validate_sources_with_checkpoint(sources, tag, batch=300):
     for f in (vfile, dfile):
         if os.path.exists(f):
             os.remove(f)
-    log.info(f"✅ 两级校验完成: 合格 {len(validated)}，淘汰 {len(dead_acc)}（checkpoint已清理）")
+    log.info(f"✅ 校验完成[{mode}]: 合格 {len(validated)}，淘汰 {len(dead_acc)}（checkpoint已清理）")
     return validated, dead_acc
 
 
@@ -473,14 +523,65 @@ def check_explore_parsed(source, max_entries=3, timeout=8):
     return "blocked", f"{len(tried)} 个入口网络异常/非200 {tried}"
 
 
-def check_source_usable(source, keywords=None):
+def check_adult_content_ready(source):
+    """成人源"能否取内容"宽松校验（用户要求：成人源按实际情况校验，不拿书籍解析标准硬卡）
+
+    背景：成人组里混有漫画/短剧/影视/图片/听书站，它们的规则本就是解析图片、视频、
+    章节列表，用 ruleSearch.bookList 去要求"解析出书名"必然失败，会把能用的源误杀。
+
+    改用"至少有一条能取内容的规则链"作为可用判据（不要求书名/封面解析）：
+      - 正文规则 ruleContent（能取正文/图片列表）
+      - 目录规则 ruleToc.bookList 或 chapterList
+      - 搜索规则 ruleSearch.bookList
+      - 发现规则 ruleExplore.bookList 或 exploreUrl
+    四条只要有任意一条非空且格式正确 → 阅读器端可用，保留。
+    四条全空 → 空壳规则（阅读器也读不出内容），淘汰。
+
+    返回 (ready: bool, detail: str)
+    """
+    def _ok(v):
+        return bool(v) and isinstance(v, (str, dict)) and str(v).strip() not in ("", "{}", "[]")
+
+    checks = []
+    r_info = source.get("ruleBookInfo") if isinstance(source.get("ruleBookInfo"), dict) else {}
+    r_toc = source.get("ruleToc") if isinstance(source.get("ruleToc"), dict) else {}
+    r_content = source.get("ruleContent") if isinstance(source.get("ruleContent"), dict) else {}
+    r_search = source.get("ruleSearch") if isinstance(source.get("ruleSearch"), dict) else {}
+    r_explore = source.get("ruleExplore") if isinstance(source.get("ruleExplore"), dict) else {}
+
+    checks.append(("正文", _ok(r_content.get("content")) or _ok(source.get("ruleContentUrl"))))
+    checks.append(("目录", _ok(r_toc.get("bookList")) or _ok(r_toc.get("chapterList")) or _ok(source.get("ruleTocUrl"))))
+    checks.append(("搜索", _ok(r_search.get("bookList"))))
+    checks.append(("发现", _ok(r_explore.get("bookList")) or _ok(source.get("exploreUrl"))))
+
+    hits = [n for n, ok in checks if ok]
+    if hits:
+        return True, f"成人源宽松校验通过（可用规则: {'/'.join(hits)}）"
+    return False, "成人源规则空壳（正文/目录/搜索/发现四条规则全无）"
+
+
+def check_source_usable(source, keywords=None, relax_adult=True):
     """可用性判定（用户标准：搜索、发现最起码有一个能用才算可用源）
 
+    relax_adult=True（默认）：成人源不跑书籍解析（内容形态含漫画/短剧/图片，解析不可靠），
+    改走 check_adult_content_ready 宽松判定（至少一条能取内容的规则链即可）。
+    check_usable.py 专项排查可传 relax_adult=False 做纯解析对照。
+
     返回 dict:
-      usable=True   至少一项（搜索/发现）解析出书 → 源可用
+      usable=True   至少一项（搜索/发现）解析出书 → 源可用；成人源宽松校验通过也算
       usable=False  搜索和发现都解析不出（且无网络阻断）→ 内容已变/规则失效，淘汰
       usable=None   存在无法判定项（网络异常/反爬/WAF blocked）→ 保留待人工
     """
+    if relax_adult:
+        try:
+            from .cleaner import is_adult_source
+            if is_adult_source(source):
+                ready, detail = check_adult_content_ready(source)
+                return {"usable": ready, "search": "adult_relaxed", "explore": "adult_relaxed",
+                        "detail": detail, "relaxed_adult": True}
+        except Exception:
+            pass
+
     s_status, s_detail = check_search_parsed(source, keywords)
     e_status, e_detail = check_explore_parsed(source)
     detail = f"搜索[{s_status}]{s_detail} | 发现[{e_status}]{e_detail}"
