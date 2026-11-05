@@ -29,9 +29,14 @@
 │   → 大厂12原样保护                                                     │
 │   → 其余全部重新走两级校验 + 垃圾过滤（发布前完整校验）                 │
 │   → 提升为 books.json + clean_rules.json + collect_report.md           │
-│   → auto_publish：git commit+push + Release v3.2 assets 更新           │
+│   → auto_publish：git commit+push + 发布页开新版本（见"发布版本策略"）  │
 └──────────────────────────────────────────────────────────────────────┘
 ```
+
+**发布版本策略（2026-11-05 用户要求）**：每次发布都到发布页发布**新版本**，不再只覆盖旧 tag。
+`publisher.get_next_release_tag()` 读现有 Releases 最新 `vX.Y.Z` tag，patch+1（v3.2.7→v3.2.8）；
+目标 tag 不存在则创建新 Release，已存在则更新其 assets（历史 tag 内容保持最新）。
+合并路径已防污染：`organizer.organize_sources` 入口对全部源统一 `clean_url`（兼容校验输出包装结构与正式版裸结构）。
 
 **为什么采集与校验分离**：GitHub Actions 免费 runner 在美国，跨洋访问国内站点
 采集可行（实测列表页 3.3s / JSON 2.2s / CDN 1.9s），但存活/搜索校验针对国内书源站
