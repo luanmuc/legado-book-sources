@@ -1,8 +1,9 @@
-name: 自动采集更新书源
+name: 每日自动采集书源
 
 on:
   schedule:
-    - cron: '0 2 * * 0'  # 每周日 UTC 02:00 = 北京时间周日 10:00
+    # 每天 UTC 17:07 = 北京时间次日 01:07（避开整点排队，也不影响白天使用）
+    - cron: '7 17 * * *'
   workflow_dispatch:       # 手动触发
     inputs:
       months:
@@ -10,7 +11,7 @@ on:
         required: false
         default: '1'
       mode:
-        description: 'test=跨洋连通性验证(列表10页+合集3个)；full=完整采集+提交'
+        description: 'test=跨洋连通性验证(列表10页+合集3个)；full=完整采集+清洗（不进正式版）'
         required: false
         default: 'test'
         type: choice
@@ -18,14 +19,14 @@ on:
           - test
           - full
 
-# 关键：仓库级默认 GITHUB_TOKEN 是只读，必须在这里声明写权限，否则 git push 必然失败
+# 仓库级默认 GITHUB_TOKEN 是只读，必须在这里声明写权限，否则 git push 必然失败
 permissions:
   contents: write
 
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 300   # 跨洋慢速采集需要更长上限（原120分钟太紧）
+    timeout-minutes: 350   # 跨洋慢速采集需要更长上限
 
     # 跨洋优化：加大单请求超时+失败重试，用并发下载抵消慢速
     env:
@@ -43,7 +44,7 @@ jobs:
       - name: 安装依赖
         run: pip install requests beautifulsoup4 lxml
 
-      - name: 连通性诊断（跨洋到yckceo实测延迟）
+      - name: 连通性诊断（跨洋到 yckceo 实测延迟）
         run: |
           echo "=== 1. yckceo主站(列表页, 跨洋慢) ==="
           curl -s -o /dev/null -w "  耗时 %{time_total}s | HTTP %{http_code}\n" -A "Mozilla/5.0" --max-time 60 "https://www.yckceo.com/yuedu/shuyuan/index.html?page=1" || echo "  主站超时/拒连"
@@ -54,18 +55,29 @@ jobs:
           echo "=== 4. 大佬仓库直链 ==="
           curl -s -o /dev/null -w "  耗时 %{time_total}s | HTTP %{http_code}\n" -A "Mozilla/5.0" --max-time 30 "https://raw.githubusercontent.com/shidahuilang/shuyuan/gh-pages/legado3.json" || echo "  github raw 超时"
 
-      - name: 运行采集（${{ inputs.mode || 'test' }} 模式）
+      - name: 运行采集（定时任务默认 full）
         id: collect
         continue-on-error: true
+        env:
+          INPUT_MODE: ${{ inputs.mode }}
+          INPUT_MONTHS: ${{ inputs.months }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [ "${{ inputs.mode || 'test' }}" = "full" ]; then
-            echo "=== full: 采集(列表前10页+合集前30个+大佬仓库) + 清洗 + 规则校验 → weekly/cleaned ==="
-            echo "（跨洋不做存活/搜索校验，避免误杀国内书源；校验+整理+发布由本地国内网络完成）"
-            python3 autocollect.py --collect-only --months ${{ inputs.months || '1' }}
+          # 定时触发默认 full（每天完整采集），手动触发按所选 mode
+          if [ -n "$INPUT_MODE" ]; then MODE="$INPUT_MODE";
+          elif [ "$EVENT_NAME" = "schedule" ]; then MODE=full;
+          else MODE=test; fi
+          MONTHS="${INPUT_MONTHS:-1}"
+          echo "mode=$MODE months=$MONTHS"
+
+          if [ "$MODE" = "full" ]; then
+            echo "=== full: 采集(列表全量+合集) + 清洗 → weekly/cleaned_<ts>.json ==="
+            echo "（本段不做任何存活/解析校验：跨洋校验误杀严重，校验与并入由本地国内网络完成）"
+            python3 autocollect.py --collect-only --months "$MONTHS"
           else
             echo "=== test: 跨洋小规模验证（列表前10页 + 合集前3个 + 大佬仓库） ==="
-            python3 scripts/collect_staged.py list --months ${{ inputs.months || '1' }}
-            python3 scripts/collect_staged.py heji 1 1 --months ${{ inputs.months || '1' }} --limit 3
+            python3 scripts/collect_staged.py list --months "$MONTHS"
+            python3 scripts/collect_staged.py heji 1 1 --months "$MONTHS" --limit 3
             python3 scripts/collect_staged.py gurus
           fi
 
@@ -76,14 +88,13 @@ jobs:
           python3 - <<'EOF'
           import json, glob, os
           total = 0
-          for f in sorted(glob.glob("raw/autocollect/raw_*.json")):
+          for f in sorted(glob.glob("raw/autocollect/heji/*.json")):
               try:
                   n = len(json.load(open(f, encoding="utf-8")))
                   total += n
-                  print(f"  {os.path.basename(f)}: {n}")
-              except Exception as e:
-                  print(f"  {os.path.basename(f)}: 读取失败 {e}")
-          print(f"原始合计: {total}")
+              except Exception:
+                  pass
+          print(f"  合集分片合计: {total}")
           EOF
           echo "=== weekly/cleaned 统计 ==="
           python3 - <<'EOF'
@@ -97,17 +108,65 @@ jobs:
           EOF
           echo "=== 采集脚本退出码: ${{ steps.collect.outcome }} ==="
 
-      - name: 提交更新（full 模式有 cleaned 产物时）
+      - name: 上传清洗产物为 artifact（仓库不存大文件，避免历史膨胀）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleaned-${{ github.run_number }}
+          path: |
+            weekly/cleaned_*.json
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: 写每日摘要并提交（小文件，进仓库便于查看趋势）
+        if: always()
         run: |
           set +e
-          # full 模式提交 weekly/cleaned_*.json（本地段用它继续校验+发布）
-          git add weekly/ 2>/dev/null
-          # 没有暂存内容就跳过
+          python3 - <<'EOF'
+          import json, glob, os, datetime
+          fs = sorted(glob.glob("weekly/cleaned_*.json"))
+          if not fs:
+              print("没有 cleaned 产物，跳过摘要")
+              raise SystemExit(0)
+          f = fs[-1]
+          data = json.load(open(f, encoding="utf-8"))
+          from collections import Counter
+          groups = Counter((s.get("bookSourceGroup") or "未分组") for s in data)
+          domains = Counter()
+          for s in data:
+              u = s.get("bookSourceUrl") or ""
+              try:
+                  domains[u.split("//")[1].split("/")[0]] += 1
+              except Exception:
+                  pass
+          summary = {
+              "date": datetime.datetime.now().strftime("%Y-%m-%d"),
+              "file": os.path.basename(f),
+              "cleaned": len(data),
+              "groups": dict(groups),
+              "domains": len(domains),
+          }
+          os.makedirs("weekly", exist_ok=True)
+          json.dump(summary, open("weekly/daily_summary.json", "w", encoding="utf-8"),
+                    ensure_ascii=False, indent=2)
+          # 追加一行历史（便于看每天的清洗量变化）
+          hist_path = "weekly/daily_history.jsonl"
+          with open(hist_path, "a", encoding="utf-8") as fh:
+              fh.write(json.dumps({"date": summary["date"], "cleaned": summary["cleaned"],
+                                   "domains": summary["domains"]}, ensure_ascii=False) + "\n")
+          # 历史行只保留最近 120 天
+          lines = open(hist_path, encoding="utf-8").read().strip().split("\n")
+          if len(lines) > 120:
+              open(hist_path, "w", encoding="utf-8").write("\n".join(lines[-120:]) + "\n")
+          print(json.dumps(summary, ensure_ascii=False, indent=2))
+          EOF
+
+          git add weekly/daily_summary.json weekly/daily_history.jsonl 2>/dev/null
           if git diff --staged --quiet; then
-            echo "没有变化，跳过提交"
+            echo "摘要无变化，跳过提交"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: 自动采集+清洗 $(date +%Y-%m-%d) [skip ci]"
+          git commit -m "chore: 每日采集摘要 $(date +%Y-%m-%d) [skip ci]"
           git push

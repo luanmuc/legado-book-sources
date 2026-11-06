@@ -232,6 +232,13 @@ python3 scripts/check_usable.py --limit 50     # 抽样
 
 ---
 
+### 每日自动采集（2026-11-06 改造）
+
+- workflow `.github/workflows/auto-update.yml`：cron `7 17 * * *`（UTC，= 北京 01:07），定时触发默认 `full`
+- 分层：Actions 只做「采集 + 清洗」（跨洋不做校验，避免误杀）→ artifact；本地做「存活校验 + 中间层 + 发布前 full 校验」
+- 大文件（cleaned_*.json）已加入 .gitignore，改走 artifact（14 天），仓库只留每日摘要与 120 天趋势
+- 本地等效：`scripts/run_daily_collect.sh`（替代原 run_weekly_collect.sh）
+
 ## 6. 发布流程（publisher.py）
 
 **发布中断恢复（2026-11-06 新增）**：`is_partial_release()` 检测最新 Release 的 assets 是否缺失或 0 字节

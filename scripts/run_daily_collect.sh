@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
-# 每周自动采集书源（crontab 调用）—— 三层架构版（2026-11）
-# 由系统 cron 每周日 02:00 执行，不依赖豆包定时任务/额度
+# 每日自动采集书源（crontab 调用）—— 三层架构版（2026-11）
+# 由系统 cron 每天 01:00 执行，不依赖豆包定时任务/额度
 #
 # 核心原则（用户硬约束）：
 #   1. 采集池第一遍量太大 → 只做【快速存活校验】（quick），不跑真实性解析
@@ -27,13 +27,13 @@ REPO_DIR="/home/user/Doubao/chats/38450368417489154/book-sources"
 LOG_DIR="${REPO_DIR}/logs"
 PYTHON="/usr/bin/python3"
 TS=$(date +%Y%m%d_%H%M%S)
-LOG_FILE="${LOG_DIR}/weekly_${TS}.log"
+LOG_FILE="${LOG_DIR}/daily_${TS}.log"
 MONTHS=${1:-1}   # 默认只采集最近1个月（用户偏好），可传参调大
 
 mkdir -p "${LOG_DIR}"
 cd "${REPO_DIR}" || { echo "[FATAL] 无法进入仓库目录 ${REPO_DIR}" >> "${LOG_FILE}"; exit 1; }
 
-echo "===== 每周自动采集启动 $(date '+%Y-%m-%d %H:%M:%S') | months=${MONTHS} =====" >> "${LOG_FILE}"
+echo "===== 每日自动采集启动 $(date '+%Y-%m-%d %H:%M:%S') | months=${MONTHS} =====" >> "${LOG_FILE}"
 echo "工作目录: ${REPO_DIR}" >> "${LOG_FILE}"
 
 # ===== 阶段A: 采集（列表前10页 + 合集第1页，--months 按更新时间过滤）=====

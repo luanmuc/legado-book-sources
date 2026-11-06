@@ -2,3 +2,6 @@ raw/
 *.log
 __pycache__/
 *.pyc
+
+# 每日采集产物体积大，改走 Actions artifact（仓库只存摘要）
+weekly/cleaned_*.json
