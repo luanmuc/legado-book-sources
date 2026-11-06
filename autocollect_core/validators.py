@@ -552,9 +552,14 @@ def check_search_parsed(source, keywords=None, max_try=3):
             any_200 = True
         tried.append(f"[{kw}]{status}:{detail}")
     joined = " | ".join(tried)[:160]
-    if any_200:
+    n_bad = sum(1 for k in tried if ":bad:" in k)
+    n_blk = sum(1 for k in tried if ":blocked:" in k)
+    # 证据分层，避免网络抖动误杀：
+    #  ≥2 个关键词都拿到 200 却解析不出 → 内容确实变了 → bad
+    #  只 1 个关键词 200 + 其余超时/异常 → 证据不足 → blocked（待验保留）
+    if n_bad >= 2 or (n_bad == 1 and n_blk == 0):
         return "bad", f"{len(keywords)} 个关键词均解析不出书籍 {joined}"
-    return "blocked", f"{len(keywords)} 个关键词请求均失败 {joined}"
+    return "blocked", f"关键词请求多数异常，无法判定（200但解析不出 {n_bad} 个 / 异常 {n_blk} 个）{joined}"
 
 
 def check_explore_parsed(source, max_entries=3, timeout=8):

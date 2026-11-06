@@ -66,6 +66,11 @@ def _split_index(step):
     """
     st = step.strip()
 
+    # 单索引 [N]（等价 .N）
+    m = re.match(r"^(.*?)\s*\[(-?\d+)\]$", st)
+    if m and m.group(1).strip():
+        return _convert_selector(m.group(1).strip()), "index", int(m.group(2))
+
     # 切片 [start:end]，支持负数（tbody tr[1:-1] 去掉首尾）
     m = re.match(r"^(.*?)\s*\[(-?\d*):(-?\d*)\]$", st)
     if m:
@@ -138,11 +143,8 @@ def _convert_selector(sel):
         return "#" + sel[3:]
     if sel.startswith("@css:"):
         return sel[5:]
-    # 裸多 class 容错：'.result-item result-game-item' → '.result-item.result-game-item'
-    if sel.startswith(".") and " " in sel:
-        parts = [x for x in sel.split() if x]
-        if all(x.startswith(".") or re.match(r"^[a-zA-Z][a-zA-Z0-9_\-]*$", x) for x in parts):
-            return "." + ".".join(x.lstrip(".") for x in parts)
+    # 注意：'.a b' 在 Legado 里是层级（.a 下面找 b），不能合并成 .a.b
+    # 只有 'class.a b' 这种漏写 class. 前缀的写法才合并（见上方 class. 分支）
     return sel
 
 
@@ -170,7 +172,7 @@ def _parse_rule(rule):
         if re.match(r"^[a-zA-Z][a-zA-Z0-9]*\.-?\d+$", p):  # a.0 / li.-1 → 标签索引
             steps.append(p)
             continue
-        if re.search(r"!(?:-?\d+)$", p) or re.search(r"\[\d*:\d*\]$", p):  # tr!0 / a[0:10] → 索引/排除/切片
+        if re.search(r"!(?:-?\d+)$", p) or re.search(r"\[-?\d+\]$", p) or re.search(r"\[-?\d*:-?\d*\]$", p):  # tr!0 / a[0:10] → 索引/排除/切片
             steps.append(p)
             continue
         css = _convert_selector(p)
