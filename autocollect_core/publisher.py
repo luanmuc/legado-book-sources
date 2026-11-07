@@ -83,11 +83,51 @@ def get_github_token():
     return None
 
 
-def publish_release(token, final_count, rules_count):
+def build_release_meta(tag, final_count, rules_count, mode="manual", stats=None):
+    """生成发布页标题与说明：自动版 / 手动版明确区分，便于下载时自行选择"""
+    stats = stats or {}
+    if mode == "auto":
+        title = f"【自动】{tag} · {final_count} 源"
+        body = (f"**自动发布**（云端定时任务，{datetime.now().strftime('%Y-%m-%d')}）\n\n"
+                f"- 书源总数：**{final_count}** 个纯小说源\n"
+                f"- 净化规则：{rules_count} 条\n"
+                f"- 大厂正版：{stats.get('big_sites', 12)} 个（顺序固定）\n\n"
+                f"**校验口径：只判域名存活**\n"
+                f"明确死站（DNS 失败 / 连接被拒 / 4xx / 5xx）已剔除；"
+                f"响应超时与代理异常的源一律保留。\n"
+                f"内容真实性（搜索/发现能否解析出书）**未校验**——这一步只有国内网络能判。\n\n"
+                f"如果你要的是已验证可用的源，请选标题不带【自动】的版本。")
+    else:
+        title = f"{tag} · {final_count} 源（完整校验）"
+        body = (f"**手动发布**（国内网络完整校验，{datetime.now().strftime('%Y-%m-%d')}）\n\n"
+                f"- 书源总数：**{final_count}** 个纯小说源\n"
+                f"- 净化规则：{rules_count} 条\n"
+                f"- 大厂正版：{stats.get('big_sites', 12)} 个（顺序固定）\n\n"
+                f"**校验口径：域名存活 + 内容真实性**\n"
+                f"每个源用 3 个通用关键词真实请求，搜索或发现至少一项能解析出书才保留；"
+                f"连续两个关键词 200 却解析不出才判失效，单次 200 其余超时按待验保留。")
+    if stats.get("note"):
+        body += f"\n\n{stats['note']}"
+    if stats:
+        lines = []
+        for k, label in (("raw", "采集原始"), ("cleaned", "清洗后"), ("candidates", "去重候选"),
+                         ("dead_removed", "死站剔除"), ("net_added", "净增")):
+            if stats.get(k) is not None:
+                lines.append(f"- {label}：{stats[k]}")
+        if lines:
+            body += "\n\n**本批统计**\n" + "\n".join(lines)
+    return title, body
+
+
+def publish_release(token, final_count, rules_count, mode="manual", stats=None):
     """发布/更新GitHub Release，上传 books.json 和 clean_rules.json 到发布页
 
     版本策略（用户要求 2026-11-05）：每次发布都创建新版本 tag（vX.Y.Z patch+1），
     不再覆盖旧tag；若目标tag恰好存在则更新其assets（历史tag内容保持最新）。
+
+    发布来源区分（用户要求 2026-11-07）：mode="auto" 为云端定时自动发布（只做域名存活
+    校验），mode="manual" 为本地国内网络完整校验后手动发布。标题前缀与说明正文都会
+    标注，下载时按需选择。
     """
     api = f"https://api.github.com/repos/{REPO}"
     headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github+json"}
@@ -114,12 +154,9 @@ def publish_release(token, final_count, rules_count):
                 log.info(f"  删除旧asset {asset['name']} (HTTP {d.status_code})")
     elif resp.status_code == 404:
         log.info(f"Release {tag} 不存在，创建新Release")
-        body = (f"全自动采集更新 {datetime.now().strftime('%Y-%m-%d')}\n"
-                f"{final_count}个纯小说源 + {rules_count}条配套净化规则\n"
-                f"- 12个大厂正版源\n"
-                f"- 全自动采集脚本每周自动更新")
+        title, body = build_release_meta(tag, final_count, rules_count, mode, stats)
         r2 = requests.post(f"{api}/releases", headers=headers, timeout=15,
-                           json={"tag_name": tag, "name": tag + " 稳定版",
+                           json={"tag_name": tag, "name": title,
                                  "body": body, "draft": False, "prerelease": False})
         if r2.status_code not in (200, 201):
             log.warning(f"创建Release失败: HTTP {r2.status_code} {r2.text[:200]}")
@@ -154,7 +191,7 @@ def publish_release(token, final_count, rules_count):
                     f"重跑发布命令会自动复用 {tag} 补齐，不会新开版本")
 
 
-def auto_publish(final_count, big_count):
+def auto_publish(final_count, big_count, mode="manual", stats=None):
     """自动提交并推送到GitHub，然后发布到发布页（Releases）"""
     log.info("=== 自动发布到GitHub ===")
 
@@ -175,9 +212,12 @@ def auto_publish(final_count, big_count):
         if "nothing to commit" in result.stdout:
             log.info("没有更新内容，不需要发布")
         else:
-            # 推送
-            subprocess.run(["git", "push", "origin", "main"], check=True, capture_output=True)
-            log.info("✅ 推送 main 成功！")
+            # 推送（Actions 环境由 workflow 负责提交，跳过）
+            if os.environ.get("GITHUB_ACTIONS") != "true":
+                subprocess.run(["git", "push", "origin", "main"], check=True, capture_output=True)
+                log.info("✅ 推送 main 成功！")
+            else:
+                log.info("Actions 环境：跳过 git push，由 workflow 提交")
 
         # 发布到发布页（Releases）
         token = get_github_token()
@@ -189,7 +229,7 @@ def auto_publish(final_count, big_count):
             except Exception:
                 pass
         if token:
-            publish_release(token, final_count, rules_count)
+            publish_release(token, final_count, rules_count, mode=mode, stats=stats)
         else:
             log.warning("未找到GitHub token，跳过发布页更新")
     except Exception as e:

@@ -125,7 +125,7 @@ def main():
     log.info(f"报告: {json.dumps(report, ensure_ascii=False)}")
 
     from autocollect_core.publisher import auto_publish
-    auto_publish(len(final), big_count)
+    auto_publish(len(final), big_count, mode="auto", stats=report)
     log.info("✅ 每月合并 + 发布完成")
 
 
