@@ -115,7 +115,7 @@ jobs:
           name: cleaned-${{ github.run_number }}
           path: |
             weekly/cleaned_*.json
-          retention-days: 14
+          retention-days: 35  # 保留 35 天，供每月合并汇总
           if-no-files-found: ignore
 
       - name: 写每日摘要并提交（小文件，进仓库便于查看趋势）

@@ -1,0 +1,77 @@
+name: 每月自动合并发布
+
+on:
+  schedule:
+    # 每月 1 号 UTC 20:00 = 北京时间 2 号 04:00（避开每日采集时段；云端免费 runner 会排队，实际可能晚触发）
+    - cron: '0 20 1 * *'
+  workflow_dispatch:
+    inputs:
+      months:
+        description: '采集最近N个月的更新'
+        required: false
+        default: '1'
+      dry_run:
+        description: 'true=只合并不发布'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: monthly-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: 安装依赖
+        run: pip install requests beautifulsoup4 lxml
+
+      - name: 采集 + 合并 + 发布
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_MONTHS: ${{ inputs.months }}
+          INPUT_DRY: ${{ inputs.dry_run }}
+        run: |
+          MONTHS="${INPUT_MONTHS:-1}"
+          DRY=""
+          if [ "$INPUT_DRY" = "true" ]; then DRY="--dry-run"; fi
+          echo "months=$MONTHS dry=$DRY"
+          python3 scripts/monthly_release.py --months "$MONTHS" $DRY
+
+      - name: 提交正式版（有变化时）
+        if: ${{ inputs.dry_run != 'true' }}
+        run: |
+          set +e
+          git add books.json clean_rules.json raw/autocollect/monthly_report.json 2>/dev/null
+          if git diff --staged --quiet; then
+            echo "没有变化，跳过提交"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: 每月自动合并发布 $(date +%Y-%m-%d) [skip ci]"
+          # 每日采集 workflow 也会 push，先 rebase 避免非快进被拒
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && exit 0
+            echo "push 第 $i 次失败，2s 后重试"
+            sleep 2
+          done
+          echo "推送失败，但 Release 已发布，下次采集会覆盖 books.json"
+          exit 0
