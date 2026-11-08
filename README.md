@@ -114,7 +114,7 @@ python3 autocollect.py --from-cleaned weekly/cleaned_XXX.json --stage
 python3 autocollect.py --publish-pending --publish
 
 # 一键（cron 每日自动）：采集 → 清洗 → 并入中间层（quick 存活校验，不发布）
-bash scripts/run_weekly_collect.sh 1
+bash scripts/run_daily_collect.sh 1
 
 # 或手动分步执行（每步独立落盘、可断点恢复）：
 python3 scripts/collect_staged.py list --months 1      # A1: 采集yckceo书源列表前10页
@@ -157,7 +157,7 @@ autocollect_core/
 ├── report.py               # 采集报告（真实统计）
 └── publisher.py            # git推送 + 发布页Release更新
 scripts/
-├── run_weekly_collect.sh   # 一键分步全流程（采集→清洗→校验→过滤→整理→发布）
+├── run_daily_collect.sh    # 一键分步全流程（采集→清洗→校验→过滤→整理→发布）
 ├── collect_staged.py       # 分段采集（list/heji/gurus，--months/--limit）
 ├── collect_heji_ids.py     # 阶段A: 提取合集列表全部ID
 ├── collect_heji_batch.py   # 阶段B: 逐合集独立落盘批量下载（断点续传）

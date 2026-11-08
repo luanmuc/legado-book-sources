@@ -310,6 +310,76 @@ def h3():
             f"现行描述里发现旧口径 {len(stale)} 处" if stale else "现行描述无「每周」残留（仅更新日志历史条目保留）")
 
 
+# ---------- 缺陷回归（第二轮审计沉淀，防止已修 bug 回潮） ----------
+@check("D4", "校验", "WAF 403 类不判死",
+       "probe_alive 只能把 404/410 判死；403/405(WAF)、429、5xx 必须保留")
+def d4():
+    m = read("scripts/monthly_release.py")
+    block = re.search(r"def probe_alive.*?(?=\ndef |\Z)", m, re.S)
+    if not block:
+        return "FAIL", "找不到 probe_alive"
+    body = block.group(0)
+    strict = ">= 400" in body and "return \"dead\"" in body and "404" not in body
+    if strict:
+        return "FAIL", "仍用 status>=400 一刀切判死（403 WAF 站会被误杀）"
+    ok = "404" in body and "403" in body
+    return ("PASS" if ok else "WARN", "只判 404/410，403/405/429/5xx 保留" if ok else "判死口径不明确")
+
+
+@check("D5", "中间层", "现有源不重走垃圾过滤",
+       "月度合并只对新采集源过滤；现有源已过历史校验，重过滤会误删（badaoge 因 URL 含 bad 被删）")
+def d5():
+    m = read("scripts/monthly_release.py")
+    filt = re.search(r"validated = filter_junk_sources", m)
+    if not filt:
+        return "WARN", "未找到过滤调用"
+    line = [l for l in m.splitlines() if "filter_junk_sources" in l and "validated" in l][0]
+    merged_into_one = "existing_non_big" in line and "alive" in line
+    return ("FAIL" if merged_into_one else "PASS",
+            "现有源与新源一起过滤（会误删现有源）" if merged_into_one else "只过滤新源，现有源原样进入候选")
+
+
+@check("F6", "发布", "发布失败不会被吞",
+       "auto_publish 返回 bool，月度脚本失败必须非 0 退出（否则 CI 假绿）")
+def f6():
+    p = read("autocollect_core/publisher.py")
+    m = read("scripts/monthly_release.py")
+    has_ret = "return bool(publish_release" in p
+    exits = "sys.exit(1)" in m
+    return ("PASS" if has_ret and exits else "FAIL",
+            f"返回值={has_ret} 失败退出={exits}")
+
+
+@check("A5", "调度", "本地 cron 脚本与每日采集对齐",
+       "install_cron.sh 必须指向 run_daily_collect.sh 且 cron 为每日")
+def a5():
+    s = read("scripts/install_cron.sh")
+    ok = "run_daily_collect.sh" in s and re.search(r'CRON_LINE="7 17 \* \* \*', s)
+    return ("PASS" if ok else "FAIL", "指向每日脚本 + UTC 17:07" if ok else "仍指向旧周任务或旧时间")
+
+
+@check("A6", "文档", "旧脚本名零残留",
+       "全仓不得残留 run_weekly_collect.sh 引用（除审计历史记录）")
+def a6():
+    hits = []
+    for root, _, files in os.walk(ROOT):
+        if ".git" in root:
+            continue
+        for f in files:
+            if not f.endswith((".sh", ".py", ".md")):
+                continue
+            if f in ("AUDIT_PLAN.md", "audit_pipeline.py"):
+                continue  # 审计计划/审计脚本自身会提到旧名，不算残留
+            path = os.path.join(root, f)
+            try:
+                if "run_weekly_collect" in open(path, encoding="utf-8").read():
+                    hits.append(os.path.relpath(path, ROOT))
+            except Exception:
+                pass
+    return ("FAIL" if hits else "PASS", f"残留: {hits}" if hits else "无残留")
+
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")

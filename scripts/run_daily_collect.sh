@@ -18,8 +18,8 @@
 #   python3 autocollect.py --publish-pending --publish
 #
 # 用法:
-#   bash scripts/run_weekly_collect.sh [月份数]   # 默认 1（只采集最近1个月，用户偏好）
-# 日志: logs/weekly_YYYYmmdd_HHMMSS.log（保留最近20份）
+#   bash scripts/run_daily_collect.sh [月份数]   # 默认 1（只采集最近1个月，用户偏好）
+# 日志: logs/daily_YYYYmmdd_HHMMSS.log（保留最近20份）
 # ============================================================
 set -o pipefail
 

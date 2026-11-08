@@ -2,7 +2,7 @@
 
 审计对象：**每日采集 → 中间层 → 每月自动合并发布** 全自动巡检管道
 审计方式：脚本化只读核查（`scripts/audit_pipeline.py`）+ 逐条回读源码定性
-最近执行：2026-11-07　结论：**23 / 23 PASS**
+最近执行：2026-11-08　检查点 28 项　结论：**28 / 28 PASS**（含 5 项缺陷回归断言）
 
 ---
 
@@ -21,7 +21,7 @@
 
 ---
 
-## 2. 检查点清单（23 项）
+## 2. 检查点清单（28 项）
 
 ### A. 调度与触发（4 项）
 
@@ -78,6 +78,16 @@
 | G1 | 断点按档位分名 | ckpt 文件名含 mode，避免 quick/full 串用 | PASS | ckpt 名含 mode |
 | G2 | 重跑不重复发版 | 内容无变化时跳过发布 | PASS | 有 no-change 短路 |
 
+### I. 缺陷回归（5 项，第二轮沉淀，防止已修 bug 回潮）
+
+| ID | 检查点 | 判定标准 | 结论 | 证据 |
+|---|---|---|---|---|
+| D4 | WAF 403 类不判死 | `probe_alive` 只把 404/410 判死 | PASS | 实测 403/429/500→unknown，404→dead |
+| D5 | 现有源不重走垃圾过滤 | 月度合并只过滤新采集源 | PASS | 代码断言 + 修复前实测少 2 源 |
+| F6 | 发布失败不会被吞 | `auto_publish` 返回 bool 且失败 `sys.exit(1)` | PASS | 返回值/退出齐备 |
+| A5 | 本地 cron 与每日采集对齐 | 指向 `run_daily_collect.sh` + UTC 17:07 | PASS | 脚本变量与 CRON_LINE 均正确 |
+| A6 | 旧脚本名零残留 | 全仓无 `run_weekly_collect` 引用 | PASS | 扫描 0 命中（审计文档除外） |
+
 ### H. 文档一致性（3 项）
 
 | ID | 检查点 | 判定标准 | 结论 | 证据 |
@@ -88,14 +98,39 @@
 
 ---
 
-## 3. 本轮发现与修复
+## 3. 两轮审计的性质区别（重要）
+
+**第一轮（结构核对，23 项）**：证明"该有的东西在、配置对得上"。它能挡住"漏配 cron""发布失败静默"这类问题，但**不能证明代码逻辑正确**——函数存在不等于分支正确。
+
+**第二轮（代码缺陷审计，逐行读 + 实测）**：按"一行代码在真实输入下会发生什么"审，凡是能用构造输入实测的，必须实测，不接受"读代码觉得没问题"。
+
+两轮的差别在下面这张表里体现得最清楚：第一轮 23 项全 PASS 时，月度发布链路其实带着 7 个真实缺陷。
+
+---
+
+## 3.1 第一轮发现并修复（结构与文档层，4 项）
 
 | # | 级别 | 问题 | 改前 | 改后 |
 |---|---|---|---|---|
-| 1 | 中 | 日更 workflow 无并发互斥，与月度/手动推送可能抢 main | `concurrency` 缺失，push 直接失败 | 加 `concurrency: daily-collect`；月度另加 rebase 重试 3 次 |
-| 2 | 中 | 中间层已消费未清空，下次 stage 会重复处理 1323 条 | pending 1323 条其中 1208 已并入正式版 | 归档 `books_pending_archived_20261107.json`，pending 置空 |
-| 3 | 低 | DEVELOPMENT 模块表未登记新脚本，且残留 `run_weekly_collect.sh` | 模块表缺 3 个脚本，脚本改名未同步 | 补 `monthly_release.py` / `audit_pipeline.py` / `reorder.py`，`run_weekly`→`run_daily`，crontab 说明改每日 |
-| 4 | 低 | README 现行描述仍写「每周采集」6 处 | 与每日采集改造不符 | 现行描述清零（更新日志历史条目保留） |
+| 1 | 中 | 日更 workflow 无并发互斥，与月度/手动推送可能抢 main | `concurrency` 缺失 | 加 `concurrency: daily-collect`；月度另加 rebase 重试 3 次 |
+| 2 | 中 | 中间层已消费未清空，下次 stage 重复处理 1323 条 | pending 1323 条 | 归档 `books_pending_archived_20261107.json`，pending 置空 |
+| 3 | 低 | DEVELOPMENT 模块表缺 3 个脚本，残留 `run_weekly_collect.sh` | 缺登记 | 补 3 项，改名 `run_daily` |
+| 4 | 低 | README 现行描述仍写「每周采集」6 处 | 与每日改造不符 | 现行描述清零 |
+
+## 3.2 第二轮发现并修复（代码缺陷，7 项）
+
+| # | 级别 | 缺陷 | 真实后果 | 修复 | 证据 |
+|---|---|---|---|---|---|
+| 1 | **严重** | `probe_alive` 用 `status_code >= 400` 一刀切判死 | **403/405 的 WAF 站全被当死站淘汰**，直接违反"WAF 403 类不淘汰"硬约束；云端出口访问国内站更常吃 403 | 只判 404/410；403/405/429/5xx 一律 unknown 保留 | 实测 403/429/500 → unknown，404 → dead |
+| 2 | **严重** | 代理环境下所有连不通都落 `ProxyError 502`，被判 unknown | 域名已不存在的死站会一直留在正式版，越积越多 | ProxyError 分支改用 `socket.getaddrinfo` 判域名：解析不出=dead，能解析=unknown | 实测 DNS 死域 → dead，正常站 → ok |
+| 3 | **中** | 月度合并把现有 1526 个源重走 `filter_junk_sources` | 实测会误删 `笔尖中文`(badaoge.la)、`笔尖中文2`(badaoge.org)——URL 含 "bad" 命中 `JUNK_DEAD_KW` 的 "BAD" | 只有新采集源走过滤，现有源原样进候选 | 修复前 1526→1524（少 2），修复后不再过滤现有源 |
+| 4 | **中** | `auto_publish` 吞掉所有异常只打 warning，`publish_release` 无返回值 | **发布失败 CI 仍然全绿**，用户以为发版了实际发布页没动 | `publish_release`/`auto_publish` 返回 bool，月度脚本 `sys.exit(1)` | 静态契约 + F6 断言 |
+| 5 | **中** | `install_cron.sh` 仍写 `run_weekly_collect.sh` + `0 2 * * 0` | 脚本文件早已改名，装出来的 cron 指向不存在的文件 → **本地定时静默失效** | 指向 `run_daily_collect.sh`，`CRON_LINE="7 17 * * *"` | `bash -n` 通过 + A5/A6 断言 |
+| 6 | 低 | `run_daily_collect.sh` 注释与日志清理仍是 `weekly_*` | 日志轮转 `ls weekly_*.log` 清不到新日志，**日志无限堆积** | 改 `daily_*.log`，注释同步 | grep 零残留 |
+| 7 | 低 | `status.py` 判 `'run_weekly_collect' in cron` | 每日任务装了也报"未配置"，误导排障 | 改判 `run_daily_collect` | 输出文案改「每日任务 crontab」 |
+
+**这一轮的根本教训**：第 1、2 条都属于"写的时候觉得 400 以上就该淘汰"的想当然。它们在 23 项结构检查里完全看不出来，只有拿构造输入真跑一遍才暴露。所以审计计划里凡是能构造输入的，一律补成实测断言（见 D4/D5）。
+
 
 ---
 

@@ -106,9 +106,9 @@ def local_status():
 
     try:
         cron = subprocess.run(["crontab", "-l"], capture_output=True, text=True, timeout=5).stdout
-        print(f"  周任务 crontab: {'已配置' if 'run_weekly_collect' in cron else '未配置（跑 scripts/install_cron.sh 可重建）'}")
+        print(f"  每日任务 crontab: {'已配置' if 'run_daily_collect' in cron else '未配置（跑 scripts/install_cron.sh 可重建）'}")
     except Exception:
-        print("  周任务 crontab: 无法读取（跑 scripts/install_cron.sh 可重建）")
+        print("  每日任务 crontab: 无法读取（跑 scripts/install_cron.sh 可重建）")
 
 
 def remote_status():

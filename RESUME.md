@@ -35,8 +35,8 @@ cd book-sources && python3 scripts/status.py
 | 专项真实性检测中断 | `ckpt_usable.json` | `python3 scripts/check_usable.py`，已测 URL 自动跳过 |
 | git push 失败 | `git status -sb` 显示 ahead | `git push origin main`（提交已在本地） |
 | 发布页上传中断 | 最新 Release assets 缺一个或 0 字节 | 重跑发布命令：**自动复用该版本补齐，不会新开空壳版本** |
-| VM/沙箱重置 | `crontab -l` 无 `run_weekly_collect` | `bash scripts/install_cron.sh`（幂等重建周任务） |
-| 暑假/长期停机后恢复 | 上次 cleaned 很旧 | `python3 scripts/status.py` 核对 → 直接跑 `bash scripts/run_weekly_collect.sh 1` |
+| VM/沙箱重置 | `crontab -l` 无 `run_daily_collect` | `bash scripts/install_cron.sh`（幂等重建每日任务） |
+| 暑假/长期停机后恢复 | 上次 cleaned 很旧 | `python3 scripts/status.py` 核对 → 直接跑 `bash scripts/run_daily_collect.sh 1` |
 
 ## 三、断点落盘位置（全部在持久区）
 

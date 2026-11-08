@@ -160,11 +160,11 @@ def publish_release(token, final_count, rules_count, mode="manual", stats=None):
                                  "body": body, "draft": False, "prerelease": False})
         if r2.status_code not in (200, 201):
             log.warning(f"创建Release失败: HTTP {r2.status_code} {r2.text[:200]}")
-            return
+            return False
         release_id = r2.json()["id"]
     else:
         log.warning(f"查询Release失败: HTTP {resp.status_code} {resp.text[:200]}")
-        return
+        return False
 
     # 上传assets（curl --data-binary 会报 size>=1，必须用requests）
     upload_headers = {"Authorization": f"token {token}", "Content-Type": "application/octet-stream"}
@@ -186,13 +186,18 @@ def publish_release(token, final_count, rules_count, mode="manual", stats=None):
     # 完整性自检：两个 asset 都在才算发布成功；缺的重新跑同一命令会自动复用本版本补齐
     if len(uploaded) == 2:
         log.info(f"✅ 发布页 {tag} 完整（books.json + clean_rules.json 均已上传）")
-    else:
-        log.warning(f"⚠️ 发布页 {tag} 不完整（成功上传 {len(uploaded)}/2），"
-                    f"重跑发布命令会自动复用 {tag} 补齐，不会新开版本")
+        return True
+    log.warning(f"⚠️ 发布页 {tag} 不完整（成功上传 {len(uploaded)}/2），"
+                f"重跑发布命令会自动复用 {tag} 补齐，不会新开版本")
+    return False
 
 
 def auto_publish(final_count, big_count, mode="manual", stats=None):
-    """自动提交并推送到GitHub，然后发布到发布页（Releases）"""
+    """自动提交并推送到GitHub，然后发布到发布页（Releases）
+
+    返回 True 表示 release 已创建且两个 asset 齐全；False 表示发布未完成（调用方应据此失败退出，
+    避免 CI 显示成功但发布页没更新）。
+    """
     log.info("=== 自动发布到GitHub ===")
 
     try:
@@ -228,10 +233,11 @@ def auto_publish(final_count, big_count, mode="manual", stats=None):
                 rules_count = len(json.load(open(CLEAN_RULES_FILE, encoding="utf-8")))
             except Exception:
                 pass
-        if token:
-            publish_release(token, final_count, rules_count, mode=mode, stats=stats)
-        else:
+        if not token:
             log.warning("未找到GitHub token，跳过发布页更新")
+            return False
+        return bool(publish_release(token, final_count, rules_count, mode=mode, stats=stats))
     except Exception as e:
         log.warning(f"自动发布失败: {e}")
         log.warning("可以手动执行 git add && git commit && git push")
+        return False
