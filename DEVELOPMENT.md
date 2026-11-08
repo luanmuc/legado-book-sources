@@ -80,7 +80,10 @@
 
 | 脚本 | 用途 |
 |------|------|
-| `run_weekly_collect.sh` | 一键分步全流程（MONTHS 参数，默认 1；A 采集→B 清洗→C 分批校验→D 垃圾过滤→E 整理发布） |
+| `run_daily_collect.sh` | 一键分步全流程（MONTHS 参数，默认 1；A 采集→B 清洗→C 分批校验→D 垃圾过滤→E 整理发布），本地 crontab 每日触发 |
+| `monthly_release.py` | 每月自动合并发布（Actions auto 通道）：重新采集 → 明确死站剔除 → 垃圾过滤 → 合并 → `auto_publish(mode="auto")` |
+| `audit_pipeline.py` | 巡检管道审计（只读）：23 个检查点覆盖调度/采集/中间层/校验/排序/发布/恢复/文档，输出 PASS/WARN/FAIL + 证据 |
+| `reorder.py` | 整库顺序规整（`--dry-run` 可先看）：大厂固定序 → 分组序 → 族名自然序 → 成人最末 |
 | `collect_staged.py` | 分段采集：`list`（前10页）/ `heji start end`（--limit 默认30）/ `gurus` |
 | `collect_heji_ids.py` | 提取合集列表全部 id → `heji_ids.json` |
 | `collect_heji_batch.py` | 逐合集独立落盘下载（断点续传，中断零损失） |
@@ -88,7 +91,7 @@
 | `filter_junk_sources.py` | 垃圾过滤+成人归组（复用 cleaner 核心函数） |
 | `check_usable.py` | 真实性专项检测：全量/抽样跑 `check_source_usable`，输出 usable_report + 断点 ckpt_usable.json |
 | `status.py` | **状态自检**：正式版/中间层源数与分组、最新 cleaned、校验断点、采集分片、git 状态、发布页最新版本与 assets 完整性、crontab 是否在（中断接续第一步） |
-| `install_cron.sh` | 一键重建本地 crontab（每周日 02:00，VM 重置后恢复用） |
+| `install_cron.sh` | 一键重建本地 crontab（每日采集时段，VM 重置后恢复用） |
 
 ---
 
@@ -259,7 +262,7 @@ python3 scripts/check_usable.py --limit 50     # 抽样
 
 ---
 
-## 7. 周任务运行方式
+## 7. 每日 / 每月任务运行方式
 
 | 通道 | 调度 | 执行内容 | 状态 |
 |------|------|----------|------|
@@ -292,7 +295,12 @@ python3 scripts/check_usable.py --limit 50     # 抽样
 
 ---
 
-## 9. 开发约定（用户明确要求，不可违反）
+## 9. 审计与回归
+
+巡检管道的审计计划、检查点、证据分级与未验证项见仓库根目录 [AUDIT_PLAN.md](AUDIT_PLAN.md)。
+发版前跑 `python3 scripts/audit_pipeline.py`，`FAIL` 必须为 0。
+
+## 10. 开发约定（用户明确要求，不可违反）
 
 - **发布必须发到 GitHub 发布页（Releases）**，不止 push main
 - **发布由用户确认**；中间层合并到正式版前也必须用户确认
@@ -307,7 +315,7 @@ python3 scripts/check_usable.py --limit 50     # 抽样
 
 ---
 
-## 10. 数据源逆向笔记（已写进脚本，改脚本必读）
+## 11. 数据源逆向笔记（已写进脚本，改脚本必读）
 
 ### yckceo 站点结构
 ```
@@ -340,7 +348,7 @@ JSON直链     https://www.yckceo.com/yuedu/shuyuan/json/id/{id}.json      （li
 
 ---
 
-## 11. 采集实测数据（2026-11-05 实测，非推测）
+## 12. 采集实测数据（2026-11-05 实测，非推测）
 
 | 数据 | 值 |
 |------|-----|
@@ -355,7 +363,7 @@ JSON直链     https://www.yckceo.com/yuedu/shuyuan/json/id/{id}.json      （li
 
 ---
 
-## 12. 大厂正版源清单（12 个，config.py 保护名单）
+## 13. 大厂正版源清单（12 个，config.py 保护名单）
 
 | 序 | 名称 | URL | 序 | 名称 | URL |
 |----|------|-----|----|------|-----|

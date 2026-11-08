@@ -49,6 +49,11 @@
 2. 打开阅读APP → 我的 → 替换净化 → 本地导入
 3. 自动过滤网页广告、弹窗、无用内容
 
+## 🧭 管道审计
+
+巡检管道（每日采集 → 中间层 → 每月自动发布）的审计计划与执行记录见 [AUDIT_PLAN.md](AUDIT_PLAN.md)，
+可随时用 `python3 scripts/audit_pipeline.py` 复核（23 项检查点，只读，输出 PASS/WARN/FAIL + 证据；`FAIL=0` 才允许发版）。
+
 ## 🔍 校验流程
 校验分两档（2026-11 用户明确要求）：
 
@@ -81,7 +86,7 @@
 - 2个直链大佬仓库（酷安三舞313/关耳女频；原XIU2精品与shidahuilang已于2026-11失效：71e564f.json 404、shidahuilang/shuyuan 被GitHub以tos封禁）
 
 ### 自动更新
-- **采集层**：GitHub Actions 每周日自动采集+清洗（跨洋已优化：30s超时+20并发+重试），结果 push 到 `weekly/cleaned_*.json`，全程无人值守
+- **采集层**：GitHub Actions 每天自动采集+清洗（跨洋已优化：30s超时+20并发+重试），结果 push 到 `weekly/cleaned_*.json`，全程无人值守
 - **中间层**：本地（国内网络）从 cleaned 继续：**快速存活校验（quick，量大只判站点活着）** + 垃圾过滤（成人豁免）+ 整理 → 合并进 `books_pending.json`（不碰正式版）
 - **正式版**：确认后把中间层提升为 books.json + clean_rules，**发布前自动跑完整真实性校验（full，一步不少）**，并自动发新版本 Release（vX.Y.Z patch+1）
 - **断点续传**：采集/清洗/校验全链路支持中断恢复——校验每批落盘 checkpoint（`raw/autocollect/ckpt_*.json`），对话中断或沙箱重置后重跑同一命令自动跳过已验源，只补未验部分（详见 DEVELOPMENT.md 断点矩阵）
@@ -90,7 +95,7 @@
 
 ### 三层架构（采集 → 中间层 → 正式版）
 ```
-采集层（GitHub Actions 每周自动，跨洋已优化）     中间层（本地国内网络）        正式版
+采集层（GitHub Actions 每日自动，跨洋已优化）     中间层（本地国内网络）        正式版
 list前10页+合集前30个+大佬仓库  → 清洗去重 → weekly/cleaned_*.json
                                                         ↓
 快速存活校验(quick) + 垃圾过滤 + 整理 → 合并进 books_pending.json（待你确认，不动正式版）
@@ -100,7 +105,7 @@ books_pending.json 完整真实性校验(full) → books.json + clean_rules + Re
 
 ### 使用方法
 ```bash
-# ① GitHub Actions 每周自动：采集+清洗 → weekly/cleaned_*.json（已配置 schedule 每周日 UTC 02:00）
+# ① GitHub Actions 每日自动：采集+清洗 → artifact（cron 每天 UTC 17:07 = 北京 01:07）
 
 # ② 本地：从 Actions 采集结果继续 → 合并进中间层（每次采集都并入，等你确认）
 python3 autocollect.py --from-cleaned weekly/cleaned_XXX.json --stage
@@ -108,7 +113,7 @@ python3 autocollect.py --from-cleaned weekly/cleaned_XXX.json --stage
 # ③ 本地：确认后把中间层提升为正式版并发布（发布由你确认）
 python3 autocollect.py --publish-pending --publish
 
-# 一键（cron 每周自动）：采集 → 清洗 → 并入中间层（quick 存活校验，不发布）
+# 一键（cron 每日自动）：采集 → 清洗 → 并入中间层（quick 存活校验，不发布）
 bash scripts/run_weekly_collect.sh 1
 
 # 或手动分步执行（每步独立落盘、可断点恢复）：
@@ -137,7 +142,7 @@ python3 autocollect.py --publish --months 1
 - **三层隔离**：采集→中间层（待确认）→正式版，正式版不被自动更新直接覆盖
 
 ### 模块化结构（v3.2.6）
-核心逻辑在 `autocollect_core/` 包，主入口 `autocollect.py`；`scripts/` 提供分步执行脚本（每周任务主路径）：
+核心逻辑在 `autocollect_core/` 包，主入口 `autocollect.py`；`scripts/` 提供分步执行脚本（每日采集主路径）：
 
 ```
 autocollect.py              # 主入口（五阶段编排 + 三层架构：--collect-only/--stage/--publish-pending）
