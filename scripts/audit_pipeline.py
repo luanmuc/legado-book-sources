@@ -473,6 +473,19 @@ def check_url_decor():
     return ("PASS", f"{len(cases)} 种污染形态清理正确") if not bad else ("FAIL", ";".join(bad))
 
 
+@check("I5", "校验", "发布路径复用统一判死口径", "quick_validate 不得自行用超时判死")
+def check_publish_criterion():
+    src = read("autocollect_core/validators.py")
+    body_start = src.find("def quick_validate")
+    body_end = src.find("def ", body_start + 10)
+    body = src[body_start:body_end if body_end > 0 else len(src)]
+    uses_liveness = "from .liveness import probe_alive" in body and "probe_alive(source" in body
+    old_style = "retry=0" in body and '"首页连接失败"' in body
+    if uses_liveness and not old_style:
+        return "PASS", "quick_validate 走 probe_alive，无超时即判死"
+    return "FAIL", f"复用liveness={uses_liveness} 旧超时判死残留={old_style}"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")

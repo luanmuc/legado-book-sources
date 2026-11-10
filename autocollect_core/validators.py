@@ -73,27 +73,18 @@ def quick_validate(source):
         "reason": ""
     }
 
-    # 第一步：测试首页可达性（探测场景不重试，死站直接判死提速）
-    try:
-        resp = fetch_url(url, timeout=4, retry=0)
-        if resp is None:
-            result["reason"] = "首页连接失败"
-            return result
+    # 第一步：首页可达性 —— 必须复用全管道唯一判死口径（liveness.probe_alive）
+    # 2026-11-10 修：原来这里用 fetch_url(timeout=4, retry=0)，任何超时/代理失败都当死站。
+    # 实测：648 源经此判死 407 条，抽样 20 条复测 0 条真死（5 条站是活的、15 条无法判定），
+    # 等于把「代理抽风」当「站没了」，一次发布误杀 400+ 源。判死只认 404/410 与域名不存在。
+    from .liveness import probe_alive
 
-        if resp.status_code == 200:
-            result["alive"] = True
-        elif resp.status_code in [403, 405, 503]:
-            result["waf"] = True  # WAF盾站，不淘汰
-            result["alive"] = True
-        elif resp.status_code == 404:
-            result["reason"] = "首页404"
-            return result
-        else:
-            result["alive"] = True
-
-    except Exception as e:
-        result["reason"] = "首页请求异常"
+    verdict = probe_alive(source, timeout=6)
+    if verdict == "dead":
+        result["reason"] = "确定性死站（404/410 或域名解析不出）"
         return result
+    result["alive"] = True
+    result["reason"] = "" if verdict == "ok" else "链路不稳/无法判定，保留"
 
     # 第二步：测试搜索接口连通性（简化版）
     if search_url and result["alive"]:
