@@ -2,8 +2,11 @@ name: 每日自动采集书源
 
 on:
   schedule:
-    # 每天 UTC 17:07 = 北京时间次日 01:07（避开整点排队，也不影响白天使用）
+    # 主跑：UTC 17:07 = 北京次日 01:07（避开整点排队，也不影响白天使用）
     - cron: '7 17 * * *'
+    # 补偿跑：UTC 21:07 = 北京次日 05:07。GitHub 免费 runner 排队满载时会直接丢弃
+    # 定时任务且不留记录（2026-11-09 实测丢过一次），双 cron + 幂等守卫用来补这一天
+    - cron: '7 21 * * *'
   workflow_dispatch:       # 手动触发
     inputs:
       months:
@@ -48,7 +51,21 @@ jobs:
       - name: 安装依赖
         run: pip install requests beautifulsoup4 lxml
 
+      - name: 今天是否已采过（双 cron 幂等守卫）
+        id: guard
+        run: |
+          TODAY=$(TZ=Asia/Shanghai date +%Y-%m-%d)
+          LAST=$(tail -1 weekly/daily_history.jsonl 2>/dev/null | python3 -c "import sys,json;print(json.loads(sys.stdin.read()).get('date',''))" 2>/dev/null || true)
+          echo "今天(北京)=$TODAY 上次采集=$LAST"
+          if [ "$LAST" = "$TODAY" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "今天已采过，本次跳过（补偿 cron 命中即说明主跑被丢，会继续执行）"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: 连通性诊断（跨洋到 yckceo 实测延迟）
+        if: steps.guard.outputs.skip != 'true'
         run: |
           echo "=== 1. yckceo主站(列表页, 跨洋慢) ==="
           curl -s -o /dev/null -w "  耗时 %{time_total}s | HTTP %{http_code}\n" -A "Mozilla/5.0" --max-time 60 "https://www.yckceo.com/yuedu/shuyuan/index.html?page=1" || echo "  主站超时/拒连"
@@ -61,6 +78,7 @@ jobs:
 
       - name: 运行采集（定时任务默认 full）
         id: collect
+        if: steps.guard.outputs.skip != 'true'
         continue-on-error: true
         env:
           INPUT_MODE: ${{ inputs.mode }}
@@ -112,6 +130,18 @@ jobs:
           EOF
           echo "=== 采集脚本退出码: ${{ steps.collect.outcome }} ==="
 
+      - name: 当天增量并入中间层（只新增，不复活已淘汰源）
+        if: steps.guard.outputs.skip != 'true' && steps.collect.outcome == 'success'
+        run: |
+          CLEANED=$(ls -t weekly/cleaned_*.json 2>/dev/null | head -1)
+          if [ -z "$CLEANED" ]; then
+            echo "没有 cleaned 产物，跳过增量入库"
+            exit 0
+          fi
+          echo "增量入库基准: $CLEANED"
+          # 只取正式版与中间层都没有的 URL；存活校验 quick（403/405 WAF 保留，只淘汰 404/410 与域名不存在的死站）
+          python3 scripts/stage_daily.py --cleaned "$CLEANED"
+
       - name: 上传清洗产物为 artifact（仓库不存大文件，避免历史膨胀）
         if: always()
         uses: actions/upload-artifact@v4
@@ -144,7 +174,8 @@ jobs:
               except Exception:
                   pass
           summary = {
-              "date": datetime.datetime.now().strftime("%Y-%m-%d"),
+              # 北京时间（runner 是 UTC，直接用 now() 会差一天）
+              "date": datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d"),
               "file": os.path.basename(f),
               "cleaned": len(data),
               "groups": dict(groups),
@@ -165,12 +196,12 @@ jobs:
           print(json.dumps(summary, ensure_ascii=False, indent=2))
           EOF
 
-          git add weekly/daily_summary.json weekly/daily_history.jsonl 2>/dev/null
+          git add weekly/daily_summary.json weekly/daily_history.jsonl books_pending.json 2>/dev/null
           if git diff --staged --quiet; then
             echo "摘要无变化，跳过提交"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: 每日采集摘要 $(date +%Y-%m-%d) [skip ci]"
+          git commit -m "chore: 每日采集摘要+中间层增量 $(TZ=Asia/Shanghai date +%Y-%m-%d) [skip ci]"
           git push

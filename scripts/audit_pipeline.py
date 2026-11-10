@@ -314,7 +314,7 @@ def h3():
 @check("D4", "校验", "WAF 403 类不判死",
        "probe_alive 只能把 404/410 判死；403/405(WAF)、429、5xx 必须保留")
 def d4():
-    m = read("scripts/monthly_release.py")
+    m = read("autocollect_core/liveness.py")
     block = re.search(r"def probe_alive.*?(?=\ndef |\Z)", m, re.S)
     if not block:
         return "FAIL", "找不到 probe_alive"
@@ -377,6 +377,44 @@ def a6():
             except Exception:
                 pass
     return ("FAIL" if hits else "PASS", f"残留: {hits}" if hits else "无残留")
+
+
+
+# ---------- 日采集闭环（2026-11-10 补：采集产物必须真进中间层） ----------
+@check("A7", "调度", "漏跑补偿与幂等守卫",
+       "双 cron 互补 + 按北京日期判今天是否已采，避免 GitHub 丢弃定时任务后永久少一天")
+def a7():
+    w = read(".github/workflows/auto-update.yml")
+    crons = re.findall(r"-\s*cron:\s*'([^']+)'", w)
+    guard = "今天是否已采过" in w and "daily_history" in w
+    return ("PASS" if len(crons) >= 2 and guard else "FAIL",
+            f"cron {len(crons)} 条 + 幂等守卫={guard}")
+
+
+@check("C3", "中间层", "日采集产物真的进中间层",
+       "workflow 必须有 stage 步骤，把当天新增源并入 books_pending.json（否则 artifact 过期后白采）")
+def c3():
+    w = read(".github/workflows/auto-update.yml")
+    has = "stage_daily.py" in w and "books_pending.json" in w
+    return ("PASS" if has else "FAIL", "有增量入库步骤并提交 pending" if has else "采集产物只进 artifact，中间层无人消费")
+
+
+@check("D6", "校验", "探活口径唯一",
+       "每日入库与月度合并必须共用 liveness.probe_alive，避免两套判死规则漂移")
+def d6():
+    a = "from autocollect_core.liveness import probe_many" in read("scripts/stage_daily.py")
+    b = "from autocollect_core.liveness import probe_alive" in read("scripts/monthly_release.py")
+    dup = "def probe_alive" in read("scripts/monthly_release.py")
+    return ("PASS" if a and b and not dup else "FAIL",
+            f"stage 复用={a} monthly 复用={b} 本地重复定义={dup}")
+
+
+@check("H4", "文档", "摘要日期用北京时间",
+       "runner 是 UTC，摘要日期必须显式加 8 小时，否则与北京日期差一天")
+def h4():
+    w = read(".github/workflows/auto-update.yml")
+    ok = "timedelta(hours=8)" in w
+    return ("PASS" if ok else "FAIL", "已显式转北京时区" if ok else "仍用 runner 本地时间(UTC)")
 
 
 

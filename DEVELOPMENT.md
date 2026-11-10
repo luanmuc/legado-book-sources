@@ -81,7 +81,9 @@
 | 脚本 | 用途 |
 |------|------|
 | `run_daily_collect.sh` | 一键分步全流程（MONTHS 参数，默认 1；A 采集→B 清洗→C 分批校验→D 垃圾过滤→E 整理发布），本地 crontab 每日触发 |
+| `stage_daily.py` | 每日增量入库：只取当天 cleaned 里正式版与中间层都没有的 URL → 确定性探活 → 垃圾过滤 → 追加进 pending |
 | `monthly_release.py` | 每月自动合并发布（Actions auto 通道）：重新采集 → 明确死站剔除 → 垃圾过滤 → 合并 → `auto_publish(mode="auto")` |
+| `liveness.py`（core） | 全管道唯一判死口径：404/410 与域名不存在才判死，403/405/429/5xx/超时保留 |
 | `audit_pipeline.py` | 巡检管道审计（只读）：23 个检查点覆盖调度/采集/中间层/校验/排序/发布/恢复/文档，输出 PASS/WARN/FAIL + 证据 |
 | `reorder.py` | 整库顺序规整（`--dry-run` 可先看）：大厂固定序 → 分组序 → 族名自然序 → 成人最末 |
 | `collect_staged.py` | 分段采集：`list`（前10页）/ `heji start end`（--limit 默认30）/ `gurus` |
@@ -266,9 +268,10 @@ python3 scripts/check_usable.py --limit 50     # 抽样
 
 | 通道 | 调度 | 执行内容 | 状态 |
 |------|------|----------|------|
-| GitHub Actions | cron `0 2 * * 0`（周日 UTC 02:00） | 采集+清洗 → push weekly/cleaned_*.json | ✅ 已实测跑通（test 44s / full 9min） |
-| 本地对话 | 用户开启对话 | `--from-cleaned ... --stage` → 中间层；确认后 `--publish-pending --publish` | 主路径 |
-| 本地 crontab | `0 2 * * 0`（install_cron.sh 重建） | 全流程直接发布（备用，VM 重置会丢） | 已建/可重建 |
+| GitHub Actions 日采集 | cron `7 17 * * *` + `7 21 * * *`（UTC）= 北京 01:07 / 05:07 | 采集+清洗 → artifact + **当天新增增量并入中间层**（只新增不复活） | ✅ 已实测跑通（每次 0.6-0.7 分） |
+| GitHub Actions 月合并 | cron `0 20 1 * *`（UTC）= 北京 2 号 04:00 | 重新采集 → 确定性探活 → 合并 → 自动发【自动】版 | ✅ dry-run 跑通 |
+| 本地对话 | 用户开启对话 | `--publish-pending --publish` 提升正式版；`stage_daily.py` 手动补增量 | 主路径 |
+| 本地 crontab | `7 17 * * *`（install_cron.sh 重建） | 全流程直接发布（备用，VM 重置会丢） | 已建/可重建 |
 
 ---
 

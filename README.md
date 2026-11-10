@@ -87,7 +87,7 @@
 
 ### 自动更新
 - **采集层**：GitHub Actions 每天自动采集+清洗（跨洋已优化：30s超时+20并发+重试），结果 push 到 `weekly/cleaned_*.json`，全程无人值守
-- **中间层**：本地（国内网络）从 cleaned 继续：**快速存活校验（quick，量大只判站点活着）** + 垃圾过滤（成人豁免）+ 整理 → 合并进 `books_pending.json`（不碰正式版）
+- **中间层**：云端每日把当天 cleaned 里**「正式版和中间层都没有的新源」**并入 `books_pending.json`（只新增、不重排，不碰正式版）；探活只判确定性死站（404/410 与域名不存在），403/405 WAF 站、429、5xx、超时一律保留
 - **正式版**：确认后把中间层提升为 books.json + clean_rules，**发布前自动跑完整真实性校验（full，一步不少）**，并自动发新版本 Release（vX.Y.Z patch+1）
 - **断点续传**：采集/清洗/校验全链路支持中断恢复——校验每批落盘 checkpoint（`raw/autocollect/ckpt_*.json`），对话中断或沙箱重置后重跑同一命令自动跳过已验源，只补未验部分（详见 DEVELOPMENT.md 断点矩阵）
 
@@ -95,20 +95,22 @@
 
 ### 三层架构（采集 → 中间层 → 正式版）
 ```
-采集层（GitHub Actions 每日自动，跨洋已优化）     中间层（本地国内网络）        正式版
-list前10页+合集前30个+大佬仓库  → 清洗去重 → weekly/cleaned_*.json
+采集层（GitHub Actions 每日自动，双 cron 18:07/22:07 北京时间）   中间层        正式版
+列表全量+合集+大佬仓库 → 清洗去重 → weekly/cleaned_*.json（artifact 保留 35 天）
+                                                        ↓ 当天自动
+只取「正式版与中间层都没有的 URL」→ 确定性探活(404/410/DNS 死才淘汰) → 垃圾过滤
                                                         ↓
-快速存活校验(quick) + 垃圾过滤 + 整理 → 合并进 books_pending.json（待你确认，不动正式版）
-                                                        ↓ 你确认后
-books_pending.json 完整真实性校验(full) → books.json + clean_rules + Release 新版本
+                                    追加进 books_pending.json（只新增不重排，待确认）
+                                                        ↓ 发布前（每月自动或手动）
+books_pending.json 完整真实性校验(full，一步不少) → books.json + clean_rules + Release 新版本
 ```
 
 ### 使用方法
 ```bash
 # ① GitHub Actions 每日自动：采集+清洗 → artifact（cron 每天 UTC 17:07 = 北京 01:07）
 
-# ② 本地：从 Actions 采集结果继续 → 合并进中间层（每次采集都并入，等你确认）
-python3 autocollect.py --from-cleaned weekly/cleaned_XXX.json --stage
+# ② 中间层由云端每日自动追加（scripts/stage_daily.py）。本地也可手动补一次：
+python3 scripts/stage_daily.py --cleaned weekly/cleaned_XXX.json
 
 # ③ 本地：确认后把中间层提升为正式版并发布（发布由你确认）
 python3 autocollect.py --publish-pending --publish

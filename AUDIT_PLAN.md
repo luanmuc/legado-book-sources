@@ -2,7 +2,7 @@
 
 审计对象：**每日采集 → 中间层 → 每月自动合并发布** 全自动巡检管道
 审计方式：脚本化只读核查（`scripts/audit_pipeline.py`）+ 逐条回读源码定性
-最近执行：2026-11-08　检查点 28 项　结论：**28 / 28 PASS**（含 5 项缺陷回归断言）
+最近执行：2026-11-08　检查点 32 项　结论：**32 / 32 PASS**（含 9 项闭环与缺陷回归断言）
 
 ---
 
@@ -21,7 +21,7 @@
 
 ---
 
-## 2. 检查点清单（28 项）
+## 2. 检查点清单（32 项）
 
 ### A. 调度与触发（4 项）
 
@@ -31,6 +31,7 @@
 | A2 | schedule 触发时 inputs 为空可兜底 | shell 必须写 `${VAR:-默认值}`，不能假定 inputs 有值 | PASS | 两处均 `MONTHS="${INPUT_MONTHS:-1}"` |
 | A3 | 写权限声明 | 建 release + 推代码需 `contents: write` | PASS | 两个 workflow 均为 write |
 | A4 | 并发互斥 | 两个 workflow 都会 push main，需 concurrency 或 rebase 重试 | PASS | 两处均加 concurrency（daily-collect / monthly-release）+ monthly 另有 rebase 重试 |
+| A7 | 漏跑补偿与幂等守卫 | 双 cron 互补，按北京日期判今天是否已采 | PASS | cron 2 条（17:07 / 21:07）+ 幂等 guard |
 
 ### B. 采集层（2 项）
 
@@ -45,6 +46,7 @@
 |---|---|---|---|---|
 | C1 | pending 消费后状态可辨 | 已并入正式版后应归档清空，否则下次 stage 重复处理 | PASS | 1323 条已归档 `raw/autocollect/books_pending_archived_20261107.json`，pending 置空 |
 | C2 | 历史淘汰源不被复活 | 月度合并不得读历史 cleaned/artifact 汇总 | PASS | 月度脚本只做新采集，无 artifact 下载路径 |
+| C3 | 日采集产物真的进中间层 | workflow 必须有 stage 步骤并提交 pending | PASS | `stage_daily.py` 已接入，pending 648 源 |
 
 ### D. 校验层（3 项）
 
@@ -53,6 +55,7 @@
 | D1 | 三态判定完整 | 搜索/发现各返回 ok\|bad\|blocked\|None，任一 ok 即可用 | PASS | `check_search_parsed` / `check_explore_parsed` / `check_source_usable` 均在，含 blocked 分支 |
 | D2 | 成人豁免不看 group | `is_adult_source` 只用 name/url/comment，group 是判定结果不能当输入 | PASS | AST 剥离文档串后确认可执行代码只取三字段（原实现 bug 已修，55中文网/592书库 不再锁死） |
 | D3 | quick/full 档位可区分 | `validate_sources` 支持 mode，断点按 mode 分名 | PASS | mode 参数与 ckpt 分名齐备 |
+| D6 | 探活口径唯一 | 日入库与月度合并共用 `liveness.probe_alive` | PASS | 两处均 import，本地无重复定义（运行时 import 验证通过） |
 
 ### E. 排序组织（2 项）
 
@@ -95,6 +98,7 @@
 | H1 | README 源数与实际一致 | 文档总数 = books.json 条数 | PASS | README 1538 = 实际 1538 |
 | H2 | 模块表覆盖新脚本 | DEVELOPMENT 模块表登记 monthly_release/audit_pipeline/reorder | PASS | 已登记（本轮补） |
 | H3 | 过期口径清理 | 现行描述不得残留「每周采集」（历史更新日志除外） | PASS | 现行描述 0 处（历史条目保留，属事实记录） |
+| H4 | 摘要日期用北京时间 | runner 是 UTC，摘要日期必须显式 +8 | PASS | 已用 `timedelta(hours=8)` |
 
 ---
 
@@ -133,6 +137,35 @@
 
 
 ---
+
+## 3.3 第三轮：日采集闭环（2026-11-10）
+
+**发现的问题**：所有 run 都是 success，但云端采集的产物实际上没被任何东西消费。
+
+| 现象 | 证据 |
+|---|---|
+| 日采集只写 artifact，不碰中间层 | workflow 无 stage 步骤；本地 `books_pending.json` 是 `[]` |
+| artifact 35 天后删除 | cleaned-8 过期 2026-11-20，cleaned-11 过期 2026-12-15 |
+| 每天真正的新源有几百个，全部白丢 | 实测 cleaned 2030 中，正式版+中间层都没有的 URL 有 **801** 个 |
+| 漏跑一天不留痕 | 11-09 UTC 那次被 GitHub 丢弃，间隔 27.5 小时，无任何记录 |
+| 摘要日期差一天 | runner 用 UTC 的 `date`，北京早上的采集被记成前一天 |
+
+**修复**：
+
+1. 新增 `scripts/stage_daily.py`：只读当天 cleaned → 只取 URL 不在正式版也不在中间层的源 → 探活 → 垃圾过滤 → 追加进 pending（只追加不重排）
+2. 新增 `autocollect_core/liveness.py`：全管道**唯一判死口径**（404/410 与域名不存在才判死；403/405/429/5xx/超时全部保留）
+3. workflow 加 stage 步骤并提交 pending；摘要日期改北京时间；加第二条 cron（UTC 21:07）做漏跑补偿 + 幂等守卫
+
+**改口径前后的实测对照（同一份 cleaned_20261110_004022.json）**：
+
+| 判死口径 | 保留 | 判死 | 结论 |
+|---|---|---|---|
+| `validators.quick`（原方案） | 259 | **542** | 跨洋网络把 403/超时当死站，误杀严重 |
+| `liveness.probe_alive`（现行） | 703（其中 454 为 WAF/链路不稳） | **97** | 只砍确定性死站 |
+
+同一批源，两种口径判死数差 **445 个**——这就是"跨洋校验必须换成确定性判据"的量化证据。
+
+**首次真实入库结果**：中间层 0 → **648** 源（新增候选 801、判死 97、垃圾过滤 56）。这 648 条会在下月合并时走完整校验后才可能进正式版。
 
 ## 4. 审计工具自身的假阳性（已修，记录备查）
 
