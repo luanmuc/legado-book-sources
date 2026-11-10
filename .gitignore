@@ -1,4 +1,5 @@
 raw/
+*.lock          # pending 排他锁文件（stage_daily 并发保护）
 *.log
 __pycache__/
 *.pyc

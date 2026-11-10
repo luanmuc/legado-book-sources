@@ -418,6 +418,61 @@ def h4():
 
 
 
+# ==================== 压力测试回归（2026-11-10 第四轮）====================
+DIRTY = [
+    {}, {"bookSourceUrl": None}, {"bookSourceUrl": 12345}, {"bookSourceUrl": ""},
+    {"bookSourceUrl": "ftp://x"}, {"bookSourceUrl": {"a": 1}, "bookSourceName": ["x"]},
+    {"bookSourceUrl": None, "bookSourceName": 999, "bookSourceComment": 3.14},
+]
+
+
+@check("I1", "健壮性", "脏数据不打崩链路", "上游任意字段类型非法时核心函数不抛异常")
+def check_dirty_robust():
+    from autocollect_core.cleaner import clean_and_dedup, filter_junk_sources
+    from autocollect_core.liveness import probe_many
+    errs = []
+    for name, fn in (
+        ("clean_and_dedup", lambda: clean_and_dedup([dict(d) for d in DIRTY])),
+        ("filter_junk_sources", lambda: filter_junk_sources([{"source": dict(d)} for d in DIRTY])),
+        ("probe_many", lambda: probe_many([dict(d) for d in DIRTY], timeout=2, workers=3)),
+    ):
+        try:
+            fn()
+        except Exception as e:
+            errs.append(f"{name}:{type(e).__name__}")
+    return ("PASS", f"{len(DIRTY)} 条脏数据全部无异常") if not errs else ("FAIL", "崩溃点 " + ",".join(errs))
+
+
+@check("I2", "并发", "中间层并发写有排他锁", "两个进程同时写入不丢数据")
+def check_stage_lock():
+    src = read("scripts/stage_daily.py")
+    has_flock = "fcntl.flock" in src and "LOCK_EX" in src
+    has_recheck = "fresh_urls" in src and "really_new" in src
+    if has_flock and has_recheck:
+        return "PASS", "flock 排他 + 锁内二次去重"
+    return "FAIL", f"flock={has_flock} 锁内二次去重={has_recheck}"
+
+
+@check("I3", "健壮性", "损坏 JSON 不裸崩", "截断/非数组输入给可读错误而非 traceback")
+def check_bad_json():
+    src = read("scripts/stage_daily.py")
+    has_try = "JSONDecodeError" in src
+    has_list = "isinstance(cleaned, list)" in src
+    return ("PASS", "捕获 JSONDecodeError + 数组结构校验") if (has_try and has_list) else            ("FAIL", f"catch={has_try} list校验={has_list}")
+
+
+@check("I4", "清洗", "URL 装饰符污染可清", "✔️/♤/♦ 等标记不残留在 URL 里")
+def check_url_decor():
+    from autocollect_core.utils import clean_url
+    cases = {
+        "https://a.com/x✔️2025-11-2去重校验": "https://a.com/x",
+        "https://www.heiyan.com♤pb": "https://www.heiyan.com",
+        "http://android.jjwxc.net♦": "http://android.jjwxc.net",
+    }
+    bad = [f"{k}→{clean_url(k)}" for k, v in cases.items() if clean_url(k) != v]
+    return ("PASS", f"{len(cases)} 种污染形态清理正确") if not bad else ("FAIL", ";".join(bad))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")

@@ -32,8 +32,8 @@ UA = "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36"
 def probe_alive(source, timeout=6):
     """返回 "ok" / "dead" / "unknown"。unknown 一律按保留处理。"""
     url = (source.get("bookSourceUrl") if isinstance(source, dict) else "") or ""
-    if not url.startswith("http"):
-        return "unknown"
+    if not isinstance(url, str) or not url.startswith("http"):
+        return "unknown"  # 脏字段（数字/对象/None）不参与判定，直接保留
     host = urllib.parse.urlparse(url).hostname or ""
 
     try:

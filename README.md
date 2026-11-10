@@ -52,7 +52,7 @@
 ## 🧭 管道审计
 
 巡检管道（每日采集 → 中间层 → 每月自动发布）的审计计划与执行记录见 [AUDIT_PLAN.md](AUDIT_PLAN.md)，
-可随时用 `python3 scripts/audit_pipeline.py` 复核（23 项检查点，只读，输出 PASS/WARN/FAIL + 证据；`FAIL=0` 才允许发版）。
+可随时用 `python3 scripts/audit_pipeline.py` 复核（36 项检查点，只读，输出 PASS/WARN/FAIL + 证据；`FAIL=0` 才允许发版）。
 
 ## 🔍 校验流程
 校验分两档（2026-11 用户明确要求）：

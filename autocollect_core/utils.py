@@ -45,15 +45,23 @@ def ensure_dir(path):
 
 
 def clean_url(url):
-    """清理URL：去掉锚点、非URL字符（中文注释等）、首尾空格"""
-    if not url:
+    """清理URL：去掉锚点、非URL字符（中文注释等）、首尾空格
+
+    类型守卫：上游书源 JSON 是用户手工上传的，bookSourceUrl 可能是数字/对象/None。
+    非字符串一律视为「无有效 URL」返回空串，避免一条脏数据把整条清洗链路打崩。
+    """
+    if not url or not isinstance(url, str):
         return ""
     # 去掉锚点后面的内容
     url = re.sub(r'[#＃].*$', '', url)
     # 去掉首尾空格
     url = url.strip()
-    # 剔除URL中的非URL字符：中文注释/全角符号/emoji等（如上游数据 url 尾部被手打"已整理"、🔞）
-    m = re.match(r'^(https?://[^\s\u4e00-\u9fff\uff00-\uffef\U0001F300-\U0010FFFF]+)', url)
+    # 剔除URL中的非URL字符：中文注释/全角符号/emoji/装饰符等
+    # （上游数据 url 尾部常被手打 "已整理"、🔞、✔️2025-11-2、♤pb、♦ 之类的标记）
+    # 除原有中文/全角/emoji 外，补上 U+2600-27BF（杂项符号+dingbats，含 ✔ ♤ ♦ ★）、
+    # U+2B00-2BFF、U+FE00-FE0F（变体选择符，✔️ 中的 ️）——否则 "https://a.com/x✔️2025-11-2"
+    # 只会被截成 "https://a.com/x✔️2025-11-2"，同一站点出现两个 URL 变体，去重失效
+    m = re.match(r'^(https?://[^\s\u4e00-\u9fff\uff00-\uffef\u2600-\u27bf\u2b00-\u2bff\ufe00-\ufe0f\U0001F300-\U0010FFFF]+)', url)
     if m:
         url = m.group(1)
     return url

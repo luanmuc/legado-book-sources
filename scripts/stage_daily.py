@@ -13,10 +13,12 @@
     python3 scripts/stage_daily.py --cleaned <file> --dry-run     # 只看会加多少，不写盘
 """
 import argparse
+import fcntl
 import json
 import logging
 import os
 import sys
+from contextlib import contextmanager
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -29,11 +31,38 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 log = logging.getLogger(__name__)
 
 
+@contextmanager
+def pending_lock(pending_path):
+    """中间层的排他写锁
+
+    为什么需要：stage_daily 是「读 pending → 算新增 → 写 pending」的读改写，两个进程
+    同时跑会互相覆盖（实测两组 20 条并发写 40 条，最后只剩 20 条）。
+    探活用时很长，所以锁只包住最后的「重读 + 二次去重 + 写盘」临界区。
+    """
+    lock_path = pending_path + ".lock"
+    fh = open(lock_path, "a+")
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(fh, fcntl.LOCK_UN)
+        fh.close()
+
+
 def load_json(path, default=None):
+    """读 JSON；文件缺失/损坏都返回 default（由调用方决定是否致命）
+
+    上游书源 JSON 是用户手工上传的，截断/半截文件很常见，不能让一个 json.load
+    抛裸 traceback 就算失败——要么上层能降级，要么给出可读错误。
+    """
     if not os.path.exists(path):
         return default
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        log.error(f"JSON 解析失败（文件可能被截断）: {path} → {e}")
+        return default
 
 
 def main():
@@ -45,11 +74,14 @@ def main():
     args = ap.parse_args()
 
     cleaned = load_json(args.cleaned)
-    if not cleaned:
-        log.error(f"cleaned 为空或不存在: {args.cleaned}")
+    if not isinstance(cleaned, list) or not cleaned:
+        log.error(f"cleaned 无效（不存在/损坏/不是数组）: {args.cleaned}")
         sys.exit(1)
     formal = load_json(args.formal, []) or []
     pending = load_json(args.pending, []) or []
+    if not isinstance(formal, list) or not isinstance(pending, list):
+        log.error("正式版或中间层不是数组结构，拒绝写入（避免把数据格式写坏）")
+        sys.exit(1)
 
     formal_urls = {clean_url(s.get("bookSourceUrl") or "") for s in formal}
     pending_urls = {clean_url(s.get("bookSourceUrl") or "") for s in pending}
@@ -110,9 +142,22 @@ def main():
     if args.dry_run:
         log.info(f"[dry-run] 会新增 {len(final_added)} 个，中间层 {len(pending)} → {result['pending_after']}")
     else:
-        with open(args.pending, "w", encoding="utf-8") as f:
-            json.dump(pending + final_added, f, ensure_ascii=False, indent=2)
-        log.info(f"中间层已更新: {len(pending)} → {result['pending_after']}（本次 +{len(final_added)}）")
+        # 临界区：加锁后重读一次 pending，按最新内容二次去重再写，
+        # 避免另一个进程在我们探活期间已经写入了同一批源（读-改-写覆盖）
+        with pending_lock(args.pending):
+            fresh = load_json(args.pending, []) or []
+            fresh_urls = {clean_url(x.get("bookSourceUrl") or "") for x in fresh}
+            really_new = []
+            for x in final_added:
+                u = clean_url(x.get("bookSourceUrl") or "")
+                if u and u not in fresh_urls:
+                    fresh_urls.add(u)
+                    really_new.append(x)
+            with open(args.pending, "w", encoding="utf-8") as f:
+                json.dump(list(fresh) + really_new, f, ensure_ascii=False, indent=2)
+        result["pending_after"] = len(fresh) + len(really_new)
+        result["added"] = len(really_new)
+        log.info(f"中间层已更新: {len(fresh)} → {result['pending_after']}（本次 +{len(really_new)}）")
 
     print(json.dumps(result, ensure_ascii=False))
 

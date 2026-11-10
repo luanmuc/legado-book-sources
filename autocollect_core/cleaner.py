@@ -12,8 +12,8 @@ from .validators import check_rule_integrity
 
 def is_non_novel(source):
     """判断是否为非小说源"""
-    name = source.get("bookSourceName", "").lower()
-    url = source.get("bookSourceUrl", "").lower()
+    name = str(source.get("bookSourceName") or "").lower()
+    url = str(source.get("bookSourceUrl") or "").lower()
     for kw in NON_NOVEL_KEYWORDS:
         if kw.lower() in name or kw.lower() in url:
             return True
@@ -23,7 +23,7 @@ def is_non_novel(source):
 def is_big_site(source):
     """判断是否为大厂源（精确匹配，避免误判）"""
     url = source.get("bookSourceUrl", "")
-    domain = get_domain(url)
+    domain = get_domain(url) if isinstance(url, str) else ""
     for big in BIG_SITES:
         big_domain = get_domain(big["url"])
         # 精确匹配 或者 是大厂域名的子域名
@@ -43,8 +43,8 @@ def clean_and_dedup(sources):
         if not isinstance(s, dict):
             continue
         url = s.get("bookSourceUrl", "")
-        if not url:
-            continue
+        if not url or not isinstance(url, str):
+            continue  # 脏字段（数字/对象/None）直接跳过，不打断其余源
         # 清理URL
         s["bookSourceUrl"] = clean_url(url)
         if not s.get("bookSourceName"):
@@ -82,9 +82,15 @@ def clean_and_dedup(sources):
 
 
 def _source_blob(s):
-    name = s.get("bookSourceName") or ""
-    url = s.get("bookSourceUrl") or ""
-    group = s.get("bookSourceGroup") or ""
+    """把参与关键词匹配的字段拼成一段小写文本
+
+    只用 name/url/comment/group 四个字段（group 仅供分类展示，不用于成人判定）。
+    字段可能是数字/对象（上游用户上传数据不可控），统一 str() 兜底，
+    否则一条脏数据会让整批过滤直接抛 TypeError。
+    """
+    name = str(s.get("bookSourceName") or "")
+    url = str(s.get("bookSourceUrl") or "")
+    group = str(s.get("bookSourceGroup") or "")
     return (name + " " + url + " " + group).lower()
 
 
@@ -107,9 +113,11 @@ def is_adult_source(s):
     "成人书源"分组，分组里字面含"成人" → 任何源一旦归入成人组就永久自证为成人，
     误判无法纠正（实测 55中文网 / 592书库 被锁死）。group 是判定结果，不能当输入证据。
     """
-    name = (s.get("bookSourceName") or "").lower()
-    url = (s.get("bookSourceUrl") or "").lower()
-    comment = (s.get("bookSourceComment") or "")[:200].lower()
+    # 仍只取 name/url/comment 三字段（group 是判定结果，不能当输入证据）；
+    # str() 兜底：脏字段可能是数字/对象，否则一条脏数据会让整批过滤崩掉
+    name = str(s.get("bookSourceName") or "").lower()
+    url = str(s.get("bookSourceUrl") or "").lower()
+    comment = str(s.get("bookSourceComment") or "")[:200].lower()
     blob = name + " " + url + " " + comment
     return any(k.lower() in blob for k in JUNK_ADULT_KW)
 
