@@ -486,6 +486,25 @@ def check_publish_criterion():
     return "FAIL", f"复用liveness={uses_liveness} 旧超时判死残留={old_style}"
 
 
+@check("E3", "排序", "同族尾号从 1 连续", "非成人/非大厂组，同族源尾号必须是 1..N 无跳号")
+def check_family_sequence():
+    import collections as _c
+    import json as _j
+    data = _j.loads(read("books.json") or "[]")
+    fams = _c.defaultdict(list)
+    for s in data:
+        if s.get("bookSourceGroup") in ("成人书源", "大厂正版"):
+            continue
+        m = re.match(r"^(.+?)(\d+)$", (s.get("bookSourceName") or "").strip())
+        if m:
+            fams[m.group(1)].append(int(m.group(2)))
+    bad = [(f, sorted(n)) for f, n in fams.items()
+           if len(n) >= 2 and sorted(n) != list(range(1, len(n) + 1))]
+    if bad:
+        return "FAIL", f"{len(bad)} 个族跳号，例 {bad[:2]}"
+    return "PASS", f"{len(fams)} 个族全部从 1 连续"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")

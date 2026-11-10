@@ -88,6 +88,53 @@ def classify_source(source):
     return "综合其他"
 
 
+def renumber_name_families(sources):
+    """发布前统一给「同族源」重编连续尾号（2026-11-10 用户要求）
+
+    问题：名字里的数字两个来源都不连续——
+      · 笔趣阁类由 generate_chinese_name 生成，第一个叫「笔趣阁」（无号），后续从 2 开始；
+      · 其他组保留上游原名，写着「第一版主11 / 14 / 17」「新御书屋7 / 42」这种断号。
+    结果导入后同一站点看到 2、5、8 跳号，用户明确要求「每次发布从 1 开始重新排，要连续号」。
+
+    规则：
+      · 成人组、大厂组不动（成人原名原样是硬约束，大厂名字手动调过）
+      · 族键 = 去掉尾部数字的名字；带数字的源与同名本体算同族
+      · 族内按当前顺序（customOrder）从 1 连续编号
+      · 笔趣阁类强制全部带号（这是模板名不是站名）；其他组若存在不带号的本体，本体保留原名，其余从 2 排
+      · 只有 1 个成员的族保持原样（单站不该被强行加号）
+    """
+    families = {}
+    for s in sources:
+        group = s.get("bookSourceGroup")
+        if group in (ADULT_GROUP, "大厂正版"):
+            continue
+        name = (s.get("bookSourceName") or "").strip()
+        if not name:
+            continue
+        m = re.match(r"^(.+?)(\d+)$", name)
+        prefix = m.group(1) if m else name
+        if len(prefix.strip()) < 2:  # 「书1」这类前缀过短，容易误并不同站，跳过
+            continue
+        families.setdefault(prefix, []).append((s, bool(m)))
+
+    renamed = 0
+    for prefix, members in families.items():
+        if len(members) < 2:
+            continue
+        members.sort(key=lambda t: t[0].get("customOrder", 0))
+        # 一律从 1 开始编号：含不带号的「本体」也补上 1
+        # （用户明确要求「每次发布从 1 开始重新排，要连续号」，本体留空号会被看成从 2 起、断序）
+        n = 1
+        for s, _ in members:
+            new_name = f"{prefix}{n}"
+            if s.get("bookSourceName") != new_name:
+                s["bookSourceName"] = new_name
+                renamed += 1
+            n += 1
+    log.info(f"同族尾号重编: {renamed} 个源（{len(families)} 个族，仅非成人/非大厂）")
+    return sources
+
+
 def organize_sources(validated_sources, existing_sources):
     """整理：改名、分组、排序（大厂源强制保护，不被新采集覆盖）"""
     log.info("=== 开始整理 ===")
@@ -177,5 +224,6 @@ def organize_sources(validated_sources, existing_sources):
             custom_order += 1
             result.append(s)
 
+    renumber_name_families(result)
     log.info(f"整理完成，共 {len(result)} 个源")
     return result

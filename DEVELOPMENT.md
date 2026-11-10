@@ -84,7 +84,7 @@
 | `stage_daily.py` | 每日增量入库：只取当天 cleaned 里正式版与中间层都没有的 URL → 确定性探活 → 垃圾过滤 → 追加进 pending；含 `fcntl` 排他锁（双进程并发写不丢数据）与损坏 JSON 兜底 |
 | `monthly_release.py` | 每月自动合并发布（Actions auto 通道）：重新采集 → 明确死站剔除 → 垃圾过滤 → 合并 → `auto_publish(mode="auto")` |
 | `liveness.py`（core） | 全管道唯一判死口径：404/410 与域名不存在才判死，403/405/429/5xx/超时保留 |
-| `audit_pipeline.py` | 巡检管道审计（只读）：37 个检查点覆盖调度/采集/中间层/校验/排序/发布/恢复/文档/健壮性/并发，输出 PASS/WARN/FAIL + 证据 |
+| `audit_pipeline.py` | 巡检管道审计（只读）：38 个检查点覆盖调度/采集/中间层/校验/排序/发布/恢复/文档/健壮性/并发，输出 PASS/WARN/FAIL + 证据 |
 | `reorder.py` | 整库顺序规整（`--dry-run` 可先看）：大厂固定序 → 分组序 → 族名自然序 → 成人最末 |
 | `collect_staged.py` | 分段采集：`list`（前10页）/ `heji start end`（--limit 默认30）/ `gurus` |
 | `collect_heji_ids.py` | 提取合集列表全部 id → `heji_ids.json` |
