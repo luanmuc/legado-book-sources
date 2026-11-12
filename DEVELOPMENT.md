@@ -68,6 +68,8 @@
 | `config.py` | 常量：大厂12清单、垃圾/成人关键词表、数据源URL、路径、请求参数 | `BIG_SITE_*`、`JUNK_*`、`ADULT_GROUP`、`GENERIC_TEST_KEYWORDS`（我的/天下/重生…）、`REQUEST_TIMEOUT/RETRY/CONCURRENCY`（支持 `YCKCEO_*` 环境变量覆盖） |
 | `utils.py` | 日志、反爬请求、域名工具 | `fetch_url(url, timeout, retry)`（UA+Referer+verify=False）、`clean_url`、`get_domain` |
 | `collectors.py` | 采集三路数据源 | `collect_yckceo_list(months, page_start, page_end)`、`collect_yckceo_heji(months, page_start, page_end, limit)`、`collect_gurus()`、`collect_all(months)`；`parse_update_time`/`extract_update_times`/`filter_by_months`（时间过滤） |
+| `naming.py` | 命名相关（2026-11-12 从 organizer 抽出）：`natural_name_key` 自然排序键、`generate_chinese_name` 重名加序号、`renumber_name_families` 同族尾号从 1 重编 |
+| `publish_flow.py` | 发布流程（2026-11-12 从 autocollect.py 抽出）：`publish_pending_flow` 中间层→正式版 full 校验+合并+写 books.json+发 Release |
 | `cleaner.py` | 清洗去重 + 分类判定 | `clean_and_dedup(raw)`（流式+checkpoint）、`is_big_site`、`classify_junk`/`is_adult_source`/`filter_junk_sources`（失效/测试先剔→成人无条件保留→其余非小说剔） |
 | `legado_rules.py` | **Legado 规则解析引擎**（真实性校验用） | `parse_book_list(html, bookList, name, url)`（CSS+XPath 双引擎、`||` 多候选）、`parse_explore_entries(exploreUrl)`（JSON数组/`标题::URL` 两种格式） |
 | `validators.py` | 两级校验 + 真实性校验 | `check_rule_integrity`、`quick_validate`（首页连通性，WAF 不淘汰）、`check_search_parsed`（通用关键词轮试+规则解析，三态 ok/bad/blocked）、`check_explore_parsed`（发现页前3入口轮试至少1个解析出书）、`check_source_usable`（搜索/发现至少一项可用）、`validate_sources(cleaned)` → `(validated, dead)`（大厂保护） |
@@ -84,7 +86,7 @@
 | `stage_daily.py` | 每日增量入库：只取当天 cleaned 里正式版与中间层都没有的 URL → 确定性探活 → 垃圾过滤 → 追加进 pending；含 `fcntl` 排他锁（双进程并发写不丢数据）与损坏 JSON 兜底 |
 | `monthly_release.py` | 每月自动合并发布（Actions auto 通道）：重新采集 → 明确死站剔除 → 垃圾过滤 → 合并 → `auto_publish(mode="auto")` |
 | `liveness.py`（core） | 全管道唯一判死口径：404/410 与域名不存在才判死，403/405/429/5xx/超时保留 |
-| `audit_pipeline.py` | 巡检管道审计（只读）：38 个检查点覆盖调度/采集/中间层/校验/排序/发布/恢复/文档/健壮性/并发，输出 PASS/WARN/FAIL + 证据 |
+| `audit_pipeline.py` | 巡检管道审计（只读）：39 个检查点覆盖调度/采集/中间层/校验/排序/发布/恢复/文档/健壮性/并发，输出 PASS/WARN/FAIL + 证据 |
 | `reorder.py` | 整库顺序规整（`--dry-run` 可先看）：大厂固定序 → 分组序 → 族名自然序 → 成人最末 |
 | `collect_staged.py` | 分段采集：`list`（前10页）/ `heji start end`（--limit 默认30）/ `gurus` |
 | `collect_heji_ids.py` | 提取合集列表全部 id → `heji_ids.json` |

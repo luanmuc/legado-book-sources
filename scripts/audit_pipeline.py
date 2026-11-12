@@ -505,6 +505,36 @@ def check_family_sequence():
     return "PASS", f"{len(fams)} 个族全部从 1 连续"
 
 
+@check("D7", "校验", "判死活入口唯一",
+       "只有 liveness 定义 probe_alive/probe_many；validators/stage_daily/monthly_release 消费；其他模块不得旁路")
+def check_liveness_entry_unique():
+    import subprocess as _sp
+    r = _sp.run(
+        ["grep", "-rlE", r"from .*liveness import|import.*\.liveness",
+         "--include=*.py", ROOT],
+        capture_output=True, text=True,
+    )
+    files = set()
+    for line in r.stdout.splitlines():
+        p = os.path.relpath(line.strip(), ROOT)
+        if "raw/autocollect/stress" in p or p.startswith("__pycache__"):
+            continue
+        files.add(p)
+    allowed = {
+        "autocollect_core/liveness.py",
+        "autocollect_core/validators.py",
+        "scripts/stage_daily.py",
+        "scripts/monthly_release.py",
+        "scripts/audit_pipeline.py",
+    }
+    unexpected = sorted(files - allowed)
+    if unexpected:
+        return "FAIL", f"旁路判活入口: {unexpected}"
+    consumers = sorted(f for f in files if f not in (
+        "autocollect_core/liveness.py", "scripts/audit_pipeline.py"))
+    return "PASS", f"消费方 {consumers}"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")

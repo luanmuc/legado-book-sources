@@ -52,7 +52,7 @@
 ## 🧭 管道审计
 
 巡检管道（每日采集 → 中间层 → 每月自动发布）的审计计划与执行记录见 [AUDIT_PLAN.md](AUDIT_PLAN.md)，
-可随时用 `python3 scripts/audit_pipeline.py` 复核（38 项检查点，只读，输出 PASS/WARN/FAIL + 证据；`FAIL=0` 才允许发版）。
+可随时用 `python3 scripts/audit_pipeline.py` 复核（39 项检查点，只读，输出 PASS/WARN/FAIL + 证据；`FAIL=0` 才允许发版）。
 
 ## 🔍 校验流程
 校验分两档（2026-11 用户明确要求）：
@@ -122,6 +122,7 @@ bash scripts/run_daily_collect.sh 1
 python3 scripts/collect_staged.py list --months 1      # A1: 采集yckceo书源列表前10页
 python3 scripts/collect_staged.py heji 1 1 --months 1 --limit 30  # A2: 合集只采列表前30个（每个含多源）
 python3 scripts/collect_staged.py gurus                # A3: 2个存活大佬仓库直链
+# 以下为早期手动分片流程（备用路径，主流程走 autocollect.py）：
 python3 scripts/run_from_fragments.py clean            # B: 流式合并清洗去重(checkpoint)
 python3 scripts/run_from_fragments.py validate --start 0 --count 1000   # C: 分批快速存活校验（发布前用 --full 切完整真实性）
 python3 scripts/filter_junk_sources.py                 # D: 垃圾过滤(成人单独分组)
