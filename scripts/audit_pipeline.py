@@ -614,7 +614,8 @@ def check_validation_capability():
 
 @check("D11", "采集", "新源健康度门槛在位",
        "每日采集必须对新候选做站点健康度预筛；且只认 sitemap <lastmod> 硬证据——"
-       "跨洋网络取不到 sitemap 时严禁当死站剔除（宁可放过不可错杀）")
+       "跨洋网络取不到 sitemap 时严禁当死站剔除（宁可放过不可错杀）；"
+       "大厂（BIG_SITES）必须豁免——已实测晋江 sitemap 停 2020、黑岩首页挂 2019 版权年，均误判")
 def check_health_gate():
     wf = read(".github/workflows/auto-update.yml")
     gate = read("scripts/health_gate.py")
@@ -625,10 +626,12 @@ def check_health_gate():
     only_sitemap = 'r.get("evidence") == "sitemap"' in gate or "evidence\") == \"sitemap\"" in gate
     has_threshold = "HARD_ZOMBIE_DAYS = 180" in gate
     has_budget = "--budget" in gate
+    # 大厂豁免是红线：晋江 sitemap 停在 2020、黑岩首页挂 2019 版权年，都活得好好的
+    has_big_exempt = "is_big_site" in gate and "BIG_SITES" in gate
     reject_unreachable = 'verdict\", ' in gate and '"不可达"' in gate and "continue" in gate
-    ok = wired and only_sitemap and has_threshold and has_budget
+    ok = wired and only_sitemap and has_threshold and has_budget and has_big_exempt
     ev = (f"workflow接入={wired} 只认sitemap证据={only_sitemap} "
-          f"阈值180天={has_threshold} 时间预算={has_budget}")
+          f"阈值180天={has_threshold} 时间预算={has_budget} 大厂豁免={has_big_exempt}")
     if wired and not (only_sitemap and has_threshold):
         return "FAIL", ev + " ← 健康度口径被放宽（可能把跨洋取不到的站误删）"
     return ("PASS" if ok else "FAIL"), ev

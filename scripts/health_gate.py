@@ -24,7 +24,26 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from site_health import check_one  # 复用同一套判定
+try:
+    from autocollect_core.config import BIG_SITES
+except Exception:
+    BIG_SITES = []
+
+
+def _host(u):
+    return (u or "").split("//")[-1].split("/")[0].lower().replace("www.", "")
+
+
+# 大厂豁免：晋江 sitemap 停在 2020、黑岩首页挂 2019 版权年、潇湘首页是公告日期，
+# 但它们都活得好好的。大厂站点人工维护、有反爬，禁止靠自动信号判死。
+_BIG_HOSTS = {_host(b.get("url")) for b in BIG_SITES}
+
+
+def is_big_site(url):
+    h = _host(url)
+    return any(h == b or h.endswith("." + b) for b in _BIG_HOSTS if b)
 
 HARD_ZOMBIE_DAYS = 180
 
@@ -75,7 +94,8 @@ def main():
     hard_zombies, kept = [], []
     for s in probe:   # 只处理体检过的这一段，rest 原样追加（否则会重复计数）
         r = by_url.get(s.get("bookSourceUrl"))
-        if (r and r.get("evidence") == "sitemap"
+        big = is_big_site(s.get("bookSourceUrl"))
+        if (r and not big and r.get("evidence") == "sitemap"
                 and r.get("days") is not None and r["days"] > HARD_ZOMBIE_DAYS):
             if args.drop_hard_zombie:
                 hard_zombies.append({"name": s.get("bookSourceName"),
@@ -87,6 +107,8 @@ def main():
             s = dict(s)
             s.setdefault("comment", "")
             tag = f"// 健康度:{r.get('verdict')}" + (f" 最后更新{r['newest']}" if r.get("newest") else "")
+            if big:
+                tag += " 大厂豁免"
             if "健康度:" not in (s.get("comment") or ""):
                 s["comment"] = (s.get("comment") + " " + tag).strip()
         kept.append(s)
