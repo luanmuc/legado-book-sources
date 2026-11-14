@@ -6,3 +6,6 @@ __pycache__/
 
 # 每日采集产物体积大，改走 Actions artifact（仓库只存摘要）
 weekly/cleaned_*.json
+
+# 工作区内的临时/中间产物（用完即删，禁止用 /tmp）
+raw/autocollect/tmp/
