@@ -54,6 +54,17 @@ jobs:
           fi
           echo "审计通过，允许发版"
 
+      - name: 存量进站深查（只出报告，不改数据）
+        continue-on-error: true
+        run: |
+          # 只抽 150 条做体检，产出的僵尸名单供人工复核。
+          # 不在这里剔数据：monthly_release 会按月汇总每日 cleaned，
+          # 这里删掉的源可能被重新合并回来（历史踩过"死源复活"）。
+          python3 scripts/deep_gate.py --input books.json \
+            --output raw/autocollect/tmp/books_deep_probe.json --max 150 \
+            --report raw/autocollect/monthly_deep_report.json || true
+          echo "存量深查报告: raw/autocollect/monthly_deep_report.json"
+
       - name: 采集 + 合并 + 发布
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

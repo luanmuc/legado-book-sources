@@ -134,6 +134,14 @@ jobs:
           else
             echo "::warning::健康度预筛失败，本次直接用原始 cleaned 入库（不阻断采集）"
           fi
+          # 进站深查（第二道）：门口信号经常是模板假数据（2024-04-20 被七八个站共享），
+          # 只对门口标了"疑似/僵尸"的少数新候选进站读目录页，确认在更新才放行
+          if python3 scripts/deep_gate.py --input "$GATED" \
+               --output weekly/cleaned_deep.json --max 40 --only-suspect --drop-zombie; then
+            [ -f weekly/cleaned_deep.json ] && GATED=weekly/cleaned_deep.json
+          else
+            echo "::warning::进站深查失败，本步跳过（不阻断采集）"
+          fi
           # 只取正式版与中间层都没有的 URL；存活校验 quick（403/405 WAF 保留，只淘汰 404/410 与域名不存在的死站）
           python3 scripts/stage_daily.py --cleaned "$GATED"
 

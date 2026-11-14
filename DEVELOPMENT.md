@@ -89,9 +89,10 @@
 | `monthly_release.py` | 每月自动合并发布（Actions auto 通道）：重新采集 → 明确死站剔除 → 垃圾过滤 → 合并 → `auto_publish(mode="auto")` |
 | `liveness.py`（core） | 全管道唯一判死口径：404/410 与域名不存在才判死，403/405/429/5xx/超时保留 |
 | `site_health.py` | 站点健康度体检（本地专项）：只读首页 + `sitemap.xml` 的 `<lastmod>`/`<loc>`，不碰站内搜索接口。判活跃/正常/迟缓/僵尸/无信号/不可达。2026-11-14 建立，替代"爬搜索接口抽样"方案（后者反爬命中率仅 22-28%，判出的"差"其实是爬不进去） |
+| `deep_gate.py` | 进站深查门槛（接入每日 workflow）：只对门口标了"疑似/僵尸"的新候选进站（`--max 40 --only-suspect`），读目录页最新章节日期确认在更新才放行；≤180 天活、>180 天且首页同向才剔除、拿不到一律放行、大厂豁免 |
 | `site_deep_check.py` | 进站深查：抓首页一本书 → 目录页"最新章节"日期，判活/僵尸。**唯一可信的判死依据**——首页日期和 sitemap 都可能是模板/荒废数据（实测 2024-04-20 被七八个站共享） |
 | `health_gate.py` | 新源健康度门槛（接入每日 workflow）：只对本次新增候选体检，**只认 sitemap `<lastmod>` 硬证据且 >180 天**才剔除；跨洋取不到 sitemap 一律放行；**内置 BIG_SITES 大厂豁免**（实测晋江 sitemap 停 2020、黑岩首页挂 2019 版权年，均被误判，故豁免）|
-| `audit_pipeline.py` | 巡检管道审计（只读）：43 个检查点覆盖调度/采集/中间层/校验/排序/发布/恢复/文档/健壮性/并发，输出 PASS/WARN/FAIL + 证据 |
+| `audit_pipeline.py` | 巡检管道审计（只读）：44 个检查点覆盖调度/采集/中间层/校验/排序/发布/恢复/文档/健壮性/并发，输出 PASS/WARN/FAIL + 证据 |
 | `reorder.py` | 整库顺序规整（`--dry-run` 可先看）：大厂固定序 → 分组序 → 族名自然序 → 成人最末 |
 | `collect_staged.py` | 分段采集：`list`（前10页）/ `heji start end`（--limit 默认30）/ `gurus` |
 | `collect_heji_ids.py` | 提取合集列表全部 id → `heji_ids.json` |

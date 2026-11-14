@@ -637,6 +637,30 @@ def check_health_gate():
     return ("PASS" if ok else "FAIL"), ev
 
 
+@check("D12", "采集", "进站深查门槛在位",
+       "每日对新候选做进站深查（读目录页“最新章节”日期）；首页/sitemap 只能是疑似信号——"
+       "实测 2024-04-20 被七八个站共享、2015-02-14 被四个站共享，进站全在更新。"
+       "只有 >180 天且首页同向才剔除，拿不到/打不开一律放行")
+def check_deep_gate():
+    daily = read(".github/workflows/auto-update.yml")
+    monthly = read(".github/workflows/monthly-release.yml")
+    gate = read("scripts/deep_gate.py")
+    if not gate:
+        return "FAIL", "scripts/deep_gate.py 不存在"
+    wired = "deep_gate.py" in daily
+    monthly_wired = "deep_gate.py" in monthly
+    only_suspect = "--only-suspect" in daily        # 每日只查可疑的，控时间
+    budget = "--budget" in gate
+    threshold = "ZOMBIE_DAYS = 180" in gate
+    big_exempt = "is_big" in gate
+    ok = wired and monthly_wired and only_suspect and budget and threshold and big_exempt
+    ev = (f"每日接入={wired} 月度接入={monthly_wired} 只查可疑={only_suspect} "
+          f"时间预算={budget} 阈值180天={threshold} 大厂豁免={big_exempt}")
+    if wired and not (threshold and big_exempt):
+        return "FAIL", ev + " ← 深查口径被放宽（可能误删模板假日期的活站）"
+    return ("PASS" if ok else "FAIL"), ev
+
+
 
 def main():
     ap = argparse.ArgumentParser()

@@ -4,7 +4,7 @@
 这是一个开源阅读（Legado）书源整理仓库，持续更新维护。
 
 ## 📊 当前版本
-- **版本**: 发布页 v3.2.19（2026-11-14 发布，assets 已验证完整：books.json 11.9MB + clean_rules.json 494KB）
+- **版本**: 发布页 v3.2.20（2026-11-14 发布，assets 已验证完整：books.json 11.9MB + clean_rules.json 494KB）
 - **更新日期**: 2026-11-14
 - **书源总数**: 2090 个（纯小说 + 成人组全保留；本轮按「进站深查」剔除 50 个确认僵尸站——首页/sitemap 日期大量失真，只有进站看目录页才能判死，详见 `docs/站点健康度调研.md`）
 - **净化规则**: 1176 条配套净化
@@ -51,7 +51,7 @@
 ## 🧭 管道审计
 
 巡检管道（每日采集 → 中间层 → 每月自动发布）的审计计划与执行记录见 [AUDIT_PLAN.md](AUDIT_PLAN.md)，
-可随时用 `python3 scripts/audit_pipeline.py` 复核（43 项检查点，只读，输出 PASS/WARN/FAIL + 证据；`FAIL=0` 才允许发版，脚本自身 FAIL 时返回非零退出码，月度发布 workflow 已强制拦截）。
+可随时用 `python3 scripts/audit_pipeline.py` 复核（44 项检查点，只读，输出 PASS/WARN/FAIL + 证据；`FAIL=0` 才允许发版，脚本自身 FAIL 时返回非零退出码，月度发布 workflow 已强制拦截）。
 
 ## 🔍 校验流程
 校验分两档（2026-11 用户明确要求）：
