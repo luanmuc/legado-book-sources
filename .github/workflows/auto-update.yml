@@ -124,8 +124,18 @@ jobs:
             exit 0
           fi
           echo "增量入库基准: $CLEANED"
+          # 新源站点健康度预筛（2026-11-14 用户要求：不能收半死不活的站）
+          # 口径刻意保守：只有 sitemap 的 <lastmod> 明确存在且 >180 天才剔除；
+          # 跨洋网络取不到 sitemap / 首页一律放行——"我们看不到"不等于"站死了"
+          GATED="$CLEANED"
+          if python3 scripts/health_gate.py --input "$CLEANED" \
+               --output weekly/cleaned_gated.json --max 120 --drop-hard-zombie; then
+            [ -f weekly/cleaned_gated.json ] && GATED=weekly/cleaned_gated.json
+          else
+            echo "::warning::健康度预筛失败，本次直接用原始 cleaned 入库（不阻断采集）"
+          fi
           # 只取正式版与中间层都没有的 URL；存活校验 quick（403/405 WAF 保留，只淘汰 404/410 与域名不存在的死站）
-          python3 scripts/stage_daily.py --cleaned "$CLEANED"
+          python3 scripts/stage_daily.py --cleaned "$GATED"
 
       - name: 上传清洗产物为 artifact（仓库不存大文件，避免历史膨胀）
         if: always()

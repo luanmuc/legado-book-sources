@@ -612,6 +612,28 @@ def check_validation_capability():
     return ("PASS" if ok else "FAIL",
             f"checkKeyWord={has_ck} bookUrlPattern={has_bp} 三级链路={has_chain} deep开关={has_deep}")
 
+@check("D11", "采集", "新源健康度门槛在位",
+       "每日采集必须对新候选做站点健康度预筛；且只认 sitemap <lastmod> 硬证据——"
+       "跨洋网络取不到 sitemap 时严禁当死站剔除（宁可放过不可错杀）")
+def check_health_gate():
+    wf = read(".github/workflows/auto-update.yml")
+    gate = read("scripts/health_gate.py")
+    if not gate:
+        return "FAIL", "scripts/health_gate.py 不存在"
+    wired = "health_gate.py" in wf and "cleaned_gated.json" in wf
+    # 口径红线：必须只信 sitemap 证据，且阈值 >=180 天
+    only_sitemap = 'r.get("evidence") == "sitemap"' in gate or "evidence\") == \"sitemap\"" in gate
+    has_threshold = "HARD_ZOMBIE_DAYS = 180" in gate
+    has_budget = "--budget" in gate
+    reject_unreachable = 'verdict\", ' in gate and '"不可达"' in gate and "continue" in gate
+    ok = wired and only_sitemap and has_threshold and has_budget
+    ev = (f"workflow接入={wired} 只认sitemap证据={only_sitemap} "
+          f"阈值180天={has_threshold} 时间预算={has_budget}")
+    if wired and not (only_sitemap and has_threshold):
+        return "FAIL", ev + " ← 健康度口径被放宽（可能把跨洋取不到的站误删）"
+    return ("PASS" if ok else "FAIL"), ev
+
+
 
 def main():
     ap = argparse.ArgumentParser()
