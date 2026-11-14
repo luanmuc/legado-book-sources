@@ -21,7 +21,6 @@ BIG_SITES = [
     {"name": "晋江文学", "url": "https://www.jjwxc.net"},
     {"name": "磨铁中文", "url": "http://api.motie.com"},
     {"name": "黑岩阅读", "url": "https://www.heiyan.com"},
-    {"name": "刺猬猫", "url": "https://mm.sfacg.com"},
 ]
 
 # ============================================================

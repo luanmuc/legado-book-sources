@@ -62,10 +62,10 @@
 | ID | 检查点 | 判定标准 | 结论 | 证据 |
 |---|---|---|---|---|
 | E1 | 大厂顺序不被名字排序覆盖 | `organize_sources` 用 BIG_SITES 序做 `_big_key` 保护 | PASS | `_big_key` + BIG_SITES 均在 |
-| E2 | 正式版结构自洽 | customOrder 连续、分组段连续、成人最末 | PASS | 2169 条连续；分组 6 段；成人 1887-2169 且末位=2169 |
+| E2 | 正式版结构自洽 | customOrder 连续、分组段连续、成人最末 | PASS | 2140 条连续；分组 6 段；成人 1857-2140 且末位=2140 |
 | E3 | 同族尾号从 1 连续 | 非成人/非大厂组，同族源尾号必须 1..N 无跳号（本体也补 1） | PASS | 281 个族全部 1..N；注入 `笔趣阁5→笔趣阁55` 立刻转 FAIL |
 | D8 | 关键数据落盘走原子写 | books.json / books_pending.json 的写入必须经 `utils.dump_json`（`.tmp`→`os.replace`），直接 `open(...,'w')`+`json.dump` 即 FAIL；覆盖 5 个写盘点 | PASS | 新增断言时立刻抓出 autocollect.py 2 处漏改 |
-| D9 | 正式版不含非小说源 | bookSourceType 非 0（音频/图片/文件）不应出现在非成人段（成人段按约束可保留） | WARN（当前 44 个待处置） | 逐源比对 bookSourceType 与成人段边界 |
+| D9 | 正式版不含非小说源 | bookSourceType 非 0（音频/图片/文件）不应出现在非成人段（成人段按约束可保留） | PASS | 非成人段全部 type=0；2026-11-14 剔除 29 个无关站（PPT/档案馆/网盘/社交/音乐/有声/播客/漫画/影视），1 个成人写真站移入成人组 |
 | D10 | 校验三项能力在位 | checkKeyWord 优先 / bookUrlPattern 结果校核 / 详情→目录→正文三级链路 / deep 开关 必须都在 | PASS | 源码能力断言，防后续改动删掉 |
 | D7 | 判死活入口唯一 | 只有 liveness 定义，validators/stage_daily/monthly_release 消费；其他模块 import liveness 即 FAIL | PASS | 注入 check_usable.py 旁路 import 立刻转 FAIL |
 
@@ -100,7 +100,7 @@
 
 | ID | 检查点 | 判定标准 | 结论 | 证据 |
 |---|---|---|---|---|
-| H1 | README 源数与实际一致 | 文档总数 = books.json 条数 | PASS | README 2169 = 实际 2169 |
+| H1 | README 源数与实际一致 | 文档总数 = books.json 条数 | PASS | README 2140 = 实际 2140 |
 | H2 | 模块表覆盖新脚本 | DEVELOPMENT 模块表登记 monthly_release/audit_pipeline/reorder | PASS | 已登记（本轮补） |
 | H3 | 过期口径清理 | 现行描述不得残留「每周采集」（历史更新日志除外） | PASS | 现行描述 0 处（历史条目保留，属事实记录） |
 | H4 | 摘要日期用北京时间 | runner 是 UTC，摘要日期必须显式 +8 | PASS | 已用 `timedelta(hours=8)` |

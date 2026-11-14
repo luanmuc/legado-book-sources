@@ -73,7 +73,7 @@
 | `publish_flow.py` | 发布流程（2026-11-12 从 autocollect.py 抽出）：`publish_pending_flow` 中间层→正式版 full 校验+合并+写 books.json+发 Release |
 | `cleaner.py` | 清洗去重 + 分类判定 | `clean_and_dedup(raw)`（流式+checkpoint）、`is_big_site`、`classify_junk`/`is_adult_source`/`filter_junk_sources`（失效/测试先剔→成人无条件保留→其余非小说剔） |
 | `legado_rules.py` | **Legado 规则解析引擎**（真实性校验用） | `parse_book_list(html, bookList, name, url)`（CSS+XPath 双引擎、`||` 多候选）、`parse_explore_entries(exploreUrl)`（JSON数组/`标题::URL` 两种格式） |
-| `validators.py` | 校验层：规则完整性 / quick / full / 检查点续跑 / 搜索解析 / 发现解析 / 成人宽松。2026-11-14 按社区口径补三项：①搜索关键词优先用源自带 `checkKeyWord`（官方 `getCheckKeyword` 语义，481/2169 源带此字段）②解析结果用 `bookUrlPattern` 校核是否真为书籍详情页（559 源带此字段）③`check_chain_usable` 真跑 **详情→目录→正文** 三页，`check_source_usable(deep=True)` 触发 |
+| `validators.py` | 校验层：规则完整性 / quick / full / 检查点续跑 / 搜索解析 / 发现解析 / 成人宽松。2026-11-14 按社区口径补三项：①搜索关键词优先用源自带 `checkKeyWord`（官方 `getCheckKeyword` 语义，481 源带此字段）②解析结果用 `bookUrlPattern` 校核是否真为书籍详情页（559 源带此字段）③`check_chain_usable` 真跑 **详情→目录→正文** 三页，`check_source_usable(deep=True)` 触发 |
  两级校验 + 真实性校验 | `check_rule_integrity`、`quick_validate`（首页连通性，WAF 不淘汰）、`check_search_parsed`（通用关键词轮试+规则解析，三态 ok/bad/blocked）、`check_explore_parsed`（发现页前3入口轮试至少1个解析出书）、`check_source_usable`（搜索/发现至少一项可用）、`validate_sources(cleaned)` → `(validated, dead)`（大厂保护） |
 | `organizer.py` | 整理输出 | `organize_sources(validated, existing)`（大厂保护最顶 + 四字改名 + **成人豁免改名/符号清理** + 名字族自然排序 + customOrder） |
 | `cleanrules.py` | 净化规则 | `collect_clean_rules()`（nyasama 包）、`generate_clean_rules(final, rules)`（去重优化输出） |
@@ -190,10 +190,10 @@ raw/autocollect/                  cleaned_*.json           validated.json
      | blocked（网络/反爬） | 任意 | ? 保留待验 pass_rate=0.6 |
      | 任意 | blocked | ? 保留待验 pass_rate=0.6 |
    - **成人源宽松豁免**：`check_adult_content_ready()` —— 成人组含漫画/短剧/影视/图片/听书站，用 `ruleSearch.bookList` 要求"解析出书名"必然失败。改为判"至少一条能取内容的规则链"（`ruleContent.content` / `ruleToc.bookList|chapterList` / `ruleSearch.bookList` / `ruleExplore.bookList|exploreUrl`）任一非空即可用，四条全空才算空壳淘汰；**死站仍由第一遍存活校验淘汰（成人也不豁免失效）**
-   - **大厂保护**：12 个 BIG_SITES 永不淘汰（即使 usable=False 也保留，标记 big_protected）
+   - **大厂保护**：11 个 BIG_SITES 永不淘汰（即使 usable=False 也保留，标记 big_protected）
    - 三态返回：`ok` / `bad`（200 但解析不出，淘汰依据）/ `blocked`（非 200/异常，不淘汰）
 5. **垃圾过滤**：非小说/测试占位/失效标记剔除；**成人内容一律保留**（含成人漫画/影视等非小说类）→ `bookSourceGroup="成人书源"`，排序最末、豁免改名与符号清理
-6. **大厂保护**：12 个大厂任何环节不覆盖（合并时以既有版本为准）
+6. **大厂保护**：11 个大厂任何环节不覆盖（合并时以既有版本为准）
 7. 校验淘汰原因落盘 `dead.json`，报告真实统计
 
 ### 规则解析器（legado_rules.py，真实性校验的引擎）
@@ -314,7 +314,7 @@ python3 scripts/check_usable.py --limit 50     # 抽样
 - **发布由用户确认**；中间层合并到正式版前也必须用户确认
 - 起点问题"要修复不要删除"（起点源使用 yckceo 7036 可用版，commit `fcac75a`）
 - 四字纯汉字命名、去表情；笔趣阁类统一「笔趣阁+数字」排序不强制四字
-- 只保留纯小说；大厂只留头部 12 个、起点第一；WAF 源（403 类）不淘汰
+- 只保留纯小说；大厂只留头部 11 个、起点第一；WAF 源（403 类）不淘汰
 - 成人内容保留、单独成组（不视为垃圾）
 - 损坏 JSON 分片直接跳过，不重下
 - 采集月份动态（--months），默认只采最近 1 个月
@@ -371,7 +371,7 @@ JSON直链     https://www.yckceo.com/yuedu/shuyuan/json/id/{id}.json      （li
 
 ---
 
-## 13. 大厂正版源清单（12 个，config.py 保护名单）
+## 13. 大厂正版源清单（11 个，config.py 保护名单）
 
 | 序 | 名称 | URL | 序 | 名称 | URL |
 |----|------|-----|----|------|-----|
@@ -380,10 +380,11 @@ JSON直链     https://www.yckceo.com/yuedu/shuyuan/json/id/{id}.json      （li
 | 3 | 创世中文 | http://chuangshi.qq.com | 9 | 晋江文学 | https://www.jjwxc.net |
 | 4 | 红袖添香 | https://hongxiua.com | 10 | 磨铁中文 | http://api.motie.com |
 | 5 | 书旗小说 | https://www.shuqi.com/ | 11 | 黑岩阅读 | https://www.heiyan.com |
-| 6 | QQ阅读 | https://ubook.reader.qq.com/?g_f=4000001 | 12 | 刺猬猫 | https://mm.sfacg.com |
+| 6 | QQ阅读 | https://ubook.reader.qq.com/?g_f=4000001 | | | |
 
 - 保护逻辑：任何合并/整理环节以既有版本为准，新采集的同名大厂一律跳过不覆盖
-- customOrder 1-12 置顶，顺序原样（起点→番茄→创世→红袖→书旗→QQ阅读→纵横→潇湘→晋江→磨铁→黑岩→刺猬猫）
+- customOrder 1-11 置顶，顺序原样（起点→番茄→创世→红袖→书旗→QQ阅读→纵横→潇湘→晋江→磨铁→黑岩）
+- 2026-11-14 移除刺猬猫：抓首页标题为「漫画_在线漫画_SF漫画」，实为漫画站（mm.sfacg.com 是 SF 轻小说/漫画的漫画端），违反「只保留纯小说」，已从 BIG_SITES 与正式版同步移除
 - 验证基线：与 git HEAD 610 源版对比 URL 集合一致、逐字段完全一致 12/12
 
 ---
