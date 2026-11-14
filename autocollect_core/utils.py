@@ -7,6 +7,7 @@ autocollect_core 工具模块
 import os
 import re
 import time
+import json
 import logging
 import requests
 import urllib3
@@ -98,3 +99,40 @@ def fetch_url(url, timeout=REQUEST_TIMEOUT, retry=REQUEST_RETRY):
             else:
                 log.warning(f"请求失败: {url} - {e}")
                 return None
+
+
+# ============================================================
+# JSON 落盘（统一 ensure_ascii=False + indent=2 + 原子写）
+# ============================================================
+# 全仓曾有 24 处重复 json.dump(..., ensure_ascii=False, indent=2)，
+# 且都是「直接覆盖写」：写一半进程被杀会留下截断的 books.json。
+# books.json 12.4MB，被 stage_daily / publish_flow / monthly_release / reorder
+# 多处写入，一旦写坏，下游 json.load 全部崩（历史上已踩过一次）。
+
+def load_json(path, default=None):
+    """读 JSON：文件不存在或内容损坏都返回 default，不让一条坏文件打断链路"""
+    if not path or not os.path.exists(path):
+        return default
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        log.warning(f"JSON 损坏，按默认值处理: {path} - {e}")
+        return default
+
+
+def dump_json(data, path, atomic=True):
+    """写 JSON：中文不转义 + 缩进 2 + 原子替换（先写 .tmp 再 rename）
+
+    原子写保证「要么是旧完整文件，要么是新完整文件」，不会出现半截 JSON。
+    """
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    if not atomic:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return path
+    tmp = f"{path}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, path)  # 同盘 rename 是原子操作
+    return path

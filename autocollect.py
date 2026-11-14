@@ -21,7 +21,7 @@ import os
 from datetime import datetime
 
 from autocollect_core.config import OUTPUT_FILE, RAW_DIR, PENDING_FILE
-from autocollect_core.utils import log
+from autocollect_core.utils import log, load_json, dump_json
 from autocollect_core.collectors import collect_all
 from autocollect_core.cleaner import clean_and_dedup, filter_junk_sources, is_big_site
 from autocollect_core.validators import validate_sources, validate_sources_with_checkpoint
@@ -68,8 +68,7 @@ def main():
         out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly")
         os.makedirs(out_dir, exist_ok=True)
         out_file = os.path.join(out_dir, f"cleaned_{ts}.json")
-        with open(out_file, "w", encoding="utf-8") as f:
-            json.dump(cleaned, f, ensure_ascii=False, indent=2)
+        dump_json(cleaned, out_file)  # 原子写
         log.info(f"采集+清洗完成: 原始 {len(raw_sources)} → 清洗后 {len(cleaned)}")
         log.info(f"保存到 {out_file}（由本地段继续校验+整理+发布）")
         return
@@ -128,14 +127,11 @@ def main():
 
         # ===== 中间层模式：合并进 books_pending.json，不发布（等你确认） =====
         if args.stage:
-            pending_existing = []
-            if os.path.exists(PENDING_FILE):
-                with open(PENDING_FILE, "r", encoding="utf-8") as f:
-                    pending_existing = json.load(f)
+            pending_existing = load_json(PENDING_FILE, default=[]) or []
+            if pending_existing:
                 log.info(f"加载中间层: {len(pending_existing)} 个")
             final_pending = organize_sources(validated, pending_existing)
-            with open(PENDING_FILE, "w", encoding="utf-8") as f:
-                json.dump(final_pending, f, ensure_ascii=False, indent=2)
+            dump_json(final_pending, PENDING_FILE)  # 原子写
             big_count = len([s for s in final_pending if is_big_site(s)])
             log.info("=" * 50)
             log.info(f"已并入中间层 books_pending.json: {len(final_pending)} 个（大厂 {big_count} 最顶保护）")
@@ -151,9 +147,8 @@ def main():
 
         final_sources = organize_sources(validated, existing)
 
-        # 保存书源
-        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-            json.dump(final_sources, f, ensure_ascii=False, indent=2)
+        # 保存书源（原子写）
+        dump_json(final_sources, OUTPUT_FILE)
 
         # 采集大佬净化规则 + 生成配套净化规则
         collected_rules = collect_clean_rules()

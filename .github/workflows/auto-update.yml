@@ -106,29 +106,14 @@ jobs:
       - name: 输出采集结果
         if: always()
         run: |
-          echo "=== raw 分片统计 ==="
-          python3 - <<'EOF'
-          import json, glob, os
-          total = 0
-          for f in sorted(glob.glob("raw/autocollect/heji/*.json")):
-              try:
-                  n = len(json.load(open(f, encoding="utf-8")))
-                  total += n
-              except Exception:
-                  pass
-          print(f"  合集分片合计: {total}")
-          EOF
-          echo "=== weekly/cleaned 统计 ==="
-          python3 - <<'EOF'
-          import json, glob, os
-          for f in sorted(glob.glob("weekly/cleaned_*.json")):
-              try:
-                  n = len(json.load(open(f, encoding="utf-8")))
-                  print(f"  {os.path.basename(f)}: {n} 个清洗后源")
-              except Exception as e:
-                  print(f"  {os.path.basename(f)}: 读取失败 {e}")
-          EOF
+          python3 scripts/daily_summary.py stats
           echo "=== 采集脚本退出码: ${{ steps.collect.outcome }} ==="
+
+      - name: 管线审计（每日观测，不阻断采集）
+        if: always()
+        continue-on-error: true
+        run: |
+          python3 scripts/audit_pipeline.py || echo "::warning::审计有 FAIL 项，详见上方输出（不阻断每日采集，发布前会强制拦截）"
 
       - name: 当天增量并入中间层（只新增，不复活已淘汰源）
         if: steps.guard.outputs.skip != 'true' && steps.collect.outcome == 'success'
@@ -156,45 +141,7 @@ jobs:
         if: always()
         run: |
           set +e
-          python3 - <<'EOF'
-          import json, glob, os, datetime
-          fs = sorted(glob.glob("weekly/cleaned_*.json"))
-          if not fs:
-              print("没有 cleaned 产物，跳过摘要")
-              raise SystemExit(0)
-          f = fs[-1]
-          data = json.load(open(f, encoding="utf-8"))
-          from collections import Counter
-          groups = Counter((s.get("bookSourceGroup") or "未分组") for s in data)
-          domains = Counter()
-          for s in data:
-              u = s.get("bookSourceUrl") or ""
-              try:
-                  domains[u.split("//")[1].split("/")[0]] += 1
-              except Exception:
-                  pass
-          summary = {
-              # 北京时间（runner 是 UTC，直接用 now() 会差一天）
-              "date": datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d"),
-              "file": os.path.basename(f),
-              "cleaned": len(data),
-              "groups": dict(groups),
-              "domains": len(domains),
-          }
-          os.makedirs("weekly", exist_ok=True)
-          json.dump(summary, open("weekly/daily_summary.json", "w", encoding="utf-8"),
-                    ensure_ascii=False, indent=2)
-          # 追加一行历史（便于看每天的清洗量变化）
-          hist_path = "weekly/daily_history.jsonl"
-          with open(hist_path, "a", encoding="utf-8") as fh:
-              fh.write(json.dumps({"date": summary["date"], "cleaned": summary["cleaned"],
-                                   "domains": summary["domains"]}, ensure_ascii=False) + "\n")
-          # 历史行只保留最近 120 天
-          lines = open(hist_path, encoding="utf-8").read().strip().split("\n")
-          if len(lines) > 120:
-              open(hist_path, "w", encoding="utf-8").write("\n".join(lines[-120:]) + "\n")
-          print(json.dumps(summary, ensure_ascii=False, indent=2))
-          EOF
+          python3 scripts/daily_summary.py append
 
           git add weekly/daily_summary.json weekly/daily_history.jsonl books_pending.json 2>/dev/null
           if git diff --staged --quiet; then

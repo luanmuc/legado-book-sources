@@ -13,6 +13,7 @@ import json, os, re, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 from autocollect_core.config import ADULT_GROUP, BIG_SITES, OUTPUT_FILE
+from autocollect_core.utils import dump_json
 
 GROUP_ORDER = ["大厂正版", "笔趣阁类", "玄幻武侠", "言情女频", "综合其他", ADULT_GROUP]
 
@@ -63,7 +64,7 @@ def main():
     if dry:
         print("dry-run，未写文件")
         return
-    json.dump(ordered, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    dump_json(ordered, path)  # 原子写
     print(f"✅ 已写入 {os.path.basename(path)}")
 
 

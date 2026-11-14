@@ -27,18 +27,13 @@ sys.path.insert(0, ROOT)
 from autocollect_core.liveness import probe_alive  # noqa: E402  统一判死口径
 from datetime import datetime
 
-import socket
-import urllib.parse
 import requests
-
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)
 
 from autocollect_core.cleaner import clean_and_dedup, filter_junk_sources, is_big_site
 from autocollect_core.collectors import collect_all
 from autocollect_core.config import OUTPUT_FILE
 from autocollect_core.organizer import organize_sources
-from autocollect_core.utils import clean_url, log
+from autocollect_core.utils import clean_url, log, load_json, dump_json
 
 
 def main():
@@ -51,7 +46,7 @@ def main():
     requests.packages.urllib3.disable_warnings()
 
     books_path = OUTPUT_FILE if os.path.isabs(OUTPUT_FILE) else os.path.join(ROOT, OUTPUT_FILE)
-    existing = json.load(open(books_path, encoding="utf-8")) if os.path.exists(books_path) else []
+    existing = load_json(books_path, default=[])
     log.info(f"现有正式版: {len(existing)} 个源")
 
     # 1. 采集 + 清洗
@@ -95,7 +90,7 @@ def main():
         log.info("dry-run：不写盘、不发布")
         return
 
-    json.dump(final, open(books_path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    dump_json(final, books_path)  # 原子写：12MB 覆盖写被中断不会留半截文件
 
     report = {
         "date": datetime.now().strftime("%Y-%m-%d"),
@@ -109,9 +104,7 @@ def main():
         "big_sites": big_count,
         "note": "跨洋只做明确死站剔除，内容真实性未校验",
     }
-    os.makedirs(os.path.join(ROOT, "raw", "autocollect"), exist_ok=True)
-    json.dump(report, open(os.path.join(ROOT, "raw", "autocollect", "monthly_report.json"),
-                           "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    dump_json(report, os.path.join(ROOT, "raw", "autocollect", "monthly_report.json"))
     log.info(f"报告: {json.dumps(report, ensure_ascii=False)}")
 
     from autocollect_core.publisher import auto_publish

@@ -23,7 +23,7 @@ from contextlib import contextmanager
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from autocollect_core.utils import clean_url  # noqa: E402
+from autocollect_core.utils import clean_url, load_json, dump_json  # noqa: E402
 from autocollect_core.liveness import probe_many  # noqa: E402
 from autocollect_core.cleaner import filter_junk_sources  # noqa: E402
 
@@ -47,22 +47,6 @@ def pending_lock(pending_path):
     finally:
         fcntl.flock(fh, fcntl.LOCK_UN)
         fh.close()
-
-
-def load_json(path, default=None):
-    """读 JSON；文件缺失/损坏都返回 default（由调用方决定是否致命）
-
-    上游书源 JSON 是用户手工上传的，截断/半截文件很常见，不能让一个 json.load
-    抛裸 traceback 就算失败——要么上层能降级，要么给出可读错误。
-    """
-    if not os.path.exists(path):
-        return default
-    try:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
-    except json.JSONDecodeError as e:
-        log.error(f"JSON 解析失败（文件可能被截断）: {path} → {e}")
-        return default
 
 
 def main():
@@ -153,8 +137,7 @@ def main():
                 if u and u not in fresh_urls:
                     fresh_urls.add(u)
                     really_new.append(x)
-            with open(args.pending, "w", encoding="utf-8") as f:
-                json.dump(list(fresh) + really_new, f, ensure_ascii=False, indent=2)
+            dump_json(list(fresh) + really_new, args.pending)  # 原子写，半截文件会让下次读直接崩
         result["pending_after"] = len(fresh) + len(really_new)
         result["added"] = len(really_new)
         log.info(f"中间层已更新: {len(fresh)} → {result['pending_after']}（本次 +{len(really_new)}）")

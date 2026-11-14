@@ -19,7 +19,7 @@ import json
 import os
 
 from .config import PENDING_FILE, OUTPUT_FILE
-from .utils import log
+from .utils import log, load_json, dump_json
 from .cleaner import is_big_site, filter_junk_sources
 from .validators import validate_sources_with_checkpoint
 from .organizer import organize_sources
@@ -37,14 +37,10 @@ def publish_pending_flow(pending_file=None, output_file=None, do_publish=False):
         log.error(f"中间层 {pending_file} 不存在，先运行 --stage 合并采集结果")
         return None
 
-    with open(pending_file, "r", encoding="utf-8") as f:
-        pending_sources = json.load(f)
+    pending_sources = load_json(pending_file, default=[])
 
     # 读取现有正式版作为合并基准：大厂保护 + 既有源全部保留（增量合并，不替换正式版）
-    current_sources = []
-    if os.path.exists(output_file):
-        with open(output_file, "r", encoding="utf-8") as f:
-            current_sources = json.load(f)
+    current_sources = load_json(output_file, default=[])
 
     big_sites = [s for s in current_sources if is_big_site(s)]
     rest_pending = [s for s in pending_sources if not is_big_site(s)]
@@ -70,8 +66,7 @@ def publish_pending_flow(pending_file=None, output_file=None, do_publish=False):
     log.info(f"发布合并完成: 正式版 {len(current_sources)} → {len(final_sources)}"
              f"（新增 {added}，发布校验淘汰 {len(dead)}）")
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(final_sources, f, ensure_ascii=False, indent=2)
+    dump_json(final_sources, output_file)  # 原子写
 
     # 配套净化规则 + 报告
     collected_rules = collect_clean_rules()

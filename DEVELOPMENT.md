@@ -66,7 +66,8 @@
 | 模块 | 职责 | 关键函数 |
 |------|------|----------|
 | `config.py` | 常量：大厂12清单、垃圾/成人关键词表、数据源URL、路径、请求参数 | `BIG_SITE_*`、`JUNK_*`、`ADULT_GROUP`、`GENERIC_TEST_KEYWORDS`（我的/天下/重生…）、`REQUEST_TIMEOUT/RETRY/CONCURRENCY`（支持 `YCKCEO_*` 环境变量覆盖） |
-| `utils.py` | 日志、反爬请求、域名工具 | `fetch_url(url, timeout, retry)`（UA+Referer+verify=False）、`clean_url`、`get_domain` |
+| `utils.py` | 日志 / `clean_url` / `get_domain` / `fetch_url`，以及统一 JSON 落盘：`load_json(path, default)` 损坏兜底、`dump_json(data, path, atomic=True)` 中文不转义+缩进2+**原子写**（先 `.tmp` 再 `os.replace`）。books.json / pending 的写入必须走它，禁止直接 `open(...,'w')`（审计 D8 强制） |
+ 日志、反爬请求、域名工具 | `fetch_url(url, timeout, retry)`（UA+Referer+verify=False）、`clean_url`、`get_domain` |
 | `collectors.py` | 采集三路数据源 | `collect_yckceo_list(months, page_start, page_end)`、`collect_yckceo_heji(months, page_start, page_end, limit)`、`collect_gurus()`、`collect_all(months)`；`parse_update_time`/`extract_update_times`/`filter_by_months`（时间过滤） |
 | `naming.py` | 命名相关（2026-11-12 从 organizer 抽出）：`natural_name_key` 自然排序键、`generate_chinese_name` 重名加序号、`renumber_name_families` 同族尾号从 1 重编 |
 | `publish_flow.py` | 发布流程（2026-11-12 从 autocollect.py 抽出）：`publish_pending_flow` 中间层→正式版 full 校验+合并+写 books.json+发 Release |
@@ -86,7 +87,7 @@
 | `stage_daily.py` | 每日增量入库：只取当天 cleaned 里正式版与中间层都没有的 URL → 确定性探活 → 垃圾过滤 → 追加进 pending；含 `fcntl` 排他锁（双进程并发写不丢数据）与损坏 JSON 兜底 |
 | `monthly_release.py` | 每月自动合并发布（Actions auto 通道）：重新采集 → 明确死站剔除 → 垃圾过滤 → 合并 → `auto_publish(mode="auto")` |
 | `liveness.py`（core） | 全管道唯一判死口径：404/410 与域名不存在才判死，403/405/429/5xx/超时保留 |
-| `audit_pipeline.py` | 巡检管道审计（只读）：39 个检查点覆盖调度/采集/中间层/校验/排序/发布/恢复/文档/健壮性/并发，输出 PASS/WARN/FAIL + 证据 |
+| `audit_pipeline.py` | 巡检管道审计（只读）：40 个检查点覆盖调度/采集/中间层/校验/排序/发布/恢复/文档/健壮性/并发，输出 PASS/WARN/FAIL + 证据 |
 | `reorder.py` | 整库顺序规整（`--dry-run` 可先看）：大厂固定序 → 分组序 → 族名自然序 → 成人最末 |
 | `collect_staged.py` | 分段采集：`list`（前10页）/ `heji start end`（--limit 默认30）/ `gurus` |
 | `collect_heji_ids.py` | 提取合集列表全部 id → `heji_ids.json` |
@@ -94,6 +95,7 @@
 | `run_from_fragments.py` | 分片恢复：`clean`（合并分片+清洗+成人豁免，兼容 raw_heji_*.json 与 heji/*.json 两种路径）/ `validate --start --count`（分批）/ `final --input --publish` |
 | `filter_junk_sources.py` | 垃圾过滤+成人归组（复用 cleaner 核心函数） |
 | `check_usable.py` | 真实性专项检测：全量/抽样跑 `check_source_usable`，输出 usable_report + 断点 ckpt_usable.json |
+| `daily_summary.py` | 每日采集统计与摘要（2026-11-14 从 workflow 内联 heredoc 抽出）：`stats` 打印分片/清洗统计，`append` 生成 `weekly/daily_summary.json` + 追加 `daily_history.jsonl`（北京时间、保留 120 天） |
 | `status.py` | **状态自检**：正式版/中间层源数与分组、最新 cleaned、校验断点、采集分片、git 状态、发布页最新版本与 assets 完整性、crontab 是否在（中断接续第一步） |
 | `install_cron.sh` | 一键重建本地 crontab（每日采集时段，VM 重置后恢复用） |
 

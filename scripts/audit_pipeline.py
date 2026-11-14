@@ -412,9 +412,14 @@ def d6():
 @check("H4", "文档", "摘要日期用北京时间",
        "runner 是 UTC，摘要日期必须显式加 8 小时，否则与北京日期差一天")
 def h4():
+    # 2026-11-14：摘要逻辑已从 workflow heredoc 抽到 scripts/daily_summary.py，
+    # 锚点跟着搬，否则断言会因「检查旧位置」而假绿
     w = read(".github/workflows/auto-update.yml")
-    ok = "timedelta(hours=8)" in w
-    return ("PASS" if ok else "FAIL", "已显式转北京时区" if ok else "仍用 runner 本地时间(UTC)")
+    d = read("scripts/daily_summary.py")
+    called = "daily_summary.py append" in w
+    ok = called and "timedelta(hours=8)" in d
+    return ("PASS" if ok else "FAIL",
+            f"workflow调用={called} 脚本显式+8={('timedelta(hours=8)' in d)}")
 
 
 
@@ -455,10 +460,16 @@ def check_stage_lock():
 
 @check("I3", "健壮性", "损坏 JSON 不裸崩", "截断/非数组输入给可读错误而非 traceback")
 def check_bad_json():
-    src = read("scripts/stage_daily.py")
-    has_try = "JSONDecodeError" in src
-    has_list = "isinstance(cleaned, list)" in src
-    return ("PASS", "捕获 JSONDecodeError + 数组结构校验") if (has_try and has_list) else            ("FAIL", f"catch={has_try} list校验={has_list}")
+    # 2026-11-14：stage_daily 的本地 load_json 已并入 utils.load_json，
+    # 断言要盯「实现所在处」，同时确认 stage_daily 真的在用共享版本
+    utils = read("autocollect_core/utils.py")
+    stage = read("scripts/stage_daily.py")
+    has_try = "JSONDecodeError" in utils
+    has_list = "isinstance(cleaned, list)" in stage
+    reuse = "from autocollect_core.utils import" in stage and "load_json" in stage
+    ok = has_try and has_list and reuse
+    return ("PASS" if ok else "FAIL",
+            f"catch={has_try} list校验={has_list} 复用共享io={reuse}")
 
 
 @check("I4", "清洗", "URL 装饰符污染可清", "✔️/♤/♦ 等标记不残留在 URL 里")
@@ -535,9 +546,41 @@ def check_liveness_entry_unique():
     return "PASS", f"消费方 {consumers}"
 
 
+
+@check("D8", "健壮性", "关键数据落盘走原子写",
+       "books.json / books_pending.json 的写入必须经 utils.dump_json（先 .tmp 再 rename），不得直接 open(...,'w')")
+def check_atomic_writes():
+    import re as _re
+    targets = [
+        "autocollect.py",
+        "autocollect_core/publish_flow.py",
+        "scripts/monthly_release.py",
+        "scripts/reorder.py",
+        "scripts/stage_daily.py",
+    ]
+    bad = []
+    for rel in targets:
+        path = os.path.join(ROOT, rel)
+        if not os.path.exists(path):
+            bad.append(f"{rel}(缺失)")
+            continue
+        src = open(path, encoding="utf-8").read()
+        # 直接写 books.json / pending 的形态：open(<变量或常量>, "w") 且同句或邻句 json.dump
+        for m in _re.finditer(r'open\([^)]*["\']w["\'][^)]*\)', src):
+            line_no = src[:m.start()].count("\n") + 1
+            ctx = src[max(0, m.start() - 200):m.start() + 300]
+            if "json.dump" in ctx and ("dump_json" not in ctx):
+                bad.append(f"{rel}:{line_no}")
+    if bad:
+        return "FAIL", f"非原子写: {bad}"
+    return "PASS", f"{len(targets)} 个写盘点全部走 dump_json"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--no-fail-exit", action="store_true",
+                    help="即使有 FAIL 也返回 0（仅供人工巡检时忽略门禁语义）")
     args = ap.parse_args()
 
     results = []
@@ -549,17 +592,21 @@ def main():
         results.append({"id": cid, "dim": dim, "name": name, "standard": standard,
                         "status": status, "evidence": ev})
 
-    if args.json:
-        print(json.dumps(results, ensure_ascii=False, indent=2))
-        return
-
     cnt = {"PASS": 0, "WARN": 0, "FAIL": 0}
     for r in results:
         cnt[r["status"]] = cnt.get(r["status"], 0) + 1
-    print(f"{'ID':4s} {'维度':6s} {'结论':5s} {'检查点':30s} 证据")
-    for r in results:
-        print(f"{r['id']:4s} {r['dim']:6s} {r['status']:5s} {r['name']:30s} {r['evidence']}")
-    print(f"\n合计：PASS {cnt['PASS']} / WARN {cnt['WARN']} / FAIL {cnt['FAIL']}")
+
+    if args.json:
+        print(json.dumps(results, ensure_ascii=False, indent=2))
+    else:
+        print(f"{'ID':4s} {'维度':6s} {'结论':5s} {'检查点':30s} 证据")
+        for r in results:
+            print(f"{r['id']:4s} {r['dim']:6s} {r['status']:5s} {r['name']:30s} {r['evidence']}")
+        print(f"\n合计：PASS {cnt['PASS']} / WARN {cnt['WARN']} / FAIL {cnt['FAIL']}")
+
+    # 门禁语义：FAIL 必须用非零退出码表达，否则 workflow 里 `if [ $RC -ne 0 ]` 永远为假
+    if cnt["FAIL"] > 0 and not args.no_fail_exit:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
