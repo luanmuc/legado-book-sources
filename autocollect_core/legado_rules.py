@@ -302,6 +302,69 @@ def parse_book_list(html, rule_book_list, rule_name=None, rule_url=None, max_che
     return last
 
 
+def _xpath_nodes(html, rule, max_check=10):
+    """按 XPath 取出条目节点，转成 bs4 Tag 列表（供逐条解析字段）"""
+    if _lxml_html is None:
+        return []
+    try:
+        tree = _lxml_html.fromstring(html)
+        items = tree.xpath(_xpath_rel(rule))
+    except Exception:
+        return []
+    out = []
+    for el in items[:max_check]:
+        if isinstance(el, str):
+            continue
+        try:
+            tag = BeautifulSoup(_lxml_html.tostring(el, encoding="unicode"),
+                                "html.parser").find(True)
+            if tag is not None:
+                out.append(tag)
+        except Exception:
+            continue
+    return out
+
+
+def parse_book_nodes(html, book_list, max_check=10):
+    """统一入口：按 bookList 取出条目节点，返回 (status, nodes, engine)
+
+    这个入口是给"逐条取字段"的场景用的（画像/诊断）。校验层的
+    check_search_parsed 走的是 parse_book_list，两者都要覆盖同样三类规则：
+
+      status:
+        ok      有节点
+        script  规则是 JS / JsonPath / @@ （静态解析做不到，阅读器能跑）→ nodes 为空
+        empty   是静态规则但一个节点都没取到
+      engine: css | xpath   ← 决定字段该怎么解析（xpath 源要用 _xpath_value）
+
+    踩过的坑（2026-11-14，画像跑了 200 源才发现）：
+      直接调 _parse_candidate 会漏掉三件事——
+        ① '||' 多候选没拆 → 'id.nr||id.sitebox@dl' 被当成 '#nr||id.sitebox' 非法 CSS
+        ② XPath 规则没分流转 → '//div[@class=...]' 当 CSS 解析，SelectorSyntaxError
+        ③ JS 规则没拦 → '<js>…</js>' 整串进 soupsieve，SelectorSyntaxError
+      于是 37/200 个源被误记成"解析异常"，而校验层本来是对的。
+    """
+    if not book_list or not isinstance(book_list, str):
+        return "empty", [], "css"
+    if is_script_rule(book_list):
+        return "script", [], "css"
+    candidates = [c.strip() for c in book_list.split("||") if c.strip()]
+    for cand in candidates:
+        if _is_xpath(cand):
+            nodes = _xpath_nodes(html, cand, max_check)
+            if nodes:
+                return "ok", nodes, "xpath"
+            continue
+        soup = BeautifulSoup(html, "html.parser")
+        try:
+            els, _ = _parse_candidate(soup, cand)
+        except Exception:
+            continue
+        if els:
+            return "ok", els[:max_check], "css"
+    return "empty", [], "css"
+
+
 def _xpath_rel(rule):
     """XPath 转相对路径（item 上下文内执行）"""
     r = _strip_regex(rule)
