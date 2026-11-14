@@ -85,18 +85,18 @@ def _split_index(step):
     if m and m.group(1).strip():
         return _convert_selector(m.group(1).strip()), "exclude", int(m.group(2))
 
-    # 索引 .N / .-N
-    m = re.match(r"^(.*?)\s*([a-zA-Z][a-zA-Z0-9]*)[.](-?\d+)$", st)
+    # 索引 .N / .-N（末段为纯数字即索引，前面整段原样保留）
+    #
+    # 原实现用 `(.*?)([a-zA-Z][a-zA-Z0-9]*)[.](-?\d+)$` 拆「父段 + 标签 + 索引」，
+    # 遇到 class 名带连字符就拆错：'.section-list.1' → parent='.section-' + tag='list'
+    # → 还原成 '.section- list'，CSS 非法直接 0 匹配。
+    # 实测三一读书的目录规则正是 `.section-list.1@li@a`，被误判「目录失效」。
+    # 正确做法：去掉末尾 '.数字' 后，剩下的整段就是选择器本体。
+    m = re.match(r"^(.*?)[.](-?\d+)$", st)
     if m:
-        parent = m.group(1).strip()
-        tag = m.group(2)
-        idx = int(m.group(3))
-        # '.odd.0' → parent='.' + tag='odd' → 应还原为 '.odd'（class 选择器+索引）
-        if parent.endswith(".") and not parent.endswith(".."):
-            head = parent + tag
-        else:
-            head = (parent + " " + tag if parent else tag)
-        return _convert_selector(head), "index", idx
+        head = m.group(1).strip()
+        if head and head != ".":
+            return _convert_selector(head), "index", int(m.group(2))
     return None
 
 
@@ -383,6 +383,32 @@ def _parse_book_list_single(html, rule_book_list, rule_name=None, rule_url=None,
         books.append({"name": name, "url": url})
     ok = any(b["name"] or b["url"] for b in books)
     return {"matched": len(items), "books": books, "ok": ok}
+
+
+def parse_first_attr(html, list_rule, attr_rule="href", max_check=3):
+    """从 list_rule 命中的第一个元素里，按 attr_rule 取属性/文本
+
+    用于 Legado 新格式 chapterList：`chapterList` 只负责选元素，
+    `chapterUrl`/`chapterName` 才决定取 href 还是 text。原实现直接用
+    parse_rule_list 取值（默认 text），会把章节名当链接去请求 → 404。
+    """
+    root = html
+    if isinstance(html, str):
+        root = BeautifulSoup(html, "html.parser")
+    if not list_rule or not isinstance(list_rule, str):
+        return ""
+    cand = [c.strip() for c in list_rule.split("||") if c.strip()]
+    if not cand:
+        return ""
+    elements, _ = _parse_candidate(root, cand[0])
+    if not elements:
+        return ""
+    el = elements[0]
+    rule = (attr_rule or "href").strip()
+    steps, action = _parse_rule(rule)
+    if action:
+        return _take_action(el, action) or ""
+    return _take_action(el, rule) or ""
 
 
 def parse_explore_entries(explore_url, limit=3):

@@ -73,7 +73,8 @@
 | `publish_flow.py` | 发布流程（2026-11-12 从 autocollect.py 抽出）：`publish_pending_flow` 中间层→正式版 full 校验+合并+写 books.json+发 Release |
 | `cleaner.py` | 清洗去重 + 分类判定 | `clean_and_dedup(raw)`（流式+checkpoint）、`is_big_site`、`classify_junk`/`is_adult_source`/`filter_junk_sources`（失效/测试先剔→成人无条件保留→其余非小说剔） |
 | `legado_rules.py` | **Legado 规则解析引擎**（真实性校验用） | `parse_book_list(html, bookList, name, url)`（CSS+XPath 双引擎、`||` 多候选）、`parse_explore_entries(exploreUrl)`（JSON数组/`标题::URL` 两种格式） |
-| `validators.py` | 两级校验 + 真实性校验 | `check_rule_integrity`、`quick_validate`（首页连通性，WAF 不淘汰）、`check_search_parsed`（通用关键词轮试+规则解析，三态 ok/bad/blocked）、`check_explore_parsed`（发现页前3入口轮试至少1个解析出书）、`check_source_usable`（搜索/发现至少一项可用）、`validate_sources(cleaned)` → `(validated, dead)`（大厂保护） |
+| `validators.py` | 校验层：规则完整性 / quick / full / 检查点续跑 / 搜索解析 / 发现解析 / 成人宽松。2026-11-14 按社区口径补三项：①搜索关键词优先用源自带 `checkKeyWord`（官方 `getCheckKeyword` 语义，481/2169 源带此字段）②解析结果用 `bookUrlPattern` 校核是否真为书籍详情页（559 源带此字段）③`check_chain_usable` 真跑 **详情→目录→正文** 三页，`check_source_usable(deep=True)` 触发 |
+ 两级校验 + 真实性校验 | `check_rule_integrity`、`quick_validate`（首页连通性，WAF 不淘汰）、`check_search_parsed`（通用关键词轮试+规则解析，三态 ok/bad/blocked）、`check_explore_parsed`（发现页前3入口轮试至少1个解析出书）、`check_source_usable`（搜索/发现至少一项可用）、`validate_sources(cleaned)` → `(validated, dead)`（大厂保护） |
 | `organizer.py` | 整理输出 | `organize_sources(validated, existing)`（大厂保护最顶 + 四字改名 + **成人豁免改名/符号清理** + 名字族自然排序 + customOrder） |
 | `cleanrules.py` | 净化规则 | `collect_clean_rules()`（nyasama 包）、`generate_clean_rules(final, rules)`（去重优化输出） |
 | `report.py` | 采集报告 | `generate_report(raw, cleaned, dead, final, big_count)`（真实统计） |
@@ -87,14 +88,14 @@
 | `stage_daily.py` | 每日增量入库：只取当天 cleaned 里正式版与中间层都没有的 URL → 确定性探活 → 垃圾过滤 → 追加进 pending；含 `fcntl` 排他锁（双进程并发写不丢数据）与损坏 JSON 兜底 |
 | `monthly_release.py` | 每月自动合并发布（Actions auto 通道）：重新采集 → 明确死站剔除 → 垃圾过滤 → 合并 → `auto_publish(mode="auto")` |
 | `liveness.py`（core） | 全管道唯一判死口径：404/410 与域名不存在才判死，403/405/429/5xx/超时保留 |
-| `audit_pipeline.py` | 巡检管道审计（只读）：40 个检查点覆盖调度/采集/中间层/校验/排序/发布/恢复/文档/健壮性/并发，输出 PASS/WARN/FAIL + 证据 |
+| `audit_pipeline.py` | 巡检管道审计（只读）：42 个检查点覆盖调度/采集/中间层/校验/排序/发布/恢复/文档/健壮性/并发，输出 PASS/WARN/FAIL + 证据 |
 | `reorder.py` | 整库顺序规整（`--dry-run` 可先看）：大厂固定序 → 分组序 → 族名自然序 → 成人最末 |
 | `collect_staged.py` | 分段采集：`list`（前10页）/ `heji start end`（--limit 默认30）/ `gurus` |
 | `collect_heji_ids.py` | 提取合集列表全部 id → `heji_ids.json` |
 | `collect_heji_batch.py` | 逐合集独立落盘下载（断点续传，中断零损失） |
 | `run_from_fragments.py` | 分片恢复：`clean`（合并分片+清洗+成人豁免，兼容 raw_heji_*.json 与 heji/*.json 两种路径）/ `validate --start --count`（分批）/ `final --input --publish` |
 | `filter_junk_sources.py` | 垃圾过滤+成人归组（复用 cleaner 核心函数） |
-| `check_usable.py` | 真实性专项检测：全量/抽样跑 `check_source_usable`，输出 usable_report + 断点 ckpt_usable.json |
+| `check_usable.py` | 真实性专项检测：全量/抽样跑 `check_source_usable`，输出 usable_report + 断点 ckpt_usable.json；`--deep` 启用**详情→目录→正文三级链路校验**（社区四项校验口径，断点独立 `ckpt_usable_deep.json`） |
 | `daily_summary.py` | 每日采集统计与摘要（2026-11-14 从 workflow 内联 heredoc 抽出）：`stats` 打印分片/清洗统计，`append` 生成 `weekly/daily_summary.json` + 追加 `daily_history.jsonl`（北京时间、保留 120 天） |
 | `status.py` | **状态自检**：正式版/中间层源数与分组、最新 cleaned、校验断点、采集分片、git 状态、发布页最新版本与 assets 完整性、crontab 是否在（中断接续第一步） |
 | `install_cron.sh` | 一键重建本地 crontab（每日采集时段，VM 重置后恢复用） |

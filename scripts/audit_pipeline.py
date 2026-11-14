@@ -576,6 +576,43 @@ def check_atomic_writes():
     return "PASS", f"{len(targets)} 个写盘点全部走 dump_json"
 
 
+
+@check("D9", "校验", "正式版不含非小说源",
+       "bookSourceType 非 0（音频1/图片2/文件3）的源不应出现在非成人段；成人段按约束可保留非小说")
+def check_non_novel():
+    import json as _json
+    path = os.path.join(ROOT, "books.json")
+    if not os.path.exists(path):
+        return "WARN", "books.json 不存在"
+    books = _json.load(open(path, encoding="utf-8"))
+    adult_marker = 0
+    for i, x in enumerate(books):
+        if "成人" in (x.get("bookSourceGroup") or ""):
+            adult_marker = i
+            break
+    bad = []
+    for i, x in enumerate(books):
+        t = x.get("bookSourceType", 0)
+        if t != 0 and (adult_marker == 0 or i < adult_marker):
+            bad.append(f"{x.get('bookSourceName')}(type={t})")
+    if bad:
+        return "WARN", f"非成人段混入 {len(bad)} 个非小说源: {bad[:8]}"
+    return "PASS", "非成人段全部 bookSourceType=0"
+
+
+@check("D10", "校验", "校验三项能力在位",
+       "checkKeyWord 优先 / bookUrlPattern 结果校核 / 详情→目录→正文三级链路 必须都还在（防止被后续改动删掉）")
+def check_validation_capability():
+    src = read("autocollect_core/validators.py")
+    has_ck = "checkKeyWord" in src
+    has_bp = "bookUrlPattern" in src
+    has_chain = "def check_chain_usable" in src and "def check_content_parsed" in src
+    has_deep = "deep=False" in src
+    ok = has_ck and has_bp and has_chain and has_deep
+    return ("PASS" if ok else "FAIL",
+            f"checkKeyWord={has_ck} bookUrlPattern={has_bp} 三级链路={has_chain} deep开关={has_deep}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")

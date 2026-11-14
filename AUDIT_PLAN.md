@@ -2,7 +2,7 @@
 
 审计对象：**每日采集 → 中间层 → 每月自动合并发布** 全自动巡检管道
 审计方式：脚本化只读核查（`scripts/audit_pipeline.py`）+ 逐条回读源码定性
-最近执行：2026-11-14　检查点 40 项　结论：**40 / 40 PASS**（含 9 项闭环、缺陷回归、压力测试与原子写断言）
+最近执行：2026-11-14　检查点 42 项　结论：**41 / 42 PASS + 1 WARN**（含 9 项闭环、缺陷回归、压力测试与原子写断言）
 
 ---
 
@@ -65,6 +65,8 @@
 | E2 | 正式版结构自洽 | customOrder 连续、分组段连续、成人最末 | PASS | 2169 条连续；分组 6 段；成人 1887-2169 且末位=2169 |
 | E3 | 同族尾号从 1 连续 | 非成人/非大厂组，同族源尾号必须 1..N 无跳号（本体也补 1） | PASS | 281 个族全部 1..N；注入 `笔趣阁5→笔趣阁55` 立刻转 FAIL |
 | D8 | 关键数据落盘走原子写 | books.json / books_pending.json 的写入必须经 `utils.dump_json`（`.tmp`→`os.replace`），直接 `open(...,'w')`+`json.dump` 即 FAIL；覆盖 5 个写盘点 | PASS | 新增断言时立刻抓出 autocollect.py 2 处漏改 |
+| D9 | 正式版不含非小说源 | bookSourceType 非 0（音频/图片/文件）不应出现在非成人段（成人段按约束可保留） | WARN（当前 44 个待处置） | 逐源比对 bookSourceType 与成人段边界 |
+| D10 | 校验三项能力在位 | checkKeyWord 优先 / bookUrlPattern 结果校核 / 详情→目录→正文三级链路 / deep 开关 必须都在 | PASS | 源码能力断言，防后续改动删掉 |
 | D7 | 判死活入口唯一 | 只有 liveness 定义，validators/stage_daily/monthly_release 消费；其他模块 import liveness 即 FAIL | PASS | 注入 check_usable.py 旁路 import 立刻转 FAIL |
 
 ### F. 发布层（5 项）

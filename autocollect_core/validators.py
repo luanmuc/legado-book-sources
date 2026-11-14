@@ -6,6 +6,8 @@ autocollect_core 校验模块（第三阶段）
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from .legado_rules import parse_rule_list, parse_first_attr
+
 from .config import (CONCURRENCY, FULL_TEST_KEYWORDS, GENERIC_TEST_KEYWORDS,
                      QUICK_TEST_KEYWORD)
 from .utils import fetch_url, get_domain, log
@@ -490,6 +492,19 @@ def _search_once(source, keyword):
         return "bad", f"规则解析异常 {type(e).__name__}"
     if r["ok"]:
         sample = [(b["name"], b["url"]) for b in r["books"] if b["name"] or b["url"]][:2]
+        # 官方校验会用 bookUrlPattern 判断「搜到的是不是书籍详情页」。
+        # 559/2169 个源带该字段：解析出结果但 URL 全不匹配 → 很可能是搜索页/分类页被误当书，
+        # 判 blocked（保留待验）而不是 bad（淘汰），宁滥勿缺。
+        pattern = str(source.get("bookUrlPattern") or "").strip()
+        if pattern:
+            import re as _re
+            urls = [b["url"] for b in r["books"] if b.get("url")]
+            try:
+                if urls and not any(_re.search(pattern, u) for u in urls):
+                    return "blocked", (f"解析到 {len(urls)} 条但 URL 均不匹配 bookUrlPattern"
+                                       f"（可能搜到的不是书籍详情页）")
+            except _re.error:
+                pass  # pattern 本身写错，不据此判死
         return "ok", f"解析成功 matched={r['matched']} 样例={sample}"
 
     # POST 配置过时回退（实测大量老源 method 写 POST，站点实际只认 GET）
@@ -530,7 +545,15 @@ def check_search_parsed(source, keywords=None, max_try=3):
     if is_script_rule(rule.get("bookList")):
         return "blocked", "搜索规则依赖脚本/JSONPath（静态无法解析，不判失效）"
 
-    keywords = [k for k in (keywords or GENERIC_TEST_KEYWORDS) if k][:max_try]
+    # 官方 BookSource.getCheckKeyword(default)：源自带 checkKeyWord 时优先用它，
+    # 否则回落默认关键词。实测 481/2169 个源（起点/番茄/红袖/书旗/QQ阅读等）带此字段，
+    # 用通用词去搜会被这些站判定成空结果 → 误杀。
+    ck = str(rule.get("checkKeyWord") or "").strip()
+    base = [k for k in (keywords or GENERIC_TEST_KEYWORDS) if k]
+    if ck:
+        keywords = ([ck] + [k for k in base if k != ck])[:max_try] if keywords else [ck]
+    else:
+        keywords = base[:max_try]
     if not keywords:
         keywords = [QUICK_TEST_KEYWORD]
     tried = []
@@ -638,7 +661,180 @@ def check_adult_content_ready(source):
     return False, "成人源规则空壳（正文/目录/搜索/发现四条规则全无）"
 
 
-def check_source_usable(source, keywords=None, relax_adult=True):
+# ============================================================
+# 详情 → 目录 → 正文 三级链路校验（2026-11-14 按社区口径补）
+# ============================================================
+# 背景：社区对书源的校验分四项——搜索 / 详情 / 目录 / 正文，失败结果里
+# 「详情失效」「目录失效」「正文失效」各占一类。原实现只校验搜索与发现的**解析**，
+# 对详情/目录/正文仅检查「规则字符串非空」，等于一个源搜索能出书、正文打不开也放过去，
+# 用户导入后照样读不了。这里按官方字段真实走一遍链路。
+
+def _abs_url(url, source):
+    """把相对 URL 补成绝对（书源里大量 /book/123 这种写法）"""
+    u = str(url or "").strip()
+    if not u:
+        return ""
+    if u.startswith("http"):
+        return u
+    base = str(source.get("bookSourceUrl") or "").strip().rstrip("/")
+    if u.startswith("//"):
+        return "https:" + u
+    return base + ("" if u.startswith(("/", "?")) else "/") + u
+
+
+def _pick_first_value(html, rule):
+    """按单条规则取第一个非空值
+
+    只吞「脏规则导致的解析异常」（上游书源常有 `[property~=las?test_chapter_name]`
+    这种非法选择器）。NameError/ImportError 是自身代码缺陷，必须暴露，不能静默当成
+    「解析不出」——上一版就是被宽 catch 吞掉，把好源误判成详情失效。
+    """
+    try:
+        n, vals = parse_rule_list(html, rule, max_check=3)
+        return vals[0] if vals else ""
+    except (NameError, ImportError):
+        raise
+    except Exception:
+        return ""
+
+
+def check_detail_parsed(source, book, timeout=8):
+    """详情页校验：要么按 ruleBookInfo 解析出字段，要么能拿到目录页 URL"""
+    rule_info = source.get("ruleBookInfo") if isinstance(source.get("ruleBookInfo"), dict) else {}
+    url = _abs_url(book.get("url"), source)
+    if not url:
+        return "bad", "搜索未返回书籍 URL"
+    req = {"url": url, "method": "GET", "body": None, "charset": None}
+    try:
+        code, html = _fetch_raw(req, timeout=timeout)
+    except Exception as e:
+        return "blocked", f"详情请求异常 {type(e).__name__}"
+    if code != 200:
+        return "blocked", f"详情 HTTP {code}"
+
+    toc_url = _pick_first_value(html, rule_info.get("tocUrl"))
+    names = []
+    for key in ("name", "author", "lastChapter"):
+        v = _pick_first_value(html, rule_info.get(key))
+        if v:
+            names.append(f"{key}={v[:16]}")
+    if toc_url or names:
+        extra = f" tocUrl={toc_url[:60]}" if toc_url else ""
+        return "ok", "详情解析到 " + (";".join(names) if names else "目录链接") + extra
+    # 规则为空时不算失效：很多源的详情字段留空靠阅读器默认逻辑
+    if not any(str(rule_info.get(k) or "").strip() for k in ("name", "author", "tocUrl")):
+        return "blocked", "无详情规则（留空由阅读器默认处理，不判失效）"
+    return "bad", "详情页字段全部解析不出"
+
+
+def check_toc_parsed(source, book, detail_html=None, timeout=8):
+    """目录页校验：ruleToc 至少解析出 1 章"""
+    rule_toc = source.get("ruleToc") if isinstance(source.get("ruleToc"), dict) else {}
+    rule_info = source.get("ruleBookInfo") if isinstance(source.get("ruleBookInfo"), dict) else {}
+    url = _abs_url(book.get("url"), source)
+    toc_url = ""
+    if detail_html:
+        toc_url = _pick_first_value(detail_html, rule_info.get("tocUrl"))
+    toc_url = _abs_url(toc_url, source) if toc_url else url
+
+    req = {"url": toc_url, "method": "GET", "body": None, "charset": None}
+    try:
+        code, html = _fetch_raw(req, timeout=timeout)
+    except Exception as e:
+        return "blocked", f"目录请求异常 {type(e).__name__}"
+
+    book_list = rule_toc.get("bookList") or rule_toc.get("chapterList")
+    if not book_list:
+        return "blocked", "无目录规则（留空由阅读器默认处理，不判失效）"
+    try:
+        n, vals = parse_rule_list(html, book_list, max_check=3)
+    except Exception as e:
+        return "bad", f"目录规则解析异常 {type(e).__name__}"
+    if vals:
+        return "ok", f"目录解析到 {n} 项 首项={str(vals[0])[:24]}"
+    return "bad", "目录页解析不出章节"
+
+
+def check_content_parsed(source, chapter_url, timeout=8):
+    """正文页校验：ruleContent.content 能取到实际内容（文本长度或图片数）"""
+    rule_content = source.get("ruleContent") if isinstance(source.get("ruleContent"), dict) else {}
+    content_rule = rule_content.get("content") or source.get("ruleContentUrl")
+    if not content_rule:
+        return "blocked", "无正文规则（留空由阅读器默认处理，不判失效）"
+    url = _abs_url(chapter_url, source)
+    if not url:
+        return "bad", "无章节 URL"
+    req = {"url": url, "method": "GET", "body": None, "charset": None}
+    try:
+        code, html = _fetch_raw(req, timeout=timeout)
+    except Exception as e:
+        return "blocked", f"正文请求异常 {type(e).__name__}"
+    if code != 200:
+        return "blocked", f"正文 HTTP {code}"
+    try:
+        n, vals = parse_rule_list(html, content_rule, max_check=20)
+    except Exception as e:
+        return "bad", f"正文规则解析异常 {type(e).__name__}"
+    text = "".join(vals)
+    if len(text) >= 30 or len(vals) >= 1:
+        return "ok", f"正文解析到 {len(vals)} 段 / {len(text)} 字符"
+    return "bad", "正文解析为空"
+
+
+def check_chain_usable(source, book, timeout=8):
+    """三级链路：详情 → 目录 → 正文。返回 dict(chain_ok, detail/toc/content)"""
+    d_status, d_detail = check_detail_parsed(source, book, timeout=timeout)
+    detail_html = None
+    if d_status == "ok":
+        try:
+            req = {"url": _abs_url(book.get("url"), source), "method": "GET",
+                   "body": None, "charset": None}
+            code, detail_html = _fetch_raw(req, timeout=timeout)
+        except Exception:
+            detail_html = None
+
+    t_status, t_detail = check_toc_parsed(source, book, detail_html=detail_html, timeout=timeout)
+
+    c_status, c_detail = "blocked", "未取到章节"
+    chapter_url = ""
+    if t_status == "ok":
+        try:
+            rule_toc = source.get("ruleToc") if isinstance(source.get("ruleToc"), dict) else {}
+            bl = rule_toc.get("bookList") or rule_toc.get("chapterList")
+            src_html = detail_html
+            if src_html is None:
+                req = {"url": _abs_url(book.get("url"), source), "method": "GET",
+                       "body": None, "charset": None}
+                _, src_html = _fetch_raw(req, timeout=timeout)
+            first_cand = str(bl).split("||")[0]
+            # 老格式 bookList 自带 @href → parse_rule_list 直接给 URL；
+            # 新格式 chapterList 只选元素，URL 要按 chapterUrl 规则再取
+            vals = parse_rule_list(src_html, first_cand, max_check=3)[1]
+            if vals and str(vals[0]).strip().startswith(("http://", "https://", "/", "//")):
+                chapter_url = str(vals[0]).strip()
+            else:
+                url_rule = rule_toc.get("chapterUrl") or "href"
+                chapter_url = parse_first_attr(src_html, first_cand, url_rule)
+        except Exception:
+            chapter_url = ""
+        if chapter_url:
+            c_status, c_detail = check_content_parsed(source, chapter_url, timeout=timeout)
+
+    # 链路判定：正文 ok 才算全通；全 blocked 视为无法判定；任一环节明确 bad 则链路不通
+    statuses = [d_status, t_status, c_status]
+    if c_status == "ok":
+        chain_ok = True
+    elif all(x == "blocked" for x in statuses):
+        chain_ok = None
+    elif "bad" in statuses:
+        chain_ok = False
+    else:
+        chain_ok = None
+    return {"chain_ok": chain_ok, "detail": d_status, "toc": t_status,
+            "content": c_status, "detail_text": d_detail, "toc_text": t_detail,
+            "content_text": c_detail}
+
+def check_source_usable(source, keywords=None, relax_adult=True, deep=False):
     """可用性判定（用户标准：搜索、发现最起码有一个能用才算可用源）
 
     relax_adult=True（默认）：成人源不跑书籍解析（内容形态含漫画/短剧/图片，解析不可靠），
@@ -664,7 +860,24 @@ def check_source_usable(source, keywords=None, relax_adult=True):
     e_status, e_detail = check_explore_parsed(source)
     detail = f"搜索[{s_status}]{s_detail} | 发现[{e_status}]{e_detail}"
     if s_status == "ok" or e_status == "ok":
-        return {"usable": True, "search": s_status, "explore": e_status, "detail": detail}
+        result = {"usable": True, "search": s_status, "explore": e_status, "detail": detail}
+        # deep：搜索能出书后再走 详情→目录→正文。发布前校验用得上——
+        # 「搜索能搜到、正文打不开」的源对用户等于废源，必须在发布口拦住。
+        if deep and s_status == "ok":
+            book = {}
+            m = _re.search(r"样例=\[\('(.+?)', '(.+?)'\)", s_detail)
+            if m:
+                book = {"name": m.group(1), "url": m.group(2)}
+            if book.get("url"):
+                ch = check_chain_usable(source, book)
+                result["chain"] = ch
+                result["detail"] = (detail + f" | 链路[详情{ch['detail']}/目录{ch['toc']}"
+                                    f"/正文{ch['content']}]")
+                if ch["chain_ok"] is False:
+                    result["usable"] = False
+                elif ch["chain_ok"] is None and result["usable"] is True:
+                    result["usable"] = None
+        return result
     if s_status == "blocked" or e_status == "blocked":
         return {"usable": None, "search": s_status, "explore": e_status, "detail": detail}
     return {"usable": False, "search": s_status, "explore": e_status, "detail": detail}
