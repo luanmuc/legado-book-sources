@@ -79,24 +79,28 @@ def _newest_dates(text):
 
 
 def _fetch(url, timeout):
+    """返回 (状态码, 正文, 响应头)。响应头用于取 Last-Modified——服务器给的文件修改时间，
+    实测命中率约 20%，但准确度高（晋江 LM 显示 2 天前更新，正好证明它没死）。"""
     try:
         r = requests.get(url, headers=HEAD, timeout=timeout, verify=False, allow_redirects=True)
         r.encoding = r.apparent_encoding or "utf-8"
-        return r.status_code, r.text or ""
+        return r.status_code, r.text or "", dict(r.headers)
     except Exception as e:
-        return type(e).__name__, ""
+        return type(e).__name__, "", {}
 
 
 def _find_sitemaps(base):
     """返回 (sitemap_url, loc_count, newest_lastmod, is_index)"""
     cands = []
-    code, txt = _fetch(base.rstrip("/") + "/robots.txt", TIMEOUT_SITEMAP)
+    code, txt, _ = _fetch(base.rstrip("/") + "/robots.txt", TIMEOUT_SITEMAP)
     if code == 200:
         cands += re.findall(r"(?im)^sitemap:\s*(\S+)", txt)
-    cands += [base.rstrip("/") + "/sitemap.xml", base.rstrip("/") + "/sitemap_index.xml"]
+    cands += [base.rstrip("/") + p for p in
+              ("/sitemap.xml", "/sitemap_index.xml", "/sitemap/",
+               "/baidu_sitemap.xml", "/sitemap.txt")]
 
-    for c in cands[:3]:
-        code, txt = _fetch(c, TIMEOUT_SITEMAP)
+    for c in cands[:5]:
+        code, txt, _ = _fetch(c, TIMEOUT_SITEMAP)
         if code != 200 or "<" not in txt:
             continue
         is_index = "<sitemapindex" in txt.lower()
@@ -105,19 +109,52 @@ def _find_sitemaps(base):
         newest = _newest_dates(" ".join(lms)) if lms else None
         # 索引文件：取前 2 个子 sitemap 再数一层 loc 与 lastmod
         if is_index:
-            subs = re.findall(r"<loc>([^<]+)</loc>", txt, re.I)[:2]
-            for s in subs:
-                code2, txt2 = _fetch(s.strip(), TIMEOUT_SITEMAP)
+            subs = re.findall(r"<loc>([^<]+)</loc>", txt, re.I)
+            # 规模：最多数 3 个子文件（避免请求爆炸）
+            for sub in subs[:3]:
+                code2, txt2, _ = _fetch(sub.strip(), TIMEOUT_SITEMAP)
                 if code2 != 200:
                     continue
                 locs += len(LOC_RE.findall(txt2))
-                lms2 = LASTMOD_RE.findall(txt2)
-                if lms2:
-                    d2 = _newest_dates(" ".join(lms2))
-                    if d2 and (newest is None or d2 > newest):
-                        newest = d2
+            # 日期：索引自身的 <lastmod> 通常已覆盖全部子文件；
+            # 个别站不写，此时递归末尾子文件补（通常按时间升序，末尾最新）
+            if newest is None and subs:
+                d2 = None
+                for sub in subs[-2:]:
+                    code2, txt2, _ = _fetch(sub.strip(), TIMEOUT_SITEMAP)
+                    if code2 != 200:
+                        continue
+                    lms2 = LASTMOD_RE.findall(txt2)
+                    if lms2:
+                        dd = _newest_dates(" ".join(lms2))
+                        if dd and (d2 is None or dd > d2):
+                            d2 = dd
+                newest = d2
         return c, locs, newest, is_index
     return "", 0, None, False
+
+
+HOME_KW = ("最近更新", "最新更新", "刚刚更新", "最后更新", "最新章节", "更新列表")
+
+
+def _home_date_smart(html):
+    """首页日期。优先只在“最近更新/最新章节”区块内取——页面全文正则会把页脚版权年
+    （实测多源同为 2015-02-14、某站为 2023-01-01）抓成“最后更新”，是误判主因。"""
+    import re as _re
+    txt = _re.sub(r"<script[\s\S]*?</script>|<style[\s\S]*?</style>", " ", html, flags=_re.I)
+    txt = _re.sub(r"<[^>]+>", " ", txt)
+    txt = _re.sub(r"\s+", " ", txt)
+    today = date.today()
+    for kw in HOME_KW:
+        i = txt.find(kw)
+        if i >= 0:
+            d = _newest_dates(txt[i:i + 900])
+            if d and d <= today:
+                return d
+    d = _newest_dates(txt)
+    if d and d > today:      # 未来日期不可信（实测出现过 2052-08-13）
+        return None
+    return d
 
 
 def check_one(src):
@@ -130,10 +167,20 @@ def check_one(src):
                 "sitemap_kind": "", "book_links": 0, "evidence": "", "verdict": "不可达", "note": "URL 缺失"}
 
     t0 = time.time()
-    code, html = _fetch(url, TIMEOUT_HOME)
+    code, html, hdrs = _fetch(url, TIMEOUT_HOME)
     rt = round(time.time() - t0, 1)
     reachable = (code == 200 and len(html) > 500)
-    home_date = _newest_dates(html) if reachable else None
+    home_date = _home_date_smart(html) if reachable else None
+    lm_date = None
+    lm_raw = (hdrs or {}).get("Last-Modified")
+    if lm_raw:
+        try:
+            from email.utils import parsedate_to_datetime
+            lm_date = parsedate_to_datetime(lm_raw).date()
+            if lm_date > date.today():      # 服务器时钟异常，不可信
+                lm_date = None
+        except Exception:
+            lm_date = None
     book_links = len(set(BOOKLINK_RE.findall(html))) if reachable else 0
 
     sm_url, sm_locs, sm_date, is_idx = ("", 0, None, False)
@@ -148,6 +195,8 @@ def check_one(src):
 
     if sm_date:
         newest, evidence = sm_date, "sitemap"
+    elif lm_date and not _suspect(lm_date):
+        newest, evidence = lm_date, "lastmod"
     elif home_date and not _suspect(home_date):
         newest, evidence = home_date, "home"
     elif home_date:
@@ -177,6 +226,7 @@ def check_one(src):
             "newest": newest.isoformat() if newest else "",
             "days": days, "sitemap_urls": sm_locs,
             "sitemap_kind": ("索引" if is_idx else ("单文件" if sm_url else "无")),
+            "lm_date": lm_date.isoformat() if lm_date else "",
             "book_links": book_links, "evidence": evidence, "verdict": verdict, "note": note}
 
 
