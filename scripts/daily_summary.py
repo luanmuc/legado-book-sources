@@ -86,12 +86,31 @@ def append():
         if d:
             domains[d] += 1
 
+    # 门槛实况：体检了多少、挡掉几个。
+    # 以前摘要里只有 cleaned 条数，看不出门槛到底生效没有——只能扒 CI log，
+    # 而本地拿不到 log。让两个门槛各写一份 report，这里读进来即可。
+    gates = {}
+    for key, fname in (("health", "health_gate_report.json"), ("deep", "deep_gate_report.json")):
+        path = os.path.join(ROOT, "weekly", fname)
+        try:
+            with open(path, encoding="utf-8") as f:
+                r = json.load(f)
+            gates[key] = {
+                "checked": r.get("checked"),
+                "dropped": r.get("dropped"),
+                "dropped_items": [x.get("name") for x in (r.get("dropped_items") or [])][:10],
+            }
+        except Exception:
+            gates[key] = None
+
     summary = {
         "date": datetime.now(CST).strftime("%Y-%m-%d"),
         "file": os.path.basename(latest),
         "cleaned": len(data),
         "groups": dict(groups),
         "domains": len(domains),
+        "gates": gates,
+        "gated_out": sum((g or {}).get("dropped") or 0 for g in gates.values()),
     }
 
     out = os.path.join(ROOT, "weekly", "daily_summary.json")
@@ -106,7 +125,8 @@ def append():
     os.makedirs(os.path.dirname(hist), exist_ok=True)
     with open(hist, "a", encoding="utf-8") as f:
         f.write(json.dumps({"date": summary["date"], "cleaned": summary["cleaned"],
-                            "domains": summary["domains"]}, ensure_ascii=False) + "\n")
+                            "domains": summary["domains"],
+                            "gated_out": summary["gated_out"]}, ensure_ascii=False) + "\n")
 
     # 裁掉超过 120 天的历史
     with open(hist, encoding="utf-8") as f:

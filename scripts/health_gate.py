@@ -52,6 +52,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--input", required=True)
     ap.add_argument("--output", required=True)
+    ap.add_argument("--report", default="", help="门槛报告 JSON（供每日摘要统计用）")
     ap.add_argument("--max", type=int, default=120, help="最多体检多少条（超出部分直接放行）")
     ap.add_argument("--workers", type=int, default=10)
     ap.add_argument("--drop-hard-zombie", action="store_true", help="剔除硬证据僵尸")
@@ -120,6 +121,24 @@ def main():
     n_sm = sum(1 for r in results if r.get("sitemap_urls"))
     print(f"体检 {len(results)} 条：可达 {n_reach} / 有 sitemap {n_sm} / 硬僵尸 {len(hard_zombies)}")
     print(f"输出 {len(kept)+len(rest)} 条 → {args.output}")
+
+    report = {
+        "gate": "health",
+        "input": len(data),
+        "checked": len(results),
+        "reachable": n_reach,
+        "with_sitemap": n_sm,
+        "hard_zombie": len(hard_zombies),
+        "dropped": len(hard_zombies),
+        "output": len(kept) + len(rest),
+        "dropped_items": [{"name": z["name"], "url": z["url"],
+                           "lastmod": z.get("lastmod"), "days": z.get("days")}
+                          for z in hard_zombies],
+    }
+    rp = args.report or os.path.join(os.path.dirname(os.path.abspath(args.output)) or ".",
+                                     "health_gate_report.json")
+    json.dump(report, open(rp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    print(f"报告: {rp}")
     for z in hard_zombies[:20]:
         print(f"  剔除 {z['name']}  {z['url']}  最后更新 {z['lastmod']} ({z['days']}天前)")
     return 0

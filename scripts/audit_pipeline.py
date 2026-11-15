@@ -628,10 +628,14 @@ def check_health_gate():
     has_budget = "--budget" in gate
     # 大厂豁免是红线：晋江 sitemap 停在 2020、黑岩首页挂 2019 版权年，都活得好好的
     has_big_exempt = "is_big_site" in gate and "BIG_SITES" in gate
-    reject_unreachable = 'verdict\", ' in gate and '"不可达"' in gate and "continue" in gate
-    ok = wired and only_sitemap and has_threshold and has_budget and has_big_exempt
+    # 门槛实况必须回传：没有 report，摘要里就只能看到 cleaned 条数，
+    # 看不出门槛今天挡掉了几个，等于无法判断门槛是否生效
+    has_report = ("--report" in gate and "health_gate_report.json" in wf
+                  and "gates" in read("scripts/daily_summary.py"))
+    ok = wired and only_sitemap and has_threshold and has_budget and has_big_exempt and has_report
     ev = (f"workflow接入={wired} 只认sitemap证据={only_sitemap} "
-          f"阈值180天={has_threshold} 时间预算={has_budget} 大厂豁免={has_big_exempt}")
+          f"阈值180天={has_threshold} 时间预算={has_budget} 大厂豁免={has_big_exempt} "
+          f"报告回传={has_report}")
     if wired and not (only_sitemap and has_threshold):
         return "FAIL", ev + " ← 健康度口径被放宽（可能把跨洋取不到的站误删）"
     return ("PASS" if ok else "FAIL"), ev
@@ -653,9 +657,14 @@ def check_deep_gate():
     budget = "--budget" in gate
     threshold = "ZOMBIE_DAYS = 180" in gate
     big_exempt = "is_big" in gate
-    ok = wired and monthly_wired and only_suspect and budget and threshold and big_exempt
+    # 深查挡掉的源必须能进摘要，否则看不出深查到底生效没有
+    has_report = ("--report" in gate and "deep_gate_report.json" in daily
+                  and "gates" in read("scripts/daily_summary.py"))
+    ok = (wired and monthly_wired and only_suspect and budget and threshold
+          and big_exempt and has_report)
     ev = (f"每日接入={wired} 月度接入={monthly_wired} 只查可疑={only_suspect} "
-          f"时间预算={budget} 阈值180天={threshold} 大厂豁免={big_exempt}")
+          f"时间预算={budget} 阈值180天={threshold} 大厂豁免={big_exempt} "
+          f"报告回传={has_report}")
     if wired and not (threshold and big_exempt):
         return "FAIL", ev + " ← 深查口径被放宽（可能误删模板假日期的活站）"
     return ("PASS" if ok else "FAIL"), ev

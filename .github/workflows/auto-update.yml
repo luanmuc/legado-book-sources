@@ -129,7 +129,8 @@ jobs:
           # 跨洋网络取不到 sitemap / 首页一律放行——"我们看不到"不等于"站死了"
           GATED="$CLEANED"
           if python3 scripts/health_gate.py --input "$CLEANED" \
-               --output weekly/cleaned_gated.json --max 120 --drop-hard-zombie; then
+               --output weekly/cleaned_gated.json --report weekly/health_gate_report.json \
+               --max 120 --drop-hard-zombie; then
             [ -f weekly/cleaned_gated.json ] && GATED=weekly/cleaned_gated.json
           else
             echo "::warning::健康度预筛失败，本次直接用原始 cleaned 入库（不阻断采集）"
@@ -137,7 +138,8 @@ jobs:
           # 进站深查（第二道）：门口信号经常是模板假数据（2024-04-20 被七八个站共享），
           # 只对门口标了"疑似/僵尸"的少数新候选进站读目录页，确认在更新才放行
           if python3 scripts/deep_gate.py --input "$GATED" \
-               --output weekly/cleaned_deep.json --max 40 --only-suspect --drop-zombie; then
+               --output weekly/cleaned_deep.json --report weekly/deep_gate_report.json \
+               --max 40 --only-suspect --drop-zombie; then
             [ -f weekly/cleaned_deep.json ] && GATED=weekly/cleaned_deep.json
           else
             echo "::warning::进站深查失败，本步跳过（不阻断采集）"
