@@ -12,6 +12,7 @@
     python3 scripts/stage_daily.py --cleaned weekly/cleaned_20261110_004022.json
     python3 scripts/stage_daily.py --cleaned <file> --dry-run     # 只看会加多少，不写盘
 """
+import re
 import argparse
 import fcntl
 import json
@@ -69,17 +70,41 @@ def main():
 
     formal_urls = {clean_url(s.get("bookSourceUrl") or "") for s in formal}
     pending_urls = {clean_url(s.get("bookSourceUrl") or "") for s in pending}
+
+    # 剔除黑名单（2026-11-15）：从正式版删掉的源，下次采集会从合集里重新抓回来，
+    # 只比对"正式版+中间层"的闸门拦不住——实测优品PPT、奇漫影视、精华书阁僵尸站
+    # 都在被剔除后重新进了中间层。
+    def _host(u):
+        h = (u or "").split("//")[-1].split("/")[0].lower()
+        return re.sub(r"^(www|m|wap|mobile)\.", "", h)
+
+    excluded = load_json(os.path.join(ROOT, "excluded_sources.json"), {}) or {}
+    ex_items = excluded.get("items", []) if isinstance(excluded, dict) else []
+    # scope=host：整站无关（PPT/网盘/档案馆/社交/音乐播客/有声/空壳），整个域名都拦
+    # scope=url ：僵尸站，只拦被进站确认死掉的那条规则，不误伤同站其他规则
+    ex_urls = {clean_url(x.get("url") or "") for x in ex_items
+               if x.get("url") and x.get("scope") == "url"}
+    formal_hosts = {_host(s.get("bookSourceUrl")) for s in formal}
+    ex_hosts = {_host(x.get("url")) for x in ex_items
+                if x.get("url") and x.get("scope") == "host"} - formal_hosts
+    log.info(f"剔除黑名单: {len(ex_items)} 条 / host级 {len(ex_hosts)} / url级 {len(ex_urls)}")
     log.info(f"输入 cleaned {len(cleaned)} | 正式版 {len(formal)} | 中间层 {len(pending)}")
 
     # 1. 只留两份库里都没有的 URL（这是「不复活」的唯一闸门）
     new = []
+    blocked = []
     seen = set()
     for s in cleaned:
         u = clean_url(s.get("bookSourceUrl") or "")
         if not u or u in formal_urls or u in pending_urls or u in seen:
             continue
+        if u in ex_urls or _host(u) in ex_hosts:
+            blocked.append({"name": s.get("bookSourceName"), "url": s.get("bookSourceUrl")})
+            continue
         seen.add(u)
         new.append(s)
+    if blocked:
+        log.info(f"被剔除黑名单拦下 {len(blocked)} 条（不复活已淘汰源）")
     log.info(f"当天真正新增候选: {len(new)}")
 
     result = {
@@ -87,6 +112,7 @@ def main():
         "formal": len(formal),
         "pending_before": len(pending),
         "new_candidates": len(new),
+        "blocked_by_blacklist": len(blocked),
         "alive": 0,
         "added": 0,
         "dead": 0,

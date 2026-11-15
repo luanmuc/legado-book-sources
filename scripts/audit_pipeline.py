@@ -661,6 +661,28 @@ def check_deep_gate():
     return ("PASS" if ok else "FAIL"), ev
 
 
+@check("D13", "采集", "剔除黑名单在位",
+       "从正式版删掉的源会被下次采集从合集里重新抓回来（实测优品PPT、奇漫影视、"
+       "精华书阁僵尸站被剔后又进了中间层）。stage_daily 必须读 excluded_sources.json 拦截")
+def check_blacklist():
+    stage = read("scripts/stage_daily.py")
+    import json as _j
+    try:
+        ex = _j.load(open("excluded_sources.json", encoding="utf-8"))
+    except Exception:
+        return "FAIL", "excluded_sources.json 缺失或损坏"
+    items = ex.get("items", [])
+    wired = "excluded_sources.json" in stage
+    scoped = all(x.get("scope") in ("host", "url") for x in items)
+    # 僵尸站只能精确拦 URL，不能整域拦——否则会把同站仍在用的其他规则一起挡掉
+    zombie_host = [x for x in items if x.get("batch") == "僵尸站" and x.get("scope") == "host"]
+    ok = wired and scoped and not zombie_host and len(items) > 0
+    ev = f"清单={len(items)}条 接入={wired} 分级={scoped} 僵尸误用host级={len(zombie_host)}"
+    if zombie_host:
+        return "FAIL", ev + " ← 僵尸站用了 host 级拦截，会误伤同站其他规则"
+    return ("PASS" if ok else "FAIL"), ev
+
+
 
 def main():
     ap = argparse.ArgumentParser()
