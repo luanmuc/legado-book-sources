@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from autocollect_core.cleaner import is_big_site
 from autocollect_core.validators import check_source_usable
+from autocollect_core.utils import dump_json
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BOOKS = os.path.join(ROOT, "books.json")
@@ -84,16 +85,16 @@ def main():
             report[url] = r
             n_done += 1
             if n_done % args.batch == 0:
-                json.dump(report, open(ckpt_path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+                dump_json(report, ckpt_path)
                 el = time.time() - t0
                 print(f"  进度 {n_done}/{len(todo)} 用时 {el:.0f}s", flush=True)
 
-    json.dump(report, open(ckpt_path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    dump_json(report, ckpt_path)
 
     ts = time.strftime("%Y%m%d_%H%M%S")
     suffix = "_deep" if args.deep else ""
     out = os.path.join(OUT_DIR, f"usable_report{suffix}_{ts}.json")
-    json.dump(report, open(out, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    dump_json(report, out)
 
     # 统计
     stat = {"可用": 0, "失效": 0, "待验": 0}

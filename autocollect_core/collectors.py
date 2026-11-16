@@ -8,6 +8,7 @@ import json
 import os
 import re
 import time
+from autocollect_core.utils import dump_json
 from datetime import datetime, timedelta
 
 from .config import DATA_SOURCES, RAW_DIR, REQUEST_TIMEOUT, CONCURRENCY
@@ -279,8 +280,7 @@ def collect_all(months=1):
 
     # 保存原始数据
     raw_file = os.path.join(RAW_DIR, f"raw_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-    with open(raw_file, "w", encoding="utf-8") as f:
-        json.dump(sources, f, ensure_ascii=False, indent=2)
+    dump_json(sources, raw_file)
 
     log.info(f"采集完成，原始数据共 {len(sources)} 个源，保存到 {raw_file}")
     return sources

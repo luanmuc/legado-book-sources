@@ -11,6 +11,9 @@
 - **静态内容站豁免**: 古籍/国学/诗词/典籍类站点内容固定，"最后更新停在建站时"是常态而非失活，两道门槛都豁免判死（实测国学经典站被 deep 判僵尸，实为正常的 Cloudflare 403 古籍站）
 - **门槛挡掉项可追溯**: 摘要 `gates.*.dropped_items` 每项含 `name` + `url`，不再只是名字（同名变体多，光看名字认不出是哪个站）
 - **门槛实况**: 两道门槛各写一份 report（`weekly/health_gate_report.json` / `weekly/deep_gate_report.json`），`daily_summary` 读进来写进摘要的 `gates` 和 `gated_out`——摘要里能直接看到"今天体检了几个、挡掉几个"，不用再去扒 CI log
+- **所有落盘原子写**: 常数与断点统一走 `utils.dump_json`（先写 `.tmp`、`fsync`、再 `rename`）。流水线被 kill 或磁盘打满时，普通 `open("w")` 会留半截 JSON 把下游带断；实测写完前 SIGKILL 打断，旧文件仍完整可解析
+- **时间预算是硬上限**: 两道门槛原用 `with ThreadPoolExecutor` + `break`，`with` 退出会 `shutdown(wait=True)` 等所有已提交任务跑完，`--budget` 形同虚设（单站最坏 42s，10 并发能把 180s 拖成 240s+）。现改为 `as_completed` + `cancel_futures` + **deadline 下推到 worker**（排队任务超时直接返回"跳过"）+ 超预算落盘后跳过解释器线程 join：`--budget 2` 实测 **72s → 3.3s**
+- **纯函数单测**: `tests/test_core.py` 14 项，覆盖 `_split_index` 的 `class.xxx.N` 拆分、host 归一化（`m.hongxiu.com` → `hongxiu.com`）、静态站豁免。审计 E4 会实跑测试，不再只是"字符串还在不在"——把断言故意改坏会让审计 FAIL
 - **剔除黑名单**: `excluded_sources.json`（62 条）。从正式版删掉的源会被下次采集从合集里重新抓回来，`stage_daily` 读这份清单拦截：整站无关的（PPT素材/网盘/档案馆/社交/音乐播客/有声/空壳）按域名拦，僵尸站只按精确 URL 拦（不误伤同站仍在用的其他规则）。成人段的视频/漫画/影视站不在此列
 
 ## 🏷️ 分组统计（按实际排序顺序，成人组固定最末）
@@ -55,7 +58,7 @@
 ## 🧭 管道审计
 
 巡检管道（每日采集 → 中间层 → 每月自动发布）的审计计划与执行记录见 [AUDIT_PLAN.md](AUDIT_PLAN.md)，
-可随时用 `python3 scripts/audit_pipeline.py` 复核（45 项检查点，只读，输出 PASS/WARN/FAIL + 证据；`FAIL=0` 才允许发版，脚本自身 FAIL 时返回非零退出码，月度发布 workflow 已强制拦截）。
+可随时用 `python3 scripts/audit_pipeline.py` 复核（46 项检查点，只读，输出 PASS/WARN/FAIL + 证据；`FAIL=0` 才允许发版，脚本自身 FAIL 时返回非零退出码，月度发布 workflow 已强制拦截）。
 
 ## 🔍 校验流程
 校验分两档（2026-11 用户明确要求）：

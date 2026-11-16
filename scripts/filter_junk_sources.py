@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from autocollect_core.config import RAW_DIR
 from autocollect_core.cleaner import filter_junk_sources
-from autocollect_core.utils import log
+from autocollect_core.utils import log, dump_json
 
 VALIDATED_FILE = os.path.join(RAW_DIR, "validated.json")
 CLEAN_FILE = os.path.join(RAW_DIR, "validated_clean.json")
@@ -43,8 +43,7 @@ def main():
 
     kept = filter_junk_sources(items, keep_adult=True)
 
-    with open(CLEAN_FILE, "w", encoding="utf-8") as f:
-        json.dump(kept, f, ensure_ascii=False, indent=2)
+    dump_json(kept, CLEAN_FILE)
 
     log.info(f"✅ 保留干净源 {len(kept)} 个 → {CLEAN_FILE}")
 

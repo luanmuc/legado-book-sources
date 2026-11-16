@@ -90,6 +90,7 @@ def append():
     # 以前摘要里只有 cleaned 条数，看不出门槛到底生效没有——只能扒 CI log，
     # 而本地拿不到 log。让两个门槛各写一份 report，这里读进来即可。
     gates = {}
+    gate_err = {}
     for key, fname in (("health", "health_gate_report.json"), ("deep", "deep_gate_report.json")):
         path = os.path.join(ROOT, "weekly", fname)
         try:
@@ -101,8 +102,16 @@ def append():
                 "dropped_items": [{"name": x.get("name"), "url": x.get("url")}
                                   for x in (r.get("dropped_items") or [])][:10],
             }
-        except Exception:
+        except FileNotFoundError:
+            # 门槛当天没跑（或产物没生成）——这是可预期的，但要留痕，
+            # 否则 gates[key]=None 看起来像"今天门槛没挡东西"，其实是门槛没运行。
             gates[key] = None
+            gate_err[key] = "report 缺失"
+        except Exception as e:
+            # 真正的异常必须喊出来：静默降级会让"门槛崩了"伪装成"门槛放行"
+            gates[key] = None
+            gate_err[key] = f"{type(e).__name__}: {e}"
+            print(f"⚠️ 读 {fname} 失败: {type(e).__name__}: {e}", file=sys.stderr)
 
     summary = {
         "date": datetime.now(CST).strftime("%Y-%m-%d"),
@@ -111,6 +120,7 @@ def append():
         "groups": dict(groups),
         "domains": len(domains),
         "gates": gates,
+        "gates_error": gate_err,   # 非空即表示当天门槛异常或 report 缺失
         "gated_out": sum((g or {}).get("dropped") or 0 for g in gates.values()),
     }
 
@@ -119,8 +129,7 @@ def append():
         dump_json(summary, out)
     else:
         os.makedirs(os.path.dirname(out), exist_ok=True)
-        with open(out, "w", encoding="utf-8") as f:
-            json.dump(summary, f, ensure_ascii=False, indent=2)
+        dump_json(summary, out)
 
     hist = os.path.join(ROOT, "weekly", "daily_history.jsonl")
     os.makedirs(os.path.dirname(hist), exist_ok=True)

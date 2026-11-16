@@ -10,7 +10,7 @@ from .legado_rules import parse_rule_list, parse_first_attr
 
 from .config import (CONCURRENCY, FULL_TEST_KEYWORDS, GENERIC_TEST_KEYWORDS,
                      QUICK_TEST_KEYWORD)
-from .utils import fetch_url, get_domain, log
+from .utils import fetch_url, get_domain, dump_json, log
 
 
 def check_rule_integrity(source):
@@ -315,10 +315,8 @@ def validate_sources_with_checkpoint(sources, tag, batch=300, mode="quick"):
         v, d = validate_sources(batch_sources, mode=mode)
         validated.extend(v)
         dead_acc.extend(d)
-        with open(vfile, "w", encoding="utf-8") as f:
-            json.dump(validated, f, ensure_ascii=False, indent=2)
-        with open(dfile, "w", encoding="utf-8") as f:
-            json.dump(dead_acc, f, ensure_ascii=False, indent=2)
+        dump_json(validated, vfile)
+        dump_json(dead_acc, dfile)
         log.info(f"  批次 [{i}:{i + len(batch_sources)}] 完成: 合格 {len(validated)} 累计，淘汰 {len(dead_acc)} 累计")
 
     for f in (vfile, dfile):
@@ -337,7 +335,6 @@ import json as _json
 import re as _re
 
 import requests as _requests
-
 from .legado_rules import is_script_rule, parse_book_list, parse_explore_entries
 
 

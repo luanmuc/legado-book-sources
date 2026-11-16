@@ -122,3 +122,6 @@ LOG_FILE = os.path.join(BASE_DIR, "autocollect.log")
 # 用"最后更新日期"判这类站必然全判死——国学经典、古籍、诗词站建站后就再不更新了。
 # 实测案例：国学经典站被 deep_gate 判僵尸，但它是 Cloudflare 403 的正常古籍站。
 STATIC_SITE_KEYWORDS = ("国学", "古籍", "诗词", "典籍", "经史", "诸子", "四书", "五经", "文献", "全集")
+# 关键词只能匹配站名，而这些站的域名本身不含关键词（gxhj.com / wunpu.com），
+# 一旦站名被改名或清理，豁免就失效、真古籍站会被当僵尸删掉。补一份域名白名单兜底。
+STATIC_SITE_HOSTS = ("gxhj.com", "zhonghuashici.com", "guoxue.wunpu.com")

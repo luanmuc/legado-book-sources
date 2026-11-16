@@ -22,7 +22,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from autocollect_core.config import RAW_DIR
-from autocollect_core.utils import ensure_dir, fetch_url, log
+from autocollect_core.utils import ensure_dir, fetch_url, log, dump_json
 
 IDS_FILE = os.path.join(RAW_DIR, "heji_ids.json")
 HEJI_DIR = os.path.join(RAW_DIR, "heji")
@@ -75,8 +75,7 @@ def main():
             log.warning(f"  [{i+1}/{total}] 合集{cid} 下载失败")
             continue
 
-        with open(fpath, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False)
+        dump_json(data, fpath, indent=None)
         n = len(data) if isinstance(data, list) else 1
         total_sources += n
         done += 1

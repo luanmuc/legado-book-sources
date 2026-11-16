@@ -24,7 +24,7 @@ from contextlib import contextmanager
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from autocollect_core.utils import clean_url, load_json, dump_json  # noqa: E402
+from autocollect_core.utils import clean_url, load_json, dump_json, host_of  # noqa: E402
 from autocollect_core.liveness import probe_many  # noqa: E402
 from autocollect_core.cleaner import filter_junk_sources  # noqa: E402
 
@@ -75,8 +75,7 @@ def main():
     # 只比对"正式版+中间层"的闸门拦不住——实测优品PPT、奇漫影视、精华书阁僵尸站
     # 都在被剔除后重新进了中间层。
     def _host(u):
-        h = (u or "").split("//")[-1].split("/")[0].lower()
-        return re.sub(r"^(www|m|wap|mobile)\.", "", h)
+        return host_of(u)   # 唯一实现在 utils.host_of
 
     excluded = load_json(os.path.join(ROOT, "excluded_sources.json"), {}) or {}
     ex_items = excluded.get("items", []) if isinstance(excluded, dict) else []

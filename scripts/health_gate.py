@@ -20,21 +20,28 @@ import argparse
 import json
 import os
 import sys
+import logging
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+log = logging.getLogger("gate")
+if not log.handlers:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from site_health import check_one  # 复用同一套判定
+from autocollect_core.utils import dump_json, host_of
 try:
-    from autocollect_core.config import BIG_SITES, STATIC_SITE_KEYWORDS
+    from autocollect_core.config import BIG_SITES, STATIC_SITE_KEYWORDS, STATIC_SITE_HOSTS
 except Exception:
     BIG_SITES = []
     STATIC_SITE_KEYWORDS = ()
+    STATIC_SITE_HOSTS = ()
 
 
 def _host(u):
-    return (u or "").split("//")[-1].split("/")[0].lower().replace("www.", "")
+    return host_of(u)   # 唯一实现在 utils.host_of
 
 
 # 大厂豁免：晋江 sitemap 停在 2020、黑岩首页挂 2019 版权年、潇湘首页是公告日期，
@@ -51,10 +58,17 @@ HARD_ZOMBIE_DAYS = 180
 
 
 def is_static(name, u=""):
-    """静态内容站豁免：古籍/国学/诗词站内容固定，永不更新是常态，
-    sitemap 的 lastmod 停在建站时不能当死站证据。"""
+    """静态内容站豁免：古籍/国学/诗词/典籍类站点内容固定，
+    "最后更新停在建站时"是常态而非失活，不能用更新日期判死。
+
+    两条判据取并集：站名关键词命中，或域名在 STATIC_SITE_HOSTS 白名单里。
+    只认站名是不够的——gxhj.com / guoxue.wunpu.com 的域名完全不含关键词，
+    站名一旦被清理或改名，真古籍站就会被当僵尸删掉。
+    """
     text = (name or "") + " " + (u or "")
-    return any(k in text for k in STATIC_SITE_KEYWORDS)
+    if any(k in text for k in STATIC_SITE_KEYWORDS):
+        return True
+    return host_of(u) in STATIC_SITE_HOSTS
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--input", required=True)
@@ -77,7 +91,7 @@ def main():
 
     def _run(s):
         try:
-            return check_one(s)
+            return check_one(s, deadline=t0 + args.budget)
         except Exception as e:
             return {"url": s.get("bookSourceUrl"), "name": s.get("bookSourceName"),
                     "verdict": "不可达", "evidence": "", "days": None,
@@ -85,18 +99,24 @@ def main():
 
     results = []
     timed_out = False
-    with ThreadPoolExecutor(max_workers=args.workers) as ex:
-        futs = [ex.submit(_run, s) for s in probe]
-        for f in futs:
+    # 预算必须是硬上限。原先用 `with` 包 ThreadPoolExecutor：break 之后 with 退出
+    # 会 shutdown(wait=True)，把已提交的任务全部等完，--budget 180s 实际能跑到 240s+。
+    # 现在手动 shutdown(wait=False, cancel_futures=True)，并改用 as_completed 取结果
+    # （原先是按提交顺序 f.result，前面一条慢的会把后面已完成的卡住、白占 worker）。
+    ex = ThreadPoolExecutor(max_workers=args.workers)
+    futs = [ex.submit(_run, s) for s in probe]
+    try:
+        for f in as_completed(futs):
             if time.time() - t0 > args.budget:
                 timed_out = True
+                print(f"⚠️ 超出 {args.budget}s 时间预算，剩余体检取消（全部放行）")
                 break
             try:
-                results.append(f.result(timeout=15))
-            except Exception:
-                continue
-    if timed_out:
-        print(f"⚠️ 超出 {args.budget}s 时间预算，剩余体检取消（全部放行）")
+                results.append(f.result())
+            except Exception as e:
+                log.warning(f"体检异常（该源按放行处理）: {e}")
+    finally:
+        ex.shutdown(wait=False, cancel_futures=True)
 
     by_url = {r.get("url"): r for r in results}
     hard_zombies, kept = [], []
@@ -122,7 +142,7 @@ def main():
         kept.append(s)
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)) or ".", exist_ok=True)
-    json.dump(kept + rest, open(args.output, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    dump_json(kept + rest, args.output)
 
     n_reach = sum(1 for r in results if r.get("reachable"))
     n_sm = sum(1 for r in results if r.get("sitemap_urls"))
@@ -144,10 +164,15 @@ def main():
     }
     rp = args.report or os.path.join(os.path.dirname(os.path.abspath(args.output)) or ".",
                                      "health_gate_report.json")
-    json.dump(report, open(rp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    dump_json(report, rp)
     print(f"报告: {rp}")
     for z in hard_zombies[:20]:
         print(f"  剔除 {z['name']}  {z['url']}  最后更新 {z['lastmod']} ({z['days']}天前)")
+    if timed_out:
+        # 超预算时不再等线程池里那几个正在跑的请求（单站最坏 42s，10 worker 能把
+        # 180s 预算拖成 240s+）。产物已落盘，直接跳过解释器退出时的线程 join。
+        sys.stdout.flush(); sys.stderr.flush()
+        os._exit(0)
     return 0
 
 

@@ -2,7 +2,7 @@
 
 审计对象：**每日采集 → 中间层 → 每月自动合并发布** 全自动巡检管道
 审计方式：脚本化只读核查（`scripts/audit_pipeline.py`）+ 逐条回读源码定性
-最近执行：2026-11-14　检查点 45 项　结论：**45 / 45 PASS**（含 9 项闭环、缺陷回归、压力测试与原子写断言）
+最近执行：2026-11-16　检查点 46 项　结论：**46 / 46 PASS**（含 9 项闭环、缺陷回归、压力测试与原子写断言）
 
 ---
 
@@ -71,6 +71,19 @@
 | D9 | 正式版不含非小说源 | bookSourceType 非 0（音频/图片/文件）不应出现在非成人段（成人段按约束可保留） | PASS | 非成人段全部 type=0；2026-11-14 剔除 29 个无关站（PPT/档案馆/网盘/社交/音乐/有声/播客/漫画/影视），1 个成人写真站移入成人组 |
 | D10 | 校验三项能力在位 | checkKeyWord 优先 / bookUrlPattern 结果校核 / 详情→目录→正文三级链路 / deep 开关 必须都在 | PASS | 源码能力断言，防后续改动删掉 |
 | D7 | 判死活入口唯一 | 只有 liveness 定义，validators/stage_daily/monthly_release 消费；其他模块 import liveness 即 FAIL | PASS | 注入 check_usable.py 旁路 import 立刻转 FAIL |
+
+### E4. 纯函数单测通过（本轮新增）
+
+45 项审计只检查"某段字符串是否还在文件里"，把函数改名成 `_disabled_xxx` 照样 PASS。
+`tests/test_core.py` 真实跑逻辑，覆盖三个历史上真踩过的坑：
+
+| 用例 | 保护的缺陷 |
+|------|-----------|
+| `_split_index("class.a")` 返回 None | 曾把 `class.书名.0` 拆成 css+索引，1756/2169 个源选择器全错 |
+| `host_of("m.hongxiu.com") == "hongxiu.com"` | 门槛视图没归一到主域，大厂豁免匹配不上，红袖移动版被误判僵尸删掉 |
+| `is_static` 对古籍站为 True、对笔趣阁为 False | 豁免太松会漏掉僵尸站，靠站名太窄会误删真古籍站 |
+
+审计会实跑 `python3 -m unittest discover -s tests`，断言故意改坏时 E4 由 PASS 变 FAIL（已做过红绿验证）。
 
 ### F. 发布层（5 项）
 

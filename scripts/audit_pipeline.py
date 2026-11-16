@@ -219,6 +219,28 @@ def e2():
             f"连续={cont} 分组段={len(groups)} 成人最末={adult_last} 成人末位={adult_max}/{len(b)}")
 
 
+@check("E4", "排序", "纯函数单测通过",
+       "45 项审计只查字符串是否存在，函数改名成 _disabled_xxx 也能 PASS。"
+       "tests/ 必须真实跑逻辑：索引拆分 / host 归一化 / 静态站豁免")
+def e4():
+    import subprocess
+    try:
+        r = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests"],
+                           cwd=ROOT, capture_output=True, text=True, timeout=120)
+    except Exception as e:
+        return "FAIL", f"单测无法执行 {type(e).__name__}"
+    err = (r.stderr or "")
+    ran = ""
+    for line in err.splitlines():
+        if line.startswith("Ran ") and "test" in line:
+            ran = line.strip()
+            break
+    ok = r.returncode == 0 and ran
+    if not ok:
+        return "FAIL", f"RC={r.returncode} {ran or err.strip()[-70:]}"
+    return "PASS", ran
+
+
 # ---------- F 发布层 ----------
 @check("F1", "发布", "版本号递增不覆盖",
        "get_next_release_tag 取最新 vX.Y.Z patch+1")

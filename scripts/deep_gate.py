@@ -25,14 +25,20 @@ import argparse
 import json
 import os
 import sys
+import logging
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+log = logging.getLogger("gate")
+if not log.handlers:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from site_deep_check import check_site  # 复用进站判定
+from autocollect_core.utils import dump_json, host_of
 try:
-    from autocollect_core.config import STATIC_SITE_KEYWORDS, BIG_SITES
+    from autocollect_core.config import STATIC_SITE_KEYWORDS, STATIC_SITE_HOSTS, BIG_SITES
 except Exception:
     BIG_SITES = []
 
@@ -40,7 +46,7 @@ ZOMBIE_DAYS = 180
 
 
 def _host(u):
-    return (u or "").split("//")[-1].split("/")[0].lower().replace("www.", "")
+    return host_of(u)   # 唯一实现在 utils.host_of
 
 
 _BIG = {_host(b.get("url")) for b in BIG_SITES}
@@ -53,9 +59,28 @@ def is_big(u):
 
 def is_static(name, u=""):
     """静态内容站豁免：古籍/国学/诗词/典籍类站点内容固定，
-    "最后更新停在建站时"是常态而非失活，不能用更新日期判死。"""
+    "最后更新停在建站时"是常态而非失活，不能用更新日期判死。
+
+    两条判据取并集：站名关键词命中，或域名在 STATIC_SITE_HOSTS 白名单里。
+    只认站名是不够的——gxhj.com / guoxue.wunpu.com 的域名完全不含关键词，
+    站名一旦被清理或改名，真古籍站就会被当僵尸删掉。
+    """
     text = (name or "") + " " + (u or "")
-    return any(k in text for k in STATIC_SITE_KEYWORDS)
+    if any(k in text for k in STATIC_SITE_KEYWORDS):
+        return True
+    return host_of(u) in STATIC_SITE_HOSTS
+
+
+def _guarded_check(it, deadline):
+    """预算硬截断：排队任务在预算耗尽后不再发起进站请求。
+    单个进站最坏 4s×3 页×多请求，不截断会把 --budget 拖成 2 倍。"""
+    if time.time() > deadline:
+        return {**it, "verdict": "超预算", "newest": None, "days": None}
+    try:
+        return check_site(it)
+    except Exception as e:
+        log.warning(f"进站深查异常（按保留处理）: {e}")
+        return {**it, "verdict": "判不了", "newest": None, "days": None}
 
 
 def main():
@@ -91,16 +116,24 @@ def main():
               "verdict": "未知", "newest": None, "days": None} for s in probe]
 
     results = []
-    with ThreadPoolExecutor(max_workers=args.workers) as ex:
-        futs = [ex.submit(check_site, it) for it in items]
-        for f in futs:
+    # 预算必须是硬上限：原 `with ThreadPoolExecutor()` 在 break 后退出时
+    # shutdown(wait=True)，会把已提交的进站任务全部等完，--budget 名不副实。
+    ex = ThreadPoolExecutor(max_workers=args.workers)
+    futs = [ex.submit(_guarded_check, it, t0 + args.budget) for it in items]
+    timed_out = False
+    try:
+        for f in as_completed(futs):
             if time.time() - t0 > args.budget:
+                timed_out = True
                 print(f"⚠️ 超出 {args.budget}s 预算，剩余深查取消（全部保留）")
                 break
             try:
                 results.append(f.result(timeout=25))
-            except Exception:
-                continue
+            except Exception as e:
+                log.warning(f"进站深查异常（该源按保留处理）: {e}")
+
+    finally:
+        ex.shutdown(wait=False, cancel_futures=True)
 
     alive = [r for r in results if r["deep_verdict"] == "活站"]
     zombie = [r for r in results if r["deep_verdict"] == "僵尸"]
@@ -130,20 +163,24 @@ def main():
         out.append(s)
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)) or ".", exist_ok=True)
-    json.dump(out, open(args.output, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    dump_json(out, args.output)
 
     report = {"checked": len(results), "alive": len(alive), "zombie": len(zombie),
               "unknown": len(unknown), "dropped": len(dropped),
               "dropped_items": [{k: r[k] for k in ("name", "url", "deep_date", "deep_days")} for r in dropped]}
     rp = args.report or os.path.join(os.path.dirname(os.path.abspath(args.output)),
                                      "deep_gate_report.json")
-    json.dump(report, open(rp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    dump_json(report, rp)
 
     print(f"深查 {len(results)} 条：活站 {len(alive)} / 僵尸 {len(zombie)} / 判不了+不可达 {len(unknown)}")
     print(f"实际剔除 {len(dropped)} 条 → 输出 {len(out)} 条")
     for r in dropped[:15]:
         print(f"  剔除 {r['name']} {r['url']} 进站 {r['deep_date']}({r['deep_days']}天)")
     print(f"报告: {rp}")
+    if timed_out:
+        # 同上：预算耗尽后不再等已发起的进站请求跑完
+        sys.stdout.flush(); sys.stderr.flush()
+        os._exit(0)
     return 0
 
 

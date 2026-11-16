@@ -23,15 +23,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from autocollect_core.collectors import collect_gurus, collect_yckceo_heji, collect_yckceo_list
 from autocollect_core.config import RAW_DIR
-from autocollect_core.utils import ensure_dir, log
+from autocollect_core.utils import ensure_dir, log, dump_json
 
 
 def save(fragment_name, sources):
     """保存分片到 raw/autocollect/"""
     ensure_dir(RAW_DIR)
     path = os.path.join(RAW_DIR, fragment_name)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(sources, f, ensure_ascii=False, indent=2)
+    dump_json(sources, path)
     log.info(f"✅ 已落盘 {fragment_name}: {len(sources)} 个 → {path}")
 
 
@@ -79,8 +78,7 @@ def cmd_merge(args):
     log.info(f"合并后原始数据: {len(all_sources)} 个")
 
     out = os.path.join(RAW_DIR, f"raw_all_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-    with open(out, "w", encoding="utf-8") as f:
-        json.dump(all_sources, f, ensure_ascii=False, indent=2)
+    dump_json(all_sources, out)
     log.info(f"✅ 已落盘 {out}")
     return out
 

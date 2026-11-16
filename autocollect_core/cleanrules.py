@@ -5,6 +5,7 @@ autocollect_core 净化规则模块
 """
 
 import json
+from autocollect_core.utils import dump_json
 
 from .config import CLEAN_RULES_FILE, DATA_SOURCES
 from .utils import fetch_url, log
@@ -159,8 +160,7 @@ def generate_clean_rules(sources, collected_rules=None):
     optimized = optimize_clean_rules(unique_rules)
 
     # 保存
-    with open(CLEAN_RULES_FILE, "w", encoding="utf-8") as f:
-        json.dump(optimized, f, ensure_ascii=False, indent=2)
+    dump_json(optimized, CLEAN_RULES_FILE)
 
     log.info(f"净化规则生成完成，共 {len(optimized)} 条（采集{len(collected_rules or [])} + 通用{len(default_rules)}，去重优化后）")
     return optimized

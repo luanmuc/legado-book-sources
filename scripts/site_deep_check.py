@@ -32,6 +32,7 @@ import requests
 import urllib3
 from email.utils import parsedate_to_datetime
 from urllib.parse import urljoin
+from autocollect_core.utils import dump_json
 
 urllib3.disable_warnings()
 
@@ -176,7 +177,7 @@ def main():
     out_file = args.output or os.path.join(
         os.path.dirname(os.path.abspath(args.input)),
         f"deep_check_{datetime.datetime.now():%Y%m%d_%H%M%S}.json")
-    json.dump(outs, open(out_file, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    dump_json(outs, out_file)
 
     import collections
     c = collections.Counter(o["deep_verdict"] for o in outs)

@@ -26,6 +26,7 @@ from autocollect_core.organizer import organize_sources
 from autocollect_core.cleanrules import collect_clean_rules, generate_clean_rules
 from autocollect_core.report import generate_report
 from autocollect_core.publisher import auto_publish
+from autocollect_core.utils import dump_json
 
 
 def load_fragments():
@@ -81,8 +82,7 @@ def cmd_clean(args):
         log.info(f"从checkpoint恢复: 已处理 {len(domain_map)} 个域名")
 
     def checkpoint():
-        with open(tmp_file, "w", encoding="utf-8") as f:
-            json.dump(domain_map, f, ensure_ascii=False)
+        dump_json(domain_map, tmp_file, indent=None)   # 断点必须原子：中断后要能续跑
         log.info(f"  checkpoint: {len(domain_map)} 个域名")
 
     def add_sources(list_):
@@ -148,8 +148,7 @@ def cmd_clean(args):
     log.info(f"规则完整性: 通过 {len(valid)} 个")
 
     out = os.path.join(RAW_DIR, f"cleaned_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-    with open(out, "w", encoding="utf-8") as f:
-        json.dump(valid, f, ensure_ascii=False, indent=2)
+    dump_json(valid, out)
     if os.path.exists(tmp_file):
         os.remove(tmp_file)
     log.info(f"✅ 清洗完成 {len(valid)} 个 → {out}")
@@ -200,8 +199,7 @@ def cmd_validate(args):
         if u:
             seen.add(u)
         unique.append(s)
-    with open(result_file, "w", encoding="utf-8") as f:
-        json.dump(unique, f, ensure_ascii=False, indent=2)
+    dump_json(unique, result_file)
     log.info(f"✅ 本批合格 {len(validated)}，累计合格 {len(unique)} → {result_file}")
 
     # 淘汰源也落盘（供 final 报告统计淘汰原因）
@@ -215,8 +213,7 @@ def cmd_validate(args):
         dead_by_url[_src_url(d)] = d
     for d in dead:
         dead_by_url[_src_url(d)] = d
-    with open(dead_file, "w", encoding="utf-8") as f:
-        json.dump(list(dead_by_url.values()), f, ensure_ascii=False, indent=2)
+    dump_json(list(dead_by_url.values()), dead_file)
     log.info(f"累计淘汰 {len(dead_by_url)} 个 → {dead_file}")
 
 
@@ -253,8 +250,7 @@ def cmd_final(args):
 
     # 整理（大厂保护 + 改名 + 分组 + customOrder）
     final = organize_sources(validated, existing)
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        json.dump(final, f, ensure_ascii=False, indent=2)
+    dump_json(final, OUTPUT_FILE)
     log.info(f"✅ 书源已整理保存: {len(final)} 个 → {OUTPUT_FILE}")
 
     # 净化规则
@@ -267,33 +263,37 @@ def cmd_final(args):
     if os.path.exists(list_file):
         try:
             raw_count += len(json.load(open(list_file, encoding="utf-8")))
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning(f"raw_list.json 读取失败，原始量统计跳过: {type(e).__name__}")
     for fpath in glob.glob(os.path.join(RAW_DIR, "raw_heji_*.json")):
         try:
             raw_count += len(json.load(open(fpath, encoding="utf-8")))
-        except Exception:
-            pass
+        except Exception as e:
+            # 损坏分片按约定跳过，但必须留痕——否则"原始量"少了没人知道是文件坏了
+            log.warning(f"分片读取失败，已跳过: {os.path.basename(fpath)} ({type(e).__name__})")
     heji_dir = os.path.join(RAW_DIR, "heji")
     for fpath in glob.glob(os.path.join(heji_dir, "*.json")):
         try:
             raw_count += len(json.load(open(fpath, encoding="utf-8")))
-        except Exception:
-            pass
+        except Exception as e:
+            # 损坏分片按约定跳过，但必须留痕——否则"原始量"少了没人知道是文件坏了
+            log.warning(f"分片读取失败，已跳过: {os.path.basename(fpath)} ({type(e).__name__})")
     gurus_file = os.path.join(RAW_DIR, "raw_gurus.json")
     if os.path.exists(gurus_file):
         try:
             raw_count += len(json.load(open(gurus_file, encoding="utf-8")))
-        except Exception:
-            pass
+        except Exception as e:
+            # 损坏分片按约定跳过，但必须留痕——否则"原始量"少了没人知道是文件坏了
+            log.warning(f"分片读取失败，已跳过: {os.path.basename(fpath)} ({type(e).__name__})")
 
     cleaned_files = sorted(glob.glob(os.path.join(RAW_DIR, "cleaned_*.json")), reverse=True)
     deduped_count = 0
     if cleaned_files:
         try:
             deduped_count = len(json.load(open(cleaned_files[0], encoding="utf-8")))
-        except Exception:
-            pass
+        except Exception as e:
+            # 损坏分片按约定跳过，但必须留痕——否则"原始量"少了没人知道是文件坏了
+            log.warning(f"分片读取失败，已跳过: {os.path.basename(fpath)} ({type(e).__name__})")
 
     dead = []
     dead_file = os.path.join(RAW_DIR, "dead.json")

@@ -75,11 +75,13 @@ def get_github_token():
         return token
     try:
         r = subprocess.run(["git", "remote", "get-url", "origin"], capture_output=True, text=True)
+        # 必须只取冒号后的密码段：用 [^/]+@ 会把用户名一起带进 token，直接 401
         m = re.search(r"https://[^:]+:([^@]+)@", r.stdout)
         if m:
             return m.group(1)
-    except Exception:
-        pass
+        log.warning("git remote 里没有可用的凭据（origin 是 SSH 或未带 token）")
+    except Exception as e:
+        log.warning(f"读取 git remote 失败: {type(e).__name__}: {e}")
     return None
 
 
@@ -129,6 +131,11 @@ def publish_release(token, final_count, rules_count, mode="manual", stats=None):
     校验），mode="manual" 为本地国内网络完整校验后手动发布。标题前缀与说明正文都会
     标注，下载时按需选择。
     """
+    # token 为空时 Authorization 会变成 "token None"，GitHub 回 401，
+    # 然后 get_latest_release 返回 None、整个发版流程在无提示的情况下走偏。
+    # 宁可在这里明确报错，也不要让"发版失败"看起来像"发版成功"。
+    if not token:
+        raise RuntimeError("GitHub token 为空：检查 GITHUB_TOKEN 环境变量或 git remote 是否带凭据")
     api = f"https://api.github.com/repos/{REPO}"
     headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github+json"}
 

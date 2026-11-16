@@ -66,7 +66,9 @@
 | 模块 | 职责 | 关键函数 |
 |------|------|----------|
 | `config.py` | 常量：大厂12清单、垃圾/成人关键词表、数据源URL、路径、请求参数 | `BIG_SITE_*`、`JUNK_*`、`ADULT_GROUP`、`GENERIC_TEST_KEYWORDS`（我的/天下/重生…）、`REQUEST_TIMEOUT/RETRY/CONCURRENCY`（支持 `YCKCEO_*` 环境变量覆盖） |
-| `utils.py` | 日志 / `clean_url` / `get_domain` / `fetch_url`，以及统一 JSON 落盘：`load_json(path, default)` 损坏兜底、`dump_json(data, path, atomic=True)` 中文不转义+缩进2+**原子写**（先 `.tmp` 再 `os.replace`）。books.json / pending 的写入必须走它，禁止直接 `open(...,'w')`（审计 D8 强制） |
+| `host_of` 唯一实现 | 域名归一化只有一处：`utils.host_of` 去协议/路径/端口，并把 `www/m/wap/mobile` 前缀统一去掉。`health_gate` / `deep_gate` / `stage_daily` 三处 `_host` 都委托它——历史上两个 gate 只去 `www.`，导致 `m.hongxiu.com` 在大厂豁免集合里匹配不上 `hongxiu.com`，红袖移动版被误删 |
+| `tests/test_core.py` | 14 项纯函数单测（不联网）：`_split_index` 索引语法、`host_of` 归一化、`is_static` 静态站豁免。审计 E4 实跑，改坏断言会让审计 FAIL |
+| `utils.py` | 日志 / `clean_url` / `get_domain` / `fetch_url` / **`host_of(url)`**，以及统一 JSON 落盘：`load_json(path, default)` 损坏兜底、`dump_json(data, path, atomic=True, indent=2)` 中文不转义 + **原子写**（写 `.tmp` → `flush` → `fsync` → `os.replace`；rename 只保证目录项原子，不保证数据刷盘）。所有产物与断点的写入必须走它，禁止直接 `open(...,'w')`（审计 D8 强制） |
  日志、反爬请求、域名工具 | `fetch_url(url, timeout, retry)`（UA+Referer+verify=False）、`clean_url`、`get_domain` |
 | `collectors.py` | 采集三路数据源 | `collect_yckceo_list(months, page_start, page_end)`、`collect_yckceo_heji(months, page_start, page_end, limit)`、`collect_gurus()`、`collect_all(months)`；`parse_update_time`/`extract_update_times`/`filter_by_months`（时间过滤） |
 | `naming.py` | 命名相关（2026-11-12 从 organizer 抽出）：`natural_name_key` 自然排序键、`generate_chinese_name` 重名加序号、`renumber_name_families` 同族尾号从 1 重编 |

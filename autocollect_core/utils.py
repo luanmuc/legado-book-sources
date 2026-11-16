@@ -121,18 +121,37 @@ def load_json(path, default=None):
         return default
 
 
-def dump_json(data, path, atomic=True):
-    """写 JSON：中文不转义 + 缩进 2 + 原子替换（先写 .tmp 再 rename）
+def host_of(u):
+    """域名归一化：去掉协议、路径、端口和移动版前缀。
+
+    必须只有一份实现。历史上 health_gate/deep_gate 只去 www.，stage_daily 还去
+    m/wap/mobile，导致 m.hongxiu.com 在门槛视图是 m.hongxiu.com（大厂豁免集合里
+    是 hongxiu.com，匹配不上 → 被当普通站判死），在黑名单视图却是 hongxiu.com。
+    红袖移动版就是这么被误删的。
+    """
+    h = (u or "").strip().split("//")[-1].split("/")[0].split("?")[0].lower()
+    h = h.split(":")[0]
+    return re.sub(r"^(www|m|wap|mobile)\.", "", h)
+
+
+def dump_json(data, path, atomic=True, indent=2):
+    """写 JSON：中文不转义 + 原子替换（先写 .tmp、fsync、再 rename）
 
     原子写保证「要么是旧完整文件，要么是新完整文件」，不会出现半截 JSON。
+    流水线里被 kill / 磁盘打满时，普通 open("w") 会留下半截文件，下游 load_json
+    直接抛错把整条链路带断——所以所有产物与断点都必须走这里。
+    fsync 是必要的：rename 只保证目录项原子，不保证数据已刷到盘。
     """
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
+    body = json.dumps(data, ensure_ascii=False, indent=indent)
     if not atomic:
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.write(body)
         return path
     tmp = f"{path}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+        f.write(body)
+        f.flush()
+        os.fsync(f.fileno())
     os.replace(tmp, path)  # 同盘 rename 是原子操作
     return path

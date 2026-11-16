@@ -39,6 +39,7 @@ import random
 import re
 import sys
 import time
+from autocollect_core.utils import dump_json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 
@@ -157,10 +158,16 @@ def _home_date_smart(html):
     return d
 
 
-def check_one(src):
+def check_one(src, deadline=None):
+    """体检单个源。deadline 是绝对时间戳，超过就直接返回"跳过"——
+    预算必须能真正截断，否则排队中的任务会在预算耗尽后继续跑满 42s。"""
     url = (src.get("bookSourceUrl") or "").strip()
     base = {"name": src.get("bookSourceName"), "url": url,
             "group": src.get("bookSourceGroup"), "type": src.get("bookSourceType", 0)}
+    if deadline is not None and time.time() > deadline:
+        return {**base, "reachable": False, "http": "超预算", "home_date": "",
+                "sitemap_date": "", "newest": "", "days": None, "sitemap_urls": 0,
+                "sitemap_kind": "", "book_links": 0, "evidence": "", "verdict": "跳过", "note": "超出时间预算"}
     if not url.startswith("http"):
         return {**base, "reachable": False, "http": "无URL", "home_date": "",
                 "sitemap_date": "", "newest": "", "days": None, "sitemap_urls": 0,
@@ -275,8 +282,8 @@ def main():
             if i % 50 == 0 or i == len(todo):
                 print(f"  进度 {i}/{len(todo)}  {time.time()-t0:.0f}s")
                 os.makedirs(OUT_DIR, exist_ok=True)
-                json.dump({"updated": datetime.now().isoformat(), "results": results},
-                          open(CKPT, "w", encoding="utf-8"), ensure_ascii=False)
+                # 断点必须原子写：全量体检 28 分钟，中断后要能 --resume 续跑
+                dump_json({"updated": datetime.now().isoformat(), "results": results}, CKPT)
 
     os.makedirs(OUT_DIR, exist_ok=True)
     ts = time.strftime("%Y%m%d_%H%M%S")
@@ -288,10 +295,8 @@ def main():
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
         w.writerows(results)
-    json.dump({"generated": datetime.now().isoformat(), "sample": len(sample),
-               "results": results},
-              open(os.path.join(OUT_DIR, f"site_health_{ts}.json"), "w", encoding="utf-8"),
-              ensure_ascii=False, indent=2)
+    dump_json({"generated": datetime.now().isoformat(), "sample": len(sample),
+               "results": results}, os.path.join(OUT_DIR, f"site_health_{ts}.json"))
 
     print(f"\n=== 汇总（{len(results)} 源，{time.time()-t0:.0f}s）===")
     from collections import Counter

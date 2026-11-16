@@ -22,7 +22,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from autocollect_core.config import RAW_DIR
-from autocollect_core.utils import ensure_dir, fetch_url, log
+from autocollect_core.utils import ensure_dir, fetch_url, log, dump_json
 
 IDS_FILE = os.path.join(RAW_DIR, "heji_ids.json")
 
@@ -62,8 +62,7 @@ def main():
         all_ids.extend(new_ids)
         seen.update(new_ids)
         # 每页立即落盘（中断后从文件恢复，只补缺失页）
-        with open(IDS_FILE, "w", encoding="utf-8") as f:
-            json.dump(all_ids, f, ensure_ascii=False, indent=2)
+        dump_json(all_ids, IDS_FILE)
         time.sleep(0.5)
 
     log.info(f"共提取合集链接 {len(all_ids)} 个")
