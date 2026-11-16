@@ -163,7 +163,8 @@ jobs:
           set +e
           python3 scripts/daily_summary.py append
 
-          git add weekly/daily_summary.json weekly/daily_history.jsonl books_pending.json 2>/dev/null
+          git add weekly/daily_summary.json weekly/daily_history.jsonl books_pending.json \
+               weekly/health_gate_report.json weekly/deep_gate_report.json 2>/dev/null
           if git diff --staged --quiet; then
             echo "摘要无变化，跳过提交"
             exit 0
