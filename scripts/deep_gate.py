@@ -32,7 +32,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from site_deep_check import check_site  # 复用进站判定
 try:
-    from autocollect_core.config import BIG_SITES
+    from autocollect_core.config import STATIC_SITE_KEYWORDS, BIG_SITES
 except Exception:
     BIG_SITES = []
 
@@ -49,6 +49,13 @@ _BIG = {_host(b.get("url")) for b in BIG_SITES}
 def is_big(u):
     h = _host(u)
     return any(h == b or h.endswith("." + b) for b in _BIG if b)
+
+
+def is_static(name, u=""):
+    """静态内容站豁免：古籍/国学/诗词/典籍类站点内容固定，
+    "最后更新停在建站时"是常态而非失活，不能用更新日期判死。"""
+    text = (name or "") + " " + (u or "")
+    return any(k in text for k in STATIC_SITE_KEYWORDS)
 
 
 def main():
@@ -104,6 +111,8 @@ def main():
     for r in zombie:
         if is_big(r["url"]):
             continue          # 大厂豁免（黑岩进站 277 天但仍在运营）
+        if is_static(r.get("name"), r.get("url")):
+            continue          # 静态内容站豁免（古籍/国学站永不更新是正常的）
         d = r.get("deep_days") or 0
         if d <= ZOMBIE_DAYS:
             continue

@@ -66,8 +66,8 @@
 | E3 | 同族尾号从 1 连续 | 非成人/非大厂组，同族源尾号必须 1..N 无跳号（本体也补 1） | PASS | 281 个族全部 1..N；注入 `笔趣阁5→笔趣阁55` 立刻转 FAIL |
 | D8 | 关键数据落盘走原子写 | books.json / books_pending.json 的写入必须经 `utils.dump_json`（`.tmp`→`os.replace`），直接 `open(...,'w')`+`json.dump` 即 FAIL；覆盖 5 个写盘点 | PASS | 新增断言时立刻抓出 autocollect.py 2 处漏改 |
 | D13 | 剔除黑名单在位 | `excluded_sources.json` + `stage_daily` 拦截，防已淘汰源从合集复活；僵尸站只能按精确 URL 拦，不能整域拦 | PASS | 断言清单存在、被 stage_daily 引用、每条都带 scope；把僵尸站改成 host 级立刻 FAIL（已红绿验证） |
-| D12 | 进站深查门槛在位（含报告回传） | 每日对新候选进站读目录页最新章节日期；首页/sitemap 只作疑似信号；只有 >180 天且首页同向才剔除，拿不到/打不开一律放行，大厂豁免 | PASS | 断言每日+月度接入、`--only-suspect`、阈值 180 天、大厂豁免；阈值改 30 立刻 FAIL（已红绿验证） |
-| D11 | 新源健康度门槛在位（含报告回传） | 每日采集对新候选做健康度预筛；只认 sitemap `<lastmod>` 硬证据、阈值 ≥180 天，禁止把跨洋取不到的站当死站 | PASS | 断言 workflow 接入 + 口径红线；注入放宽立刻 FAIL（已红绿验证） |
+| D12 | 进站深查门槛在位（含报告回传+静态站豁免） | 每日对新候选进站读目录页最新章节日期；首页/sitemap 只作疑似信号；只有 >180 天且首页同向才剔除，拿不到/打不开一律放行，大厂豁免 | PASS | 断言每日+月度接入、`--only-suspect`、阈值 180 天、大厂豁免；阈值改 30 立刻 FAIL（已红绿验证） |
+| D11 | 新源健康度门槛在位（含报告回传+静态站豁免） | 每日采集对新候选做健康度预筛；只认 sitemap `<lastmod>` 硬证据、阈值 ≥180 天，禁止把跨洋取不到的站当死站 | PASS | 断言 workflow 接入 + 口径红线；注入放宽立刻 FAIL（已红绿验证） |
 | D9 | 正式版不含非小说源 | bookSourceType 非 0（音频/图片/文件）不应出现在非成人段（成人段按约束可保留） | PASS | 非成人段全部 type=0；2026-11-14 剔除 29 个无关站（PPT/档案馆/网盘/社交/音乐/有声/播客/漫画/影视），1 个成人写真站移入成人组 |
 | D10 | 校验三项能力在位 | checkKeyWord 优先 / bookUrlPattern 结果校核 / 详情→目录→正文三级链路 / deep 开关 必须都在 | PASS | 源码能力断言，防后续改动删掉 |
 | D7 | 判死活入口唯一 | 只有 liveness 定义，validators/stage_daily/monthly_release 消费；其他模块 import liveness 即 FAIL | PASS | 注入 check_usable.py 旁路 import 立刻转 FAIL |

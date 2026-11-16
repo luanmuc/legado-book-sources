@@ -632,10 +632,14 @@ def check_health_gate():
     # 看不出门槛今天挡掉了几个，等于无法判断门槛是否生效
     has_report = ("--report" in gate and "health_gate_report.json" in wf
                   and "gates" in read("scripts/daily_summary.py"))
-    ok = wired and only_sitemap and has_threshold and has_budget and has_big_exempt and has_report
+    # 静态内容站豁免：古籍/国学/诗词站永不更新，sitemap lastmod 停在建站时
+    static_exempt = ("is_static(s.get" in gate        # 必须真的在剔除前调用
+                     and "STATIC_SITE_KEYWORDS" in read("autocollect_core/config.py"))
+    ok = (wired and only_sitemap and has_threshold and has_budget
+          and has_big_exempt and has_report and static_exempt)
     ev = (f"workflow接入={wired} 只认sitemap证据={only_sitemap} "
           f"阈值180天={has_threshold} 时间预算={has_budget} 大厂豁免={has_big_exempt} "
-          f"报告回传={has_report}")
+          f"报告回传={has_report} 静态站豁免={static_exempt}")
     if wired and not (only_sitemap and has_threshold):
         return "FAIL", ev + " ← 健康度口径被放宽（可能把跨洋取不到的站误删）"
     return ("PASS" if ok else "FAIL"), ev
@@ -660,11 +664,15 @@ def check_deep_gate():
     # 深查挡掉的源必须能进摘要，否则看不出深查到底生效没有
     has_report = ("--report" in gate and "deep_gate_report.json" in daily
                   and "gates" in read("scripts/daily_summary.py"))
+    # 静态内容站豁免：古籍/国学/诗词站内容固定，永不更新是常态。
+    # 实测国学经典站被 deep 判僵尸，而它是正常的 Cloudflare 403 古籍站。
+    static_exempt = ("is_static(r.get" in gate        # 必须真的在判死前调用
+                     and "STATIC_SITE_KEYWORDS" in read("autocollect_core/config.py"))
     ok = (wired and monthly_wired and only_suspect and budget and threshold
-          and big_exempt and has_report)
+          and big_exempt and has_report and static_exempt)
     ev = (f"每日接入={wired} 月度接入={monthly_wired} 只查可疑={only_suspect} "
           f"时间预算={budget} 阈值180天={threshold} 大厂豁免={big_exempt} "
-          f"报告回传={has_report}")
+          f"报告回传={has_report} 静态站豁免={static_exempt}")
     if wired and not (threshold and big_exempt):
         return "FAIL", ev + " ← 深查口径被放宽（可能误删模板假日期的活站）"
     return ("PASS" if ok else "FAIL"), ev

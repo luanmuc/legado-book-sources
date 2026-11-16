@@ -116,3 +116,9 @@ CLEAN_RULES_FILE = os.path.join(BASE_DIR, "clean_rules.json")
 REPORT_FILE = os.path.join(BASE_DIR, "collect_report.md")
 PENDING_FILE = os.path.join(BASE_DIR, "books_pending.json")  # 中间层：采集产物先并入此处，用户确认后才提升为正式版
 LOG_FILE = os.path.join(BASE_DIR, "autocollect.log")
+
+
+# 静态内容站：内容固定在有限的几本书里，不新增章节是常态，不是失活。
+# 用"最后更新日期"判这类站必然全判死——国学经典、古籍、诗词站建站后就再不更新了。
+# 实测案例：国学经典站被 deep_gate 判僵尸，但它是 Cloudflare 403 的正常古籍站。
+STATIC_SITE_KEYWORDS = ("国学", "古籍", "诗词", "典籍", "经史", "诸子", "四书", "五经", "文献", "全集")

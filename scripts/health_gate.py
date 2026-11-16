@@ -27,9 +27,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from site_health import check_one  # 复用同一套判定
 try:
-    from autocollect_core.config import BIG_SITES
+    from autocollect_core.config import BIG_SITES, STATIC_SITE_KEYWORDS
 except Exception:
     BIG_SITES = []
+    STATIC_SITE_KEYWORDS = ()
 
 
 def _host(u):
@@ -48,6 +49,12 @@ def is_big_site(url):
 HARD_ZOMBIE_DAYS = 180
 
 
+
+def is_static(name, u=""):
+    """静态内容站豁免：古籍/国学/诗词站内容固定，永不更新是常态，
+    sitemap 的 lastmod 停在建站时不能当死站证据。"""
+    text = (name or "") + " " + (u or "")
+    return any(k in text for k in STATIC_SITE_KEYWORDS)
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--input", required=True)
@@ -98,7 +105,7 @@ def main():
         big = is_big_site(s.get("bookSourceUrl"))
         if (r and not big and r.get("evidence") == "sitemap"
                 and r.get("days") is not None and r["days"] > HARD_ZOMBIE_DAYS):
-            if args.drop_hard_zombie:
+            if args.drop_hard_zombie and not is_static(s.get("bookSourceName"), s.get("bookSourceUrl")):
                 hard_zombies.append({"name": s.get("bookSourceName"),
                                      "url": s.get("bookSourceUrl"),
                                      "lastmod": r.get("newest"), "days": r["days"],
