@@ -98,7 +98,8 @@ def append():
             gates[key] = {
                 "checked": r.get("checked"),
                 "dropped": r.get("dropped"),
-                "dropped_items": [x.get("name") for x in (r.get("dropped_items") or [])][:10],
+                "dropped_items": [{"name": x.get("name"), "url": x.get("url")}
+                                  for x in (r.get("dropped_items") or [])][:10],
             }
         except Exception:
             gates[key] = None
