@@ -87,13 +87,13 @@
 | 脚本 | 用途 |
 |------|------|
 | `run_daily_collect.sh` | 一键分步全流程（MONTHS 参数，默认 1；A 采集→B 清洗→C 分批校验→D 垃圾过滤→E 整理发布），本地 crontab 每日触发 |
-| `stage_daily.py` | 每日增量入库：只取当天 cleaned 里正式版与中间层都没有的 URL → 确定性探活 → 垃圾过滤 → 追加进 pending；含 `fcntl` 排他锁（双进程并发写不丢数据）与损坏 JSON 兜底 |
+| `stage_daily.py` | 每日增量入库：只取当天 cleaned 里正式版与中间层都没有的 URL → 确定性探活 → 垃圾过滤 → 追加进 pending；含 `fcntl` 排他锁（双进程并发写不丢数据）与损坏 JSON 兜底。**`--report` 写 `weekly/stage_report.json`**（new_candidates / blocked_by_blacklist / added / dead / junk），供摘要的 `stage` 字段读取 |
 | `monthly_release.py` | 每月自动合并发布（Actions auto 通道）：重新采集 → 明确死站剔除 → 垃圾过滤 → 合并 → `auto_publish(mode="auto")` |
 | `liveness.py`（core） | 全管道唯一判死口径：404/410 与域名不存在才判死，403/405/429/5xx/超时保留 |
 | `site_health.py` | 站点健康度体检（本地专项）：只读首页 + `sitemap.xml` 的 `<lastmod>`/`<loc>`，不碰站内搜索接口。判活跃/正常/迟缓/僵尸/无信号/不可达。2026-11-14 建立，替代"爬搜索接口抽样"方案（后者反爬命中率仅 22-28%，判出的"差"其实是爬不进去） |
-| `deep_gate.py` | 进站深查门槛（接入每日 workflow）：只对门口标了"疑似/僵尸"的新候选进站（`--max 40 --only-suspect`），读目录页最新章节日期确认在更新才放行；≤180 天活、>180 天且首页同向才剔除、拿不到一律放行、大厂豁免 |
+| `deep_gate.py` | 进站深查门槛（接入每日 workflow）：只对门口标了"疑似/僵尸"的新候选进站（`--max 40 --only-suspect`），读目录页最新章节日期确认在更新才放行；≤180 天活、>180 天且首页同向才剔除、**`home_days is None` 一律放行**（拿不到证据≠没有矛盾证据，原写法 `hd is not None and hd <= 180` 会在 None 时落进删除分支）、大厂豁免、静态站豁免 |
 | `site_deep_check.py` | 进站深查：抓首页一本书 → 目录页"最新章节"日期，判活/僵尸。**唯一可信的判死依据**——首页日期和 sitemap 都可能是模板/荒废数据（实测 2024-04-20 被七八个站共享） |
-| `health_gate.py`（`--report` 输出门槛实况） | 新源健康度门槛（接入每日 workflow）：只对本次新增候选体检，**只认 sitemap `<lastmod>` 硬证据且 >180 天**才剔除；跨洋取不到 sitemap 一律放行；**内置 BIG_SITES 大厂豁免**（实测晋江 sitemap 停 2020、黑岩首页挂 2019 版权年，均被误判，故豁免）|
+| `health_gate.py`（`--report` 输出门槛实况） | 新源健康度门槛（接入每日 workflow）：只对本次新增候选体检，**只认 sitemap `<lastmod>` 硬证据且 >180 天**才剔除；跨洋取不到 sitemap 一律放行；**内置 BIG_SITES 大厂豁免**（实测晋江 sitemap 停 2020、黑岩首页挂 2019 版权年，均被误判，故豁免）。**`detect_template_dates()`：同一 lastmod 在本批 ≥3 次视为模板假数据整组放行**（爱丽丝书屋 4 镜像共用 2024-08-19 但都在正常服务）|
 | `audit_pipeline.py` | 巡检管道审计（只读）：44 个检查点覆盖调度/采集/中间层/校验/排序/发布/恢复/文档/健壮性/并发，输出 PASS/WARN/FAIL + 证据 |
 | `reorder.py` | 整库顺序规整（`--dry-run` 可先看）：大厂固定序 → 分组序 → 族名自然序 → 成人最末 |
 | `collect_staged.py` | 分段采集：`list`（前10页）/ `heji start end`（--limit 默认30）/ `gurus` |
@@ -102,7 +102,7 @@
 | `run_from_fragments.py` | 分片恢复：`clean`（合并分片+清洗+成人豁免，兼容 raw_heji_*.json 与 heji/*.json 两种路径）/ `validate --start --count`（分批）/ `final --input --publish` |
 | `filter_junk_sources.py` | 垃圾过滤+成人归组（复用 cleaner 核心函数） |
 | `check_usable.py` | 真实性专项检测：全量/抽样跑 `check_source_usable`，输出 usable_report + 断点 ckpt_usable.json；`--deep` 启用**详情→目录→正文三级链路校验**（社区四项校验口径，断点独立 `ckpt_usable_deep.json`） |
-| `daily_summary.py` | 每日采集统计与摘要（2026-11-14 从 workflow 内联 heredoc 抽出）：`stats` 打印分片/清洗统计，`append` 生成 `weekly/daily_summary.json` + 追加 `daily_history.jsonl`（北京时间、保留 120 天） |
+| `daily_summary.py` | 每日采集统计与摘要（2026-11-14 从 workflow 内联 heredoc 抽出）：`stats` 打印分片/清洗统计，`append` 生成 `weekly/daily_summary.json` + 追加 `daily_history.jsonl`（北京时间、保留 120 天）。摘要含 `gates`（两门槛实况）/`stage`（中间层阶段实况）/`gates_error`（report 缺失或读失败时可见，不静默吞） |
 | `status.py` | **状态自检**：正式版/中间层源数与分组、最新 cleaned、校验断点、采集分片、git 状态、发布页最新版本与 assets 完整性、crontab 是否在（中断接续第一步） |
 | `install_cron.sh` | 一键重建本地 crontab（每日采集时段，VM 重置后恢复用） |
 

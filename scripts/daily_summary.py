@@ -113,6 +113,21 @@ def append():
             gate_err[key] = f"{type(e).__name__}: {e}"
             print(f"⚠️ 读 {fname} 失败: {type(e).__name__}: {e}", file=sys.stderr)
 
+    # 中间层阶段实况：今天从合集里抓回来多少、被黑名单拦掉多少、真正新增多少。
+    # 这些数以前只 print 到 CI log，本地拿不到——和门槛 report 是同一类问题。
+    stage = {}
+    spath = os.path.join(ROOT, "weekly", "stage_report.json")
+    try:
+        with open(spath, encoding="utf-8") as f:
+            sr = json.load(f)
+        stage = {k: sr.get(k) for k in ("new_candidates", "blocked_by_blacklist",
+                                        "added", "dead", "junk", "pending_after")}
+    except FileNotFoundError:
+        gate_err["stage"] = "report 缺失"
+    except Exception as e:
+        gate_err["stage"] = f"{type(e).__name__}: {e}"
+        print(f"⚠️ 读 stage_report 失败: {type(e).__name__}: {e}", file=sys.stderr)
+
     summary = {
         "date": datetime.now(CST).strftime("%Y-%m-%d"),
         "file": os.path.basename(latest),
@@ -120,6 +135,7 @@ def append():
         "groups": dict(groups),
         "domains": len(domains),
         "gates": gates,
+        "stage": stage,
         "gates_error": gate_err,   # 非空即表示当天门槛异常或 report 缺失
         "gated_out": sum((g or {}).get("dropped") or 0 for g in gates.values()),
     }

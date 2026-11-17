@@ -2,7 +2,7 @@
 
 审计对象：**每日采集 → 中间层 → 每月自动合并发布** 全自动巡检管道
 审计方式：脚本化只读核查（`scripts/audit_pipeline.py`）+ 逐条回读源码定性
-最近执行：2026-11-16　检查点 46 项　结论：**46 / 46 PASS**（含 9 项闭环、缺陷回归、压力测试与原子写断言）
+最近执行：2026-11-17　检查点 47 项　结论：**47 / 47 PASS**（含 9 项闭环、缺陷回归、压力测试与原子写断言）
 
 ---
 
@@ -65,6 +65,7 @@
 | E2 | 正式版结构自洽 | customOrder 连续、分组段连续、成人最末 | PASS | 2140 条连续；分组 6 段；成人 1857-2140 且末位=2140 |
 | E3 | 同族尾号从 1 连续 | 非成人/非大厂组，同族源尾号必须 1..N 无跳号（本体也补 1） | PASS | 281 个族全部 1..N；注入 `笔趣阁5→笔趣阁55` 立刻转 FAIL |
 | D8 | 关键数据落盘走原子写 | books.json / books_pending.json 的写入必须经 `utils.dump_json`（`.tmp`→`os.replace`），直接 `open(...,'w')`+`json.dump` 即 FAIL；覆盖 5 个写盘点 | PASS | 新增断言时立刻抓出 autocollect.py 2 处漏改 |
+| D14 | 中间层阶段实况可追溯 | `stage_daily --report` 落盘 + workflow 入库 + 摘要读进 `stage` 字段。这类"值只 print 到 CI log、本地 pull 看不到"的问题已出现过两次（门槛 report 未入库），需要用断言锁住 | PASS | 摘掉 workflow `git add` 里的 `stage_report.json` → 立刻 FAIL（已红绿验证） |
 | D13 | 剔除黑名单在位 | `excluded_sources.json` + `stage_daily` 拦截，防已淘汰源从合集复活；僵尸站只能按精确 URL 拦，不能整域拦 | PASS | 断言清单存在、被 stage_daily 引用、每条都带 scope；把僵尸站改成 host 级立刻 FAIL（已红绿验证） |
 | D12 | 进站深查门槛在位（含报告回传+静态站豁免） | 每日对新候选进站读目录页最新章节日期；首页/sitemap 只作疑似信号；只有 >180 天且首页同向才剔除，拿不到/打不开一律放行，大厂豁免 | PASS | 断言每日+月度接入、`--only-suspect`、阈值 180 天、大厂豁免；阈值改 30 立刻 FAIL（已红绿验证） |
 | D11 | 新源健康度门槛在位（含报告回传+静态站豁免） | 每日采集对新候选做健康度预筛；只认 sitemap `<lastmod>` 硬证据、阈值 ≥180 天，禁止把跨洋取不到的站当死站 | PASS | 断言 workflow 接入 + 口径红线；注入放宽立刻 FAIL（已红绿验证） |
@@ -244,3 +245,20 @@ python3 scripts/reorder.py --dry-run
 ```
 
 判据：`FAIL = 0` 才允许发版；`WARN` 需在本次发布说明里登记原因。
+
+
+### D14. 中间层阶段实况可追溯（本轮新增）
+
+**为什么加**：`stage_daily.py` 的 `blocked_by_blacklist`（当天拦下多少"从正式版删掉又被合集抓回来"的复活源）
+以前只 `print` 到 CI log。本地 `git pull` 下来完全看不到这个数——和门槛 report 没进 git 是同一类问题，
+只是这次轮到中间层阶段。
+
+**断言**（6 个条件全中才 PASS）：
+- `stage_daily.py` 有 `--report` 参数
+- 主路径与 early-return 两处都 `dump_json(result, args.report)`（否则"当天没有新增"时报告缺失）
+- workflow 传 `--report weekly/stage_report.json`
+- workflow `git add` 行包含该文件
+- `daily_summary.py` 读 `stage_report.json`，写进摘要 `stage` 字段
+- 读不到时走 `gate_err["stage"]`，不静默吞
+
+**红绿验证**：摘掉 workflow `git add` 里的 `stage_report.json` → `入库=False` → FAIL；还原 → PASS。

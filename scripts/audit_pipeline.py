@@ -702,6 +702,27 @@ def check_deep_gate():
     return ("PASS" if ok else "FAIL"), ev
 
 
+@check("D14", "采集", "中间层阶段实况可追溯",
+       "stage_daily 的 blocked_by_blacklist / added / dead 以前只 print 到 CI log，"
+       "本地 pull 下来完全看不到当天拦了多少复活源（和门槛 report 未入库是同一类问题）。"
+       "要求：stage_daily 支持 --report 落盘、workflow 传参并 git add、摘要读进 stage 字段")
+def check_stage_report():
+    stage = read("scripts/stage_daily.py")
+    summary = read("scripts/daily_summary.py")
+    wf = read(".github/workflows/auto-update.yml")
+    has_flag = "ap.add_argument(\"--report\"" in stage
+    writes = "dump_json(result, args.report)" in stage
+    wf_wired = "stage_daily.py" in wf and "--report weekly/stage_report.json" in wf
+    git_added = "weekly/stage_report.json" in wf.split("git add")[-1] if "git add" in wf else False
+    read_back = "stage_report.json" in summary
+    # 读不到必须走 gates_error，不能静默吞掉（FileNotFoundError 单独区别于真异常）
+    err_tagged = 'gate_err["stage"]' in summary
+    ok = all([has_flag, writes, wf_wired, git_added, read_back, err_tagged])
+    ev = (f"参数={has_flag} 落盘={writes} workflow={wf_wired} "
+          f"入库={git_added} 摘要读={read_back} 错误可见={err_tagged}")
+    return ("PASS" if ok else "FAIL"), ev
+
+
 @check("D13", "采集", "剔除黑名单在位",
        "从正式版删掉的源会被下次采集从合集里重新抓回来（实测优品PPT、奇漫影视、"
        "精华书阁僵尸站被剔后又进了中间层）。stage_daily 必须读 excluded_sources.json 拦截")

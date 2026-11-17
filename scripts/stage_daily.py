@@ -56,6 +56,7 @@ def main():
     ap.add_argument("--formal", default=os.path.join(ROOT, "books.json"), help="正式版")
     ap.add_argument("--pending", default=os.path.join(ROOT, "books_pending.json"), help="中间层")
     ap.add_argument("--dry-run", action="store_true", help="只统计，不写盘")
+    ap.add_argument("--report", default="", help="把本次结果写成 JSON，供摘要读取")
     args = ap.parse_args()
 
     cleaned = load_json(args.cleaned)
@@ -119,6 +120,8 @@ def main():
         "junk": 0,
         "pending_after": len(pending),
     }
+    if args.report:
+        dump_json(result, args.report)   # 摘要要读它，不能只 print 到 CI log
     if not new:
         print(json.dumps(result, ensure_ascii=False))
         return
@@ -167,6 +170,8 @@ def main():
         result["added"] = len(really_new)
         log.info(f"中间层已更新: {len(fresh)} → {result['pending_after']}（本次 +{len(really_new)}）")
 
+    if args.report:
+        dump_json(result, args.report)   # 主路径覆盖一次，带更新后的真实 added/pending_after
     print(json.dumps(result, ensure_ascii=False))
 
 

@@ -150,8 +150,15 @@ def main():
         if d <= ZOMBIE_DAYS:
             continue
         hd = r.get("home_days")
-        if hd is not None and hd <= 180:
-            continue          # 首页说新、进站说老，数据矛盾 → 不删
+        # 双证据同向才算僵尸。三种情形都必须放行，否则 single-signal 就会杀人：
+        #   ① 首页日期取不到（None）→ 只有进站一个信号，证据不足
+        #   ② 首页日期比阈值新 → 与进站结论矛盾
+        # 原写法 `if hd is not None and hd <= 180` 在 hd 为 None 时条件不成立，
+        # 直接落进删除分支——"拿不到证据"被当成了"没有矛盾证据"，与既定口径相反。
+        # 实测 2026-11-17 挡掉的 6 条（希冀/龙腾/素书卷/看情言/知音漫客/爱优漫吧）
+        # 全部 home_days=None，正是这条逻辑杀的。
+        if hd is None or hd <= ZOMBIE_DAYS:
+            continue
         if args.drop_zombie:
             drop_urls.add((r["url"] or "").rstrip("/"))
             dropped.append(r)

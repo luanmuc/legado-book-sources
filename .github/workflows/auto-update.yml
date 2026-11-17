@@ -145,7 +145,7 @@ jobs:
             echo "::warning::进站深查失败，本步跳过（不阻断采集）"
           fi
           # 只取正式版与中间层都没有的 URL；存活校验 quick（403/405 WAF 保留，只淘汰 404/410 与域名不存在的死站）
-          python3 scripts/stage_daily.py --cleaned "$GATED"
+          python3 scripts/stage_daily.py --cleaned "$GATED" --report weekly/stage_report.json
 
       - name: 上传清洗产物为 artifact（仓库不存大文件，避免历史膨胀）
         if: always()
@@ -164,7 +164,7 @@ jobs:
           python3 scripts/daily_summary.py append
 
           git add weekly/daily_summary.json weekly/daily_history.jsonl books_pending.json \
-               weekly/health_gate_report.json weekly/deep_gate_report.json 2>/dev/null
+               weekly/health_gate_report.json weekly/deep_gate_report.json weekly/stage_report.json 2>/dev/null
           if git diff --staged --quiet; then
             echo "摘要无变化，跳过提交"
             exit 0

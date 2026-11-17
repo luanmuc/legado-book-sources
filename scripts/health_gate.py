@@ -40,6 +40,21 @@ except Exception:
     STATIC_SITE_HOSTS = ()
 
 
+def detect_template_dates(results, min_count=3):
+    """找出疑似模板假日期：同一批里同一个 sitemap lastmod 出现 ≥ min_count 次。
+
+    sitemap 的 <lastmod> 未必是真实更新时间。实测：爱丽丝书屋 4 个镜像域名共用
+    2024-08-19，而这 4 个站 HTTP 200、66KB 内容照常在服务；历史上还见过
+    2024-04-20 被七八个笔趣阁分站共享。单站看 lastmod 完全看不出这件事，
+    必须横向比——所以这条判据只能在本批里做，不能落到单站函数里。
+    """
+    cnt = {}
+    for r in results:
+        if r.get("evidence") == "sitemap" and r.get("newest"):
+            cnt[r["newest"]] = cnt.get(r["newest"], 0) + 1
+    return {d for d, n in cnt.items() if n >= min_count}
+
+
 def _host(u):
     return host_of(u)   # 唯一实现在 utils.host_of
 
@@ -119,12 +134,18 @@ def main():
         ex.shutdown(wait=False, cancel_futures=True)
 
     by_url = {r.get("url"): r for r in results}
+
+    template_dates = detect_template_dates(results)
+    if template_dates:
+        log.warning(f"疑似模板日期（同批 ≥3 次，整组放行）：{sorted(template_dates)}")
+
     hard_zombies, kept = [], []
     for s in probe:   # 只处理体检过的这一段，rest 原样追加（否则会重复计数）
         r = by_url.get(s.get("bookSourceUrl"))
         big = is_big_site(s.get("bookSourceUrl"))
         if (r and not big and r.get("evidence") == "sitemap"
-                and r.get("days") is not None and r["days"] > HARD_ZOMBIE_DAYS):
+                and r.get("days") is not None and r["days"] > HARD_ZOMBIE_DAYS
+                and r.get("newest") not in template_dates):
             if args.drop_hard_zombie and not is_static(s.get("bookSourceName"), s.get("bookSourceUrl")):
                 hard_zombies.append({"name": s.get("bookSourceName"),
                                      "url": s.get("bookSourceUrl"),
@@ -156,6 +177,7 @@ def main():
         "reachable": n_reach,
         "with_sitemap": n_sm,
         "hard_zombie": len(hard_zombies),
+        "template_dates": sorted(template_dates),   # 疑似模板日期，已整组放行
         "dropped": len(hard_zombies),
         "output": len(kept) + len(rest),
         "dropped_items": [{"name": z["name"], "url": z["url"],
