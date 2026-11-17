@@ -6,7 +6,7 @@ autocollect_core 清洗去重模块（第二阶段）
 
 from .config import (ADULT_GROUP, BIG_SITES, JUNK_DEAD_KW, JUNK_ADULT_KW,
                      JUNK_NON_NOVEL_KW, JUNK_TEST_KW, NON_NOVEL_KEYWORDS)
-from .utils import clean_url, get_domain, log
+from .utils import clean_url, get_domain, log, tag_upstream_marks
 from .validators import check_rule_integrity
 
 
@@ -147,6 +147,7 @@ def filter_junk_sources(items, keep_adult=True):
             continue
         # 2. 成人内容：无条件保留（即使名字含"漫画/影视"等非小说词也不当垃圾剔）
         if keep_adult and is_adult_source(s):
+            tag_upstream_marks(s)  # 覆盖分组前先留住上游"校验可用/已检"之类的标记
             s["bookSourceGroup"] = ADULT_GROUP  # 成人源统一归组，organize 单独分组（排序最末）
             adult_count += 1
             kept.append(item)

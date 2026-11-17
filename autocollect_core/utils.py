@@ -155,3 +155,50 @@ def dump_json(data, path, atomic=True, indent=2):
         os.fsync(f.fileno())
     os.replace(tmp, path)  # 同盘 rename 是原子操作
     return path
+
+
+# ===== 上游合集的校验标记保留 =====
+
+# 上游合集作者自己会做题、把结果写在分组名里：`校验可用`、`2026年11月07日搜索校验`、
+# `🌹已检26.10.15`、`校验超时`、`【❌❌】搜索正文失-效`。这是别人拿真书试过的结论，
+# 免费的质量信号。但整理阶段会按自己的规则重写 bookSourceGroup，这些标记一进正式版就没了。
+# 实测 11-17 的 cleaned 里带标记的有 700+ 条，而 books.json 里一条都查不到——白扔了。
+UPSTREAM_MARK_RE = re.compile(r"校验|验证|已检|失效|超时|❌")
+
+
+def extract_upstream_marks(group):
+    """从上游原始分组名里抽出校验/失效标记，最多 3 个（别把 comment 塞满）
+
+    分组名长这样：`通常书源 📂,快速书源 ⚡`、`校验可用`、`【❌❌】搜索正文失-效,校验超时`
+    按逗号/分号切开逐段判断，命中即整段保留（"2026年11月07日搜索校验"这种带日期的也要留住
+    日期，不能只留"校验"两个字）。
+    """
+    if not group:
+        return []
+    marks = []
+    for part in re.split(r"[,;，；]", str(group)):
+        p = part.strip()
+        if not p or not UPSTREAM_MARK_RE.search(p):
+            continue
+        if p not in marks:
+            marks.append(p)
+        if len(marks) >= 3:
+            break
+    return marks
+
+
+def tag_upstream_marks(source):
+    """把上游校验标记写进 comment，幂等（重复调用不会叠加）
+
+    comment 已经是"源身上带说明"的公共通道（健康度门槛也往这里写 `// 健康度:xxx`），
+    复用同一条通道，不新增字段，避免动 Legado 的书源结构。
+    """
+    marks = extract_upstream_marks(source.get("bookSourceGroup") or "")
+    if not marks:
+        return source
+    tag = "// 上游:" + "|".join(marks)
+    c = source.get("comment") or ""
+    if tag in c:
+        return source
+    source["comment"] = (c + " " + tag).strip() if c.strip() else tag
+    return source

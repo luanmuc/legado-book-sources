@@ -11,7 +11,7 @@ autocollect_core 整理模块（第四阶段）
 import re
 
 from .config import ADULT_GROUP, BIG_SITES
-from .utils import clean_url, get_domain, log
+from .utils import clean_url, get_domain, log, tag_upstream_marks
 from .cleaner import is_big_site
 from .naming import natural_name_key, generate_chinese_name, renumber_name_families
 
@@ -118,6 +118,7 @@ def organize_sources(validated_sources, existing_sources):
         # 组内先按域名排序改名，保证名字-域名绑定稳定（序号分配不漂移）
         items = sorted(groups[group_name], key=lambda x: x.get("bookSourceUrl", ""))
         for s in items:
+            tag_upstream_marks(s)   # 覆盖分组前留住上游校验标记（comment 通道，幂等）
             # 规范化分组写回（覆盖原始乱分组/emoji/状态标记）
             s["bookSourceGroup"] = group_name
             if group_name == ADULT_GROUP:

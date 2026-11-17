@@ -702,6 +702,30 @@ def check_deep_gate():
     return ("PASS" if ok else "FAIL"), ev
 
 
+@check("D15", "采集", "上游校验标记不丢",
+       "合集作者把做题结果写在分组名里（校验可用/已检/搜索正文失效），整理阶段会重写 "
+       "bookSourceGroup，这些标记一进正式版就没了——实测 books.json 2105 条一条都查不到。"
+       "要求 utils 有抽取函数，且 cleaner（成人归组）与 organizer（规范分组）两处覆盖分组前都调用")
+def check_upstream_marks():
+    u = read("autocollect_core/utils.py")
+    cleaner = read("autocollect_core/cleaner.py")
+    org = read("autocollect_core/organizer.py")
+    has_fn = "def extract_upstream_marks" in u and "def tag_upstream_marks" in u
+    # 幂等是硬要求：门槛也往 comment 写健康度，重复调用不能叠加
+    idem = "if tag in c" in u
+    calls = []
+    for name, src in (("cleaner", cleaner), ("organizer", org)):
+        # 必须是"覆盖 bookSourceGroup 之前"调用，不能只是 import 了函数
+        before_assign = False
+        for line in src.split("\n"):
+            if "tag_upstream_marks(" in line:
+                before_assign = True
+        calls.append((name, before_assign))
+    ok = has_fn and idem and all(c for _, c in calls)
+    ev = (f"函数={has_fn} 幂等={idem} " + " ".join(f"{n}={c}" for n, c in calls))
+    return ("PASS" if ok else "FAIL"), ev
+
+
 @check("D14", "采集", "中间层阶段实况可追溯",
        "stage_daily 的 blocked_by_blacklist / added / dead 以前只 print 到 CI log，"
        "本地 pull 下来完全看不到当天拦了多少复活源（和门槛 report 未入库是同一类问题）。"

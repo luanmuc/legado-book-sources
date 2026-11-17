@@ -101,5 +101,56 @@ class TestStaticExempt(unittest.TestCase):
         self.assertFalse(self.is_static("", "https://www.gxhj.com.cn/"))
 
 
+class TestUpstreamMarks(unittest.TestCase):
+    """上游合集的校验标记要保住
+
+    实测 2026-11-17 的 cleaned 里有 700+ 条源的分组名带"校验可用/已检/失效"，
+    那是合集作者拿真书试过的结论。但整理阶段会重写 bookSourceGroup，
+    一进正式版这些标记就全没了——books.json 里一条都查不到。
+    现在改成覆盖前先抄进 comment。
+    """
+
+    def setUp(self):
+        from autocollect_core.utils import extract_upstream_marks, tag_upstream_marks
+        self.extract = extract_upstream_marks
+        self.tag = tag_upstream_marks
+
+    def test_extract_simple_mark(self):
+        self.assertEqual(self.extract("校验可用"), ["校验可用"])
+
+    def test_extract_keeps_date_in_mark(self):
+        # 带日期的标记要整段留住，不能只留"校验"两个字
+        self.assertEqual(self.extract("2026年11月07日搜索校验"), ["2026年11月07日搜索校验"])
+
+    def test_extract_multiple_and_cap(self):
+        marks = self.extract("【❌❌】搜索正文失-效,校验超时,已检,验证可用")
+        self.assertEqual(len(marks), 3)          # 最多 3 个，别把 comment 塞满
+        self.assertIn("【❌❌】搜索正文失-效", marks)
+
+    def test_extract_ignores_normal_groups(self):
+        # 普通分组名不能被当成标记
+        self.assertEqual(self.extract("通常书源 📂,快速书源 ⚡"), [])
+        self.assertEqual(self.extract(""), [])
+
+    def test_tag_written_once(self):
+        s = {"bookSourceGroup": "校验可用"}
+        self.tag(s)
+        self.assertEqual(s["comment"], "// 上游:校验可用")
+        self.tag(s)                              # 幂等
+        self.assertEqual(s["comment"], "// 上游:校验可用")
+
+    def test_tag_appends_not_overwrites(self):
+        # 门槛也会往 comment 写健康度，不能覆盖掉已有内容
+        s = {"bookSourceGroup": "校验可用", "comment": "// 健康度:活跃 最后更新2026-11-01"}
+        self.tag(s)
+        self.assertIn("健康度:活跃", s["comment"])
+        self.assertIn("// 上游:校验可用", s["comment"])
+
+    def test_tag_noop_without_mark(self):
+        s = {"bookSourceGroup": "精品书源"}
+        self.tag(s)
+        self.assertFalse(s.get("comment"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

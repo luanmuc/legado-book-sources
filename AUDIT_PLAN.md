@@ -2,7 +2,7 @@
 
 审计对象：**每日采集 → 中间层 → 每月自动合并发布** 全自动巡检管道
 审计方式：脚本化只读核查（`scripts/audit_pipeline.py`）+ 逐条回读源码定性
-最近执行：2026-11-17　检查点 47 项　结论：**47 / 47 PASS**（含 9 项闭环、缺陷回归、压力测试与原子写断言）
+最近执行：2026-11-17　检查点 48 项　结论：**48 / 48 PASS**（含 9 项闭环、缺陷回归、压力测试与原子写断言）
 
 ---
 
@@ -65,6 +65,7 @@
 | E2 | 正式版结构自洽 | customOrder 连续、分组段连续、成人最末 | PASS | 2140 条连续；分组 6 段；成人 1857-2140 且末位=2140 |
 | E3 | 同族尾号从 1 连续 | 非成人/非大厂组，同族源尾号必须 1..N 无跳号（本体也补 1） | PASS | 281 个族全部 1..N；注入 `笔趣阁5→笔趣阁55` 立刻转 FAIL |
 | D8 | 关键数据落盘走原子写 | books.json / books_pending.json 的写入必须经 `utils.dump_json`（`.tmp`→`os.replace`），直接 `open(...,'w')`+`json.dump` 即 FAIL；覆盖 5 个写盘点 | PASS | 新增断言时立刻抓出 autocollect.py 2 处漏改 |
+| D15 | 上游校验标记不丢 | 合集作者把做题结果写在分组名里，整理重写 `bookSourceGroup` 会全丢。要求 `utils` 有抽取/写入函数（幂等、不覆盖健康度），且 `cleaner`（成人归组）与 `organizer`（规范分组）两处覆盖前都调用 | PASS | 摘掉 organizer 的调用 → `organizer=False` → FAIL（已红绿验证） |
 | D14 | 中间层阶段实况可追溯 | `stage_daily --report` 落盘 + workflow 入库 + 摘要读进 `stage` 字段。这类"值只 print 到 CI log、本地 pull 看不到"的问题已出现过两次（门槛 report 未入库），需要用断言锁住 | PASS | 摘掉 workflow `git add` 里的 `stage_report.json` → 立刻 FAIL（已红绿验证） |
 | D13 | 剔除黑名单在位 | `excluded_sources.json` + `stage_daily` 拦截，防已淘汰源从合集复活；僵尸站只能按精确 URL 拦，不能整域拦 | PASS | 断言清单存在、被 stage_daily 引用、每条都带 scope；把僵尸站改成 host 级立刻 FAIL（已红绿验证） |
 | D12 | 进站深查门槛在位（含报告回传+静态站豁免） | 每日对新候选进站读目录页最新章节日期；首页/sitemap 只作疑似信号；只有 >180 天且首页同向才剔除，拿不到/打不开一律放行，大厂豁免 | PASS | 断言每日+月度接入、`--only-suspect`、阈值 180 天、大厂豁免；阈值改 30 立刻 FAIL（已红绿验证） |
@@ -262,3 +263,23 @@ python3 scripts/reorder.py --dry-run
 - 读不到时走 `gate_err["stage"]`，不静默吞
 
 **红绿验证**：摘掉 workflow `git add` 里的 `stage_report.json` → `入库=False` → FAIL；还原 → PASS。
+
+
+### D15. 上游校验标记不丢（本轮新增）
+
+**为什么加**：合集里的源，作者自己会做题，结果直接写在分组名里——`校验可用`、
+`2026年11月07日搜索校验`、`🌹已检26.10.15`、`【❌❌】搜索正文失-效`。
+
+这是**别人拿真书试过的结论**，是唯一不花钱的质量信号。但整理阶段会按自己的分类重写
+`bookSourceGroup`（大厂正版 / 笔趣阁类 / 玄幻武侠……），上游标记全部被覆盖。
+实测 `books.json` 2105 条里一条都查不到，中间层 304 条里却有 53 条（17.4%）带标记。
+
+**为什么不用自己爬补这个信号**：两次实测都撞墙——站内搜索接口抽样命中 22-28%；
+三级链路校验 9 条里 6 条直接 `blocked`（67%），且"被反爬挡住"和"站死了"分不清。
+不硬刚反爬就判不出质量，硬刚就得上浏览器渲染，2140 个源跑不动。
+
+**断言**：`utils.extract_upstream_marks` / `tag_upstream_marks` 存在；写入幂等
+（`if tag in c` 提前返回，因为门槛也往 `comment` 写健康度，不能重复叠加）；
+`cleaner.py`（成人源覆盖成 `成人书源` 之前）与 `organizer.py`（规范分组之前）两处都调用。
+
+**红绿验证**：摘掉 `organizer.py` 里的调用 → `organizer=False` → FAIL；还原 → PASS。
