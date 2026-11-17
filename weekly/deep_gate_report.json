@@ -1,0 +1,45 @@
+{
+  "checked": 27,
+  "alive": 9,
+  "zombie": 6,
+  "unknown": 12,
+  "dropped": 6,
+  "dropped_items": [
+    {
+      "name": "希冀小说网",
+      "url": "https://m.xi-ji.com",
+      "deep_date": "2025-10-29",
+      "deep_days": 384
+    },
+    {
+      "name": "龙腾小说网",
+      "url": "https://www.10000api.net",
+      "deep_date": "2024-09-15",
+      "deep_days": 793
+    },
+    {
+      "name": "素书卷",
+      "url": "https://www.sushujuan.org",
+      "deep_date": "2025-06-11",
+      "deep_days": 524
+    },
+    {
+      "name": "看情言小说网",
+      "url": "https://www.gaoyuantong.com",
+      "deep_date": "2024-12-23",
+      "deep_days": 694
+    },
+    {
+      "name": "知音漫客（优+）",
+      "url": "https://m.zymk.cn/",
+      "deep_date": "2023-02-04",
+      "deep_days": 1382
+    },
+    {
+      "name": "爱优漫吧",
+      "url": "https://m.iyouman.com",
+      "deep_date": "2023-02-04",
+      "deep_days": 1382
+    }
+  ]
+}
