@@ -550,7 +550,9 @@ def check_liveness_entry_unique():
     files = set()
     for line in r.stdout.splitlines():
         p = os.path.relpath(line.strip(), ROOT)
-        if "raw/autocollect/stress" in p or p.startswith("__pycache__"):
+        # raw/ 是数据与临时产物目录（gitignore 掉），校验时会在这里放远程 clone 副本，
+        # 扫进来会把副本当成旁路判活入口。审计只看入库的代码。
+        if p.startswith("raw/") or p.startswith("__pycache__"):
             continue
         files.add(p)
     allowed = {
