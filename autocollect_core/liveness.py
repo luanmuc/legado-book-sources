@@ -29,6 +29,15 @@ log = logging.getLogger(__name__)
 UA = "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36"
 
 
+def _tmo(timeout):
+    """(connect, read) 双超时：连不上的站 3 秒失败，不占满整个 read 超时"""
+    try:
+        from .config import CONNECT_TIMEOUT
+        return (CONNECT_TIMEOUT, timeout)
+    except Exception:
+        return (3, timeout)
+
+
 def probe_alive(source, timeout=6):
     """返回 "ok" / "dead" / "unknown"。unknown 一律按保留处理。"""
     url = (source.get("bookSourceUrl") if isinstance(source, dict) else "") or ""
@@ -37,8 +46,12 @@ def probe_alive(source, timeout=6):
     host = urllib.parse.urlparse(url).hostname or ""
 
     try:
-        r = requests.get(url, timeout=timeout, allow_redirects=True, verify=False,
-                         headers={"User-Agent": UA})
+        # trust_env=False：必须绕开环境代理。走代理时国内小说站大量被拦成 404/超时，
+        # 会把「代理抽风」误判成「站已死」（实测误判率 56%）。详见 utils.fetch_url 注释。
+        from .utils import _get_session
+        sess = _get_session()
+        r = sess.get(url, timeout=_tmo(timeout), allow_redirects=True, verify=False,
+                     headers={"User-Agent": UA})
         if r.status_code in (404, 410):
             return "dead"
         if r.status_code >= 500 or r.status_code in (403, 405, 429):

@@ -60,8 +60,13 @@ def check_rule_integrity(source):
     return True
 
 
-def quick_validate(source):
-    """快速校验：首页可达性 + 搜索接口连通性"""
+def quick_validate(source, check_search=True):
+    """快速校验：首页可达性 + 搜索接口连通性
+
+    check_search=False：只做首页存活（full 档用）。full 档第二遍会走
+    check_search_parsed 做正式的规则解析，这里再打一次搜索就是纯重复请求——
+    每条源白多一个往返，批量 2000 条时是实打实的几分钟。
+    """
     url = source.get("bookSourceUrl", "")
     domain = get_domain(url)
     search_url = source.get("searchUrl", "")
@@ -87,6 +92,11 @@ def quick_validate(source):
         return result
     result["alive"] = True
     result["reason"] = "" if verdict == "ok" else "链路不稳/无法判定，保留"
+
+    if not check_search:
+        # full 档：搜索交给第二遍 check_search_parsed，这里不做
+        result["search_ok"] = True
+        return result
 
     # 第二步：测试搜索接口连通性（简化版）
     if search_url and result["alive"]:
@@ -192,8 +202,10 @@ def validate_sources(sources, mode="quick"):
     # 第一遍：快速过滤（两档共用）
     log.info("第一遍：快速过滤（首页连通性/WAF 识别）...")
     quick_results = []
+    # full 档不需要这遍里的搜索测试（第二遍 check_search_parsed 会做正式解析）
+    do_search_probe = (mode == "quick")
     with ThreadPoolExecutor(max_workers=CONCURRENCY) as executor:
-        futures = {executor.submit(quick_validate, s): s for s in sources}
+        futures = {executor.submit(quick_validate, s, do_search_probe): s for s in sources}
         for future in as_completed(futures):
             result = future.result()
             quick_results.append(result)
@@ -334,6 +346,15 @@ def validate_sources_with_checkpoint(sources, tag, batch=300, mode="quick"):
 import json as _json
 import re as _re
 
+
+def _tmo(timeout):
+    """(connect, read) 双超时：域名不通/端口拒绝的站在 3 秒内失败"""
+    try:
+        from .config import CONNECT_TIMEOUT
+        return (CONNECT_TIMEOUT, timeout)
+    except Exception:
+        return (3, timeout)
+
 import requests as _requests
 from .legado_rules import is_script_rule, parse_book_list, parse_explore_entries
 
@@ -401,6 +422,10 @@ def _fetch_raw(req, timeout=8):
 
     编码策略：显式 charset > HTTP header > meta charset > apparent_encoding(chardet) > utf-8
     中文小站大量是 GBK/GB2312，requests 默认猜成 ISO-8859-1 会乱码导致规则解析失败。
+
+    必须复用线程局部 Session（连接池 + trust_env=False 绕开环境代理）：
+    这里每条源要打 首页/搜索/详情/目录/正文 5 次，代理中转既慢 2.2 倍又会把
+    国内站拦成 404 —— 是全仓「连不上」误判的主要来源。
     """
     headers = {
         "User-Agent": "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 "
@@ -408,13 +433,15 @@ def _fetch_raw(req, timeout=8):
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "zh-CN,zh;q=0.9",
     }
+    from .utils import _get_session
+    sess = _get_session()
     if req["method"] == "POST":
         post_headers = dict(headers)
         post_headers["Content-Type"] = "application/x-www-form-urlencoded"
-        resp = _requests.post(req["url"], data=(req["body"] or ""), headers=post_headers,
-                              timeout=timeout, verify=False)
+        resp = sess.post(req["url"], data=(req["body"] or ""), headers=post_headers,
+                         timeout=_tmo(timeout), verify=False)
     else:
-        resp = _requests.get(req["url"], headers=headers, timeout=timeout, verify=False)
+        resp = sess.get(req["url"], headers=headers, timeout=_tmo(timeout), verify=False)
 
     # 编码候选打分（实测大量站点 header/meta 声明与实际不符，直接信任会乱码致解析全灭）
     cands = []
@@ -553,18 +580,31 @@ def check_search_parsed(source, keywords=None, max_try=3):
         keywords = base[:max_try]
     if not keywords:
         keywords = [QUICK_TEST_KEYWORD]
+    # 关键词并发跑（旧实现串行，3 个关键词最坏要排 3 个超时 ≈ 24~27s/源；
+    # 并发后 ≈ 单次超时 8~9s。批量 2000 源时这一项就差出数十分钟）
+    from concurrent.futures import ThreadPoolExecutor
+
     tried = []
-    any_200 = False
-    for kw in keywords:
-        status, detail = _search_once(source, kw)
-        if status == "ok":
-            return "ok", f"关键词[{kw}] {detail}"
-        if status == "bad":
-            any_200 = True
-        tried.append(f"[{kw}]{status}:{detail}")
-    joined = " | ".join(tried)[:160]
-    n_bad = sum(1 for k in tried if ":bad:" in k)
-    n_blk = sum(1 for k in tried if ":blocked:" in k)
+    with ThreadPoolExecutor(max_workers=len(keywords)) as ex:
+        futs = {ex.submit(_search_once, source, kw): kw for kw in keywords}
+        for fut in as_completed(futs):
+            kw = futs[fut]
+            try:
+                status, detail = fut.result()
+            except Exception as e:
+                status, detail = "blocked", f"并发校验异常 {type(e).__name__}"
+            tried.append((kw, status, detail))
+            if status == "ok":
+                # 有一个成功立即收工（其余线程仍在跑但不再等，线程池退出时回收）
+                for f in futs:
+                    f.cancel()
+                return "ok", f"关键词[{kw}] {detail}"
+
+    tried.sort(key=lambda x: (x[1] != "bad", x[0]))
+    joined_strs = [f"[{kw}]{st}:{dt}" for kw, st, dt in tried]
+    joined = " | ".join(joined_strs)[:160]
+    n_bad = sum(1 for _, st, _ in tried if st == "bad")
+    n_blk = sum(1 for _, st, _ in tried if st == "blocked")
     # 证据分层，避免网络抖动误杀：
     #  ≥2 个关键词都拿到 200 却解析不出 → 内容确实变了 → bad
     #  只 1 个关键词 200 + 其余超时/异常 → 证据不足 → blocked（待验保留）
@@ -695,19 +735,23 @@ def _pick_first_value(html, rule):
         return ""
 
 
-def check_detail_parsed(source, book, timeout=8):
-    """详情页校验：要么按 ruleBookInfo 解析出字段，要么能拿到目录页 URL"""
+def check_detail_parsed(source, book, timeout=8, html=None):
+    """详情页校验：要么按 ruleBookInfo 解析出字段，要么能拿到目录页 URL
+
+    html: 已抓到的详情页 HTML（调用方复用时传入，避免重复请求同一页）
+    """
     rule_info = source.get("ruleBookInfo") if isinstance(source.get("ruleBookInfo"), dict) else {}
     url = _abs_url(book.get("url"), source)
-    if not url:
+    if not url and not html:
         return "bad", "搜索未返回书籍 URL"
-    req = {"url": url, "method": "GET", "body": None, "charset": None}
-    try:
-        code, html = _fetch_raw(req, timeout=timeout)
-    except Exception as e:
-        return "blocked", f"详情请求异常 {type(e).__name__}"
-    if code != 200:
-        return "blocked", f"详情 HTTP {code}"
+    if html is None:
+        req = {"url": url, "method": "GET", "body": None, "charset": None}
+        try:
+            code, html = _fetch_raw(req, timeout=timeout)
+        except Exception as e:
+            return "blocked", f"详情请求异常 {type(e).__name__}"
+        if code != 200:
+            return "blocked", f"详情 HTTP {code}"
 
     toc_url = _pick_first_value(html, rule_info.get("tocUrl"))
     names = []
@@ -779,17 +823,21 @@ def check_content_parsed(source, chapter_url, timeout=8):
 
 
 def check_chain_usable(source, book, timeout=8):
-    """三级链路：详情 → 目录 → 正文。返回 dict(chain_ok, detail/toc/content)"""
-    d_status, d_detail = check_detail_parsed(source, book, timeout=timeout)
+    """三级链路：详情 → 目录 → 正文。返回 dict(chain_ok, detail/toc/content)
+
+    性能约束：详情页只抓一次。旧实现里 check_detail_parsed 抓一次、判 ok 后又
+    重抓一次、toc 缺 html 时再抓一次，同一页最多请求 3 次（每条源多耗 2 个往返）。
+    """
+    url = _abs_url(book.get("url"), source)
     detail_html = None
-    if d_status == "ok":
+    if url:
         try:
-            req = {"url": _abs_url(book.get("url"), source), "method": "GET",
-                   "body": None, "charset": None}
-            code, detail_html = _fetch_raw(req, timeout=timeout)
+            req = {"url": url, "method": "GET", "body": None, "charset": None}
+            _code, detail_html = _fetch_raw(req, timeout=timeout)
         except Exception:
             detail_html = None
 
+    d_status, d_detail = check_detail_parsed(source, book, timeout=timeout, html=detail_html)
     t_status, t_detail = check_toc_parsed(source, book, detail_html=detail_html, timeout=timeout)
 
     c_status, c_detail = "blocked", "未取到章节"
@@ -800,7 +848,7 @@ def check_chain_usable(source, book, timeout=8):
             bl = rule_toc.get("bookList") or rule_toc.get("chapterList")
             src_html = detail_html
             if src_html is None:
-                req = {"url": _abs_url(book.get("url"), source), "method": "GET",
+                req = {"url": url, "method": "GET",
                        "body": None, "charset": None}
                 _, src_html = _fetch_raw(req, timeout=timeout)
             first_cand = str(bl).split("||")[0]

@@ -81,9 +81,13 @@ def _newest_dates(text):
 
 def _fetch(url, timeout):
     """返回 (状态码, 正文, 响应头)。响应头用于取 Last-Modified——服务器给的文件修改时间，
-    实测命中率约 20%，但准确度高（晋江 LM 显示 2 天前更新，正好证明它没死）。"""
+    实测命中率约 20%，但准确度高（晋江 LM 显示 2 天前更新，正好证明它没死）。
+
+    复用线程局部 Session：信任环境代理时国内站大量被拦成 404/超时，
+    会直接把「代理抽风」记成「站点无更新」（详见 utils.fetch_url 注释）。"""
     try:
-        r = requests.get(url, headers=HEAD, timeout=timeout, verify=False, allow_redirects=True)
+        from autocollect_core.utils import _get_session
+        r = _get_session().get(url, headers=HEAD, timeout=timeout, verify=False, allow_redirects=True)
         r.encoding = r.apparent_encoding or "utf-8"
         return r.status_code, r.text or "", dict(r.headers)
     except Exception as e:

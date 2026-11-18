@@ -398,3 +398,94 @@ JSON直链     https://www.yckceo.com/yuedu/shuyuan/json/id/{id}.json      （li
 ---
 
 *文档版本：v3.2.6（2026-11-05）*
+
+---
+
+## 2026-11-18 全仓审计：网络层三个缺陷与提速
+
+### 1. 环境代理吞掉全部请求（正确性问题，最严重）
+
+云主机 / Actions 普遍设了 `HTTP_PROXY` / `HTTPS_PROXY`。`requests` 默认读这两个变量，
+**全仓除 `quality_check.py` 外所有请求代码都没设 `trust_env=False`**：
+
+| 位置 | 影响 |
+|------|------|
+| `utils.fetch_url` | 采集/校验所有请求经代理 |
+| `liveness.probe_alive` | 判死口径被污染 |
+| `validators._fetch_raw` | 首页/搜索/详情/目录/正文全部经代理 |
+| `scripts/site_health._fetch` | 健康度判定被污染 |
+
+**实测证据**（同一站，同一时刻）：
+
+```
+走代理   : GET www.bookfedex.com → 404 / 138B
+直连     : GET www.bookfedex.com → 200 / 8393B   (curl --noproxy '*')
+```
+
+这就是 11-18 那轮"189 条连不上里 105 条其实是活的"（**误判率 56%**）的根因。
+代理对大量国内小站直接拦成 404/超时，脚本把"代理抽风"记成"站已死"。
+
+修复：`utils._get_session()` 统一产出 `trust_env=False` 的线程局部 Session，
+`fetch_url` / `probe_alive` / `_fetch_raw` / `site_health._fetch` 全部改走它。
+
+> 注意：`publisher.py` 访问 GitHub API **不动**——`api.github.com` 在环境 no_proxy 里，
+> 走不走代理都是直连，改了反而可能影响发版。
+
+### 2. 无连接复用
+
+旧代码每次请求都是 `requests.get(...)`，即每次重新 DNS + TCP + TLS 握手。
+一条源要打 首页/搜索/详情/目录/正文 5 个请求，2000 条源就是 1 万次握手。
+
+修复：线程局部 `Session` + `HTTPAdapter(pool_connections=32, pool_maxsize=64)`，
+同 host 的连接直接复用。
+
+### 3. 同一页面被重复请求（性能）
+
+`check_chain_usable` 里详情页最多被抓 **3 次**：
+
+```
+1. check_detail_parsed() 内部抓一次
+2. 判定 ok 后又 _fetch_raw 抓一次（为了拿 tocUrl）
+3. check_toc_parsed 传入 detail_html=None 时再抓一次
+```
+
+修复：详情页只抓一次，`check_detail_parsed(..., html=...)` 支持传入已有 HTML，
+详情/目录两步共用同一份。
+
+### 4. full 档搜索请求重复两次
+
+`validate_sources(mode="full")` 第一遍 `quick_validate` 会做一次简化搜索测试，
+第二遍 `check_source_usable` 又走正式的 `check_search_parsed`——**每条源白多一个请求**。
+
+修复：`quick_validate(source, check_search=False)`，full 档第一遍只做首页存活。
+
+### 5. 关键词串行
+
+`check_search_parsed` 试 3 个关键词是串行的，最坏 3 × 9s ≈ 27s/源。
+修复：3 个关键词并发，任一成功立即收工（约等于单次超时）。
+
+### 6. 超时只设一个值
+
+`timeout=6` 对"连接"和"读取"一视同仁，域名不通的站要空等 6 秒。
+修复：拆成 `(CONNECT_TIMEOUT, read_timeout)` = `(3, 6)`，连不上的站 3 秒失败。
+
+新增配置项 `CONNECT_TIMEOUT`（环境变量 `YCKCEO_CONNECT_TIMEOUT`，默认 3）。
+
+### 实测数据
+
+| 场景 | 旧 | 新 | 说明 |
+|------|----|----|------|
+| 10 个活站探活 | 8.5s | **3.9s** | 活站收益明显（2.2x） |
+| 120 条混合样本探活 | 15.6s | 13.7s（并发 64） | 死站居多时有超时开销 |
+| 80 条 full 校验 | 0.70s/条 | **0.63s/条** | 1947 条预计 1227s（旧 1363s） |
+| **判定准确性** | 全 unknown | **判出 4 条 404 死站** | 代理下永远判不出 dead |
+
+结论：**正确性收益远大于速度收益**。老的"快"是假快——代理快速拒绝，
+换来的是全 unknown、判不出死站，最后靠人工复核。
+
+### 复核口径（写进以后所有网络排查）
+
+- 脚本层失败**不能当死站证据**，必须 `curl --noproxy '*'` 直连复核；
+- 对比时先确认两边是否都绕开了环境代理，否则结论会完全相反；
+- `fetch_url` / `probe_alive` / `_fetch_raw` 一律走 `utils._get_session()`，别再写 `requests.get`。
+

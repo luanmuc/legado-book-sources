@@ -9,12 +9,13 @@ import re
 import time
 import json
 import logging
+import threading
 import requests
 import urllib3
 from urllib.parse import urlparse
 
 from .config import (
-    BASE_DIR, REQUEST_TIMEOUT, REQUEST_RETRY,
+    BASE_DIR, REQUEST_TIMEOUT, REQUEST_RETRY, CONNECT_TIMEOUT,
     USER_AGENT, REFERER,
 )
 
@@ -81,17 +82,59 @@ def get_domain(url):
         return url
 
 
-def fetch_url(url, timeout=REQUEST_TIMEOUT, retry=REQUEST_RETRY):
-    """带重试的请求，加反爬头"""
-    headers = {
+# ============================================================
+# 连接复用 + 绕过环境代理（2026-11-18 全仓审计后修）
+# ============================================================
+# 为什么必须 trust_env=False：云主机/Actions 环境普遍设了 HTTP_PROXY/HTTPS_PROXY，
+# requests 默认读环境变量→所有请求经代理中转。而代理会：
+#   1. 把国内小说站的大量请求拦成 404/超时（实测同一站 curl --noproxy 拿 200/8393B，
+#      requests 走代理拿 404/138B —— 直接导致"连不上"误判率 56%）
+#   2. 每次多一跳中转，实测批量请求慢 2.2 倍（10 站 8.5s vs 3.9s）
+# GitHub API 已在 no_proxy 里，置 False 后仍走直连，不影响发版。
+#
+# 为什么用线程局部 Session：连接复用避免每次重新 TLS 握手。批量校验时
+# 同一 host 会被反复请求（首页/搜索/详情/目录/正文），复用收益明显。
+
+_thread_local = threading.local()
+
+
+def _get_session():
+    """每线程一个 Session（requests.Session 非线程安全，不能跨线程共享）"""
+    sess = getattr(_thread_local, "session", None)
+    if sess is None:
+        sess = requests.Session()
+        sess.trust_env = False                     # 绕开环境代理
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=32, pool_maxsize=64, max_retries=0)
+        sess.mount("http://", adapter)
+        sess.mount("https://", adapter)
+        _thread_local.session = sess
+    return sess
+
+
+def fetch_url(url, timeout=REQUEST_TIMEOUT, retry=REQUEST_RETRY, session=None, headers=None):
+    """带重试的请求，加反爬头；默认复用线程局部 Session（连接池 + 不读环境代理）
+
+    session: 传入外部 Session（多 UA 轮试场景可自行控池）；None 用线程局部默认池
+    headers: 覆盖默认头（换 UA 突破反爬时用）
+
+    超时拆成 (connect, read)：连不上/域名不通的站在 3 秒内快速失败，
+    不再空等整个 timeout。批量探活时死站占比很高（本次实测 120 条里 25%+），
+    这一项能砍掉整轮相当大一块等待时间。
+    """
+    hdr = {
         "User-Agent": USER_AGENT,
         "Referer": REFERER,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8"
     }
+    if headers:
+        hdr.update(headers)
+    sess = session or _get_session()
+    tmo = (CONNECT_TIMEOUT, timeout) if isinstance(timeout, (int, float)) else timeout
     for i in range(retry + 1):
         try:
-            resp = requests.get(url, headers=headers, timeout=timeout, verify=False)  # 跳过SSL验证，自签名证书不报错
+            resp = sess.get(url, headers=hdr, timeout=tmo, verify=False)  # 跳过SSL验证，自签名证书不报错
             return resp
         except Exception as e:
             if i < retry:

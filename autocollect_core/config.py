@@ -103,6 +103,11 @@ JUNK_DEAD_KW = [
 REQUEST_TIMEOUT = int(os.environ.get("YCKCEO_TIMEOUT", "10"))
 REQUEST_RETRY = int(os.environ.get("YCKCEO_RETRY", "2"))
 CONCURRENCY = int(os.environ.get("YCKCEO_CONCURRENCY", "20"))  # 校验/下载并发（IO密集）
+
+# 连接超时（秒）：只等 TCP/TLS 握手，不覆盖读正文的时间。
+# 域名不通/端口拒绝的站在这个时间内快速失败，不必空等整个 REQUEST_TIMEOUT。
+# 实测批量探活里有 25%+ 是这类慢失败，缩短这一段对整轮耗时影响最直接。
+CONNECT_TIMEOUT = float(os.environ.get("YCKCEO_CONNECT_TIMEOUT", "3"))
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 REFERER = "https://www.google.com/"
 
