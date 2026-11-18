@@ -1,29 +1,34 @@
 {
   "gate": "health",
-  "input": 2234,
+  "input": 2199,
   "checked": 120,
-  "reachable": 62,
-  "with_sitemap": 27,
-  "hard_zombie": 2,
+  "reachable": 65,
+  "with_sitemap": 30,
+  "hard_zombie": 3,
   "template_dates": [
-    "2024-08-19",
-    "2026-11-17",
-    "2026-11-18"
+    "2021-08-12",
+    "2024-08-19"
   ],
-  "dropped": 2,
-  "output": 2232,
+  "dropped": 3,
+  "output": 2196,
   "dropped_items": [
     {
       "name": "书本书 V2",
       "url": "https://www.shubenshu.com",
       "lastmod": "2026-02-11",
-      "days": 279
+      "days": 280
     },
     {
       "name": "📂精华书阁",
       "url": "https://m.jhsssd.com",
       "lastmod": "2022-07-13",
-      "days": 1588
+      "days": 1589
+    },
+    {
+      "name": "📂圣武书屋",
+      "url": "https://www.sswsk.com/",
+      "lastmod": "2017-07-02",
+      "days": 3426
     }
   ]
 }
