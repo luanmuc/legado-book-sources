@@ -66,6 +66,7 @@
 | 模块 | 职责 | 关键函数 |
 |------|------|----------|
 | `config.py` | 常量：大厂12清单、垃圾/成人关键词表、数据源URL、路径、请求参数 | `BIG_SITE_*`、`JUNK_*`、`ADULT_GROUP`、`GENERIC_TEST_KEYWORDS`（我的/天下/重生…）、`REQUEST_TIMEOUT/RETRY/CONCURRENCY`（支持 `YCKCEO_*` 环境变量覆盖） |
+| `url_key` 比对归一化 | `utils.url_key` = `clean_url` + 抹平尾斜杠 + 协议/host 小写（路径保持敏感）。**所有"这两个 URL 是不是同一个源"的判断都要用它，不能用 `clean_url`**——`clean_url` 不动尾斜杠，`https://a.com` 与 `https://a.com/` 会被当成两个源，去重失效（实测导致中间层 120 条重复） |
 | 上游校验标记 | `utils.extract_upstream_marks` / `tag_upstream_marks`：合集作者写在分组名里的 `校验可用/已检/失效` 是唯一的免费质量信号，整理重写 `bookSourceGroup` 前必须抄进 `comment`（`cleaner.py` 成人归组处 + `organizer.py` 规范分组处，两处都要）。写入幂等，不覆盖门槛写的 `// 健康度:` |
 | `host_of` 唯一实现 | 域名归一化只有一处：`utils.host_of` 去协议/路径/端口，并把 `www/m/wap/mobile` 前缀统一去掉。`health_gate` / `deep_gate` / `stage_daily` 三处 `_host` 都委托它——历史上两个 gate 只去 `www.`，导致 `m.hongxiu.com` 在大厂豁免集合里匹配不上 `hongxiu.com`，红袖移动版被误删 |
 | `tests/test_core.py` | 14 项纯函数单测（不联网）：`_split_index` 索引语法、`host_of` 归一化、`is_static` 静态站豁免。审计 E4 实跑，改坏断言会让审计 FAIL |

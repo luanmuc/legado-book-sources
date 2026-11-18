@@ -202,3 +202,24 @@ def tag_upstream_marks(source):
         return source
     source["comment"] = (c + " " + tag).strip() if c.strip() else tag
     return source
+
+
+def url_key(url):
+    """比对用的 URL 归一化：在 clean_url 基础上抹平尾斜杠与大小写差异
+
+    专用于「这两个 URL 是不是同一个源」的判断，不改变库里存的原始 URL。
+
+    为什么需要：clean_url 只剔锚点/注释/非法字符，**不动尾斜杠**——
+    `https://www.shuqi.com` 与 `https://www.shuqi.com/` 归一化后仍是两个值，
+    于是同一个站能被当成两个源各进一次中间层。实测 2026-11-18 中间层 370 条
+    里有 120 条（32%）的 URL 其实已在正式版，根因就是这里。
+    """
+    u = clean_url(url)
+    if not u:
+        return ""
+    # 协议和 host 大小写不敏感；路径大小写敏感，不能整体 lower
+    m = re.match(r"^(https?://)([^/]*)(.*)$", u, re.I)
+    if m:
+        scheme, netloc, rest = m.group(1).lower(), m.group(2).lower(), m.group(3)
+        u = f"{scheme}{netloc}{rest}"
+    return u.rstrip("/")

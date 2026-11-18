@@ -702,6 +702,33 @@ def check_deep_gate():
     return ("PASS" if ok else "FAIL"), ev
 
 
+@check("D16", "采集", "中间层不残留已进正式版的条目",
+       "stage_daily 原来只往 pending 里加、从不删，已经提升进正式版的条目会永久占着中间层——"
+       "实测 2026-11-18 中间层 370 条里有 120 条（32%）的 URL 其实已在 books.json 里。"
+       "根因还有一层：clean_url 不处理尾斜杠，同一站带/不带斜杠被当成两个源，去重本身失效。"
+       "要求 utils 有 url_key（抹平尾斜杠+host 大小写），且 stage_daily 写盘前按它剔除残留")
+def check_pending_purge():
+    u = read("autocollect_core/utils.py")
+    stage = read("scripts/stage_daily.py")
+    has_key = "def url_key" in u
+    # 必须真的去尾斜杠，不能只是改个名
+    # 按函数边界取函数体（不能按固定长度截，docstring 一长就把 return 行切掉）
+    body = ""
+    if has_key:
+        tail = u.split("def url_key")[1]
+        end = tail.find("\ndef ")
+        body = tail[:end] if end > 0 else tail
+    strips = 'rstrip("/")' in body
+    # stage_daily 必须用 url_key 比对，且真的过滤了已在正式版的条目
+    uses = "url_key(" in stage
+    no_clean = "clean_url(" not in stage          # 比对全走 url_key，不允许混用两套口径
+    purges = "purged_promoted" in stage and "formal_urls" in stage
+    ok = has_key and strips and uses and no_clean and purges
+    ev = (f"url_key={has_key} 去斜杠={strips} stage用={uses} "
+          f"不混用clean_url={no_clean} 清理={purges}")
+    return ("PASS" if ok else "FAIL"), ev
+
+
 @check("D15", "采集", "上游校验标记不丢",
        "合集作者把做题结果写在分组名里（校验可用/已检/搜索正文失效），整理阶段会重写 "
        "bookSourceGroup，这些标记一进正式版就没了——实测 books.json 2105 条一条都查不到。"

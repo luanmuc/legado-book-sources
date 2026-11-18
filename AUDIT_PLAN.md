@@ -2,7 +2,7 @@
 
 审计对象：**每日采集 → 中间层 → 每月自动合并发布** 全自动巡检管道
 审计方式：脚本化只读核查（`scripts/audit_pipeline.py`）+ 逐条回读源码定性
-最近执行：2026-11-17　检查点 48 项　结论：**48 / 48 PASS**（含 9 项闭环、缺陷回归、压力测试与原子写断言）
+最近执行：2026-11-18　检查点 49 项　结论：**49 / 49 PASS**（含 9 项闭环、缺陷回归、压力测试与原子写断言）
 
 ---
 
@@ -65,6 +65,7 @@
 | E2 | 正式版结构自洽 | customOrder 连续、分组段连续、成人最末 | PASS | 2140 条连续；分组 6 段；成人 1857-2140 且末位=2140 |
 | E3 | 同族尾号从 1 连续 | 非成人/非大厂组，同族源尾号必须 1..N 无跳号（本体也补 1） | PASS | 281 个族全部 1..N；注入 `笔趣阁5→笔趣阁55` 立刻转 FAIL |
 | D8 | 关键数据落盘走原子写 | books.json / books_pending.json 的写入必须经 `utils.dump_json`（`.tmp`→`os.replace`），直接 `open(...,'w')`+`json.dump` 即 FAIL；覆盖 5 个写盘点 | PASS | 新增断言时立刻抓出 autocollect.py 2 处漏改 |
+| D16 | 中间层不残留已进正式版的条目 | `url_key` 抹平尾斜杠+host 大小写，`stage_daily` 按它剔残留。根因是 `clean_url` 不管尾斜杠，同站带/不带斜杠算两个源，去重失效 | PASS | 去掉 `url_key` 的 `rstrip` → FAIL（已红绿验证） |
 | D15 | 上游校验标记不丢 | 合集作者把做题结果写在分组名里，整理重写 `bookSourceGroup` 会全丢。要求 `utils` 有抽取/写入函数（幂等、不覆盖健康度），且 `cleaner`（成人归组）与 `organizer`（规范分组）两处覆盖前都调用 | PASS | 摘掉 organizer 的调用 → `organizer=False` → FAIL（已红绿验证） |
 | D14 | 中间层阶段实况可追溯 | `stage_daily --report` 落盘 + workflow 入库 + 摘要读进 `stage` 字段。这类"值只 print 到 CI log、本地 pull 看不到"的问题已出现过两次（门槛 report 未入库），需要用断言锁住 | PASS | 摘掉 workflow `git add` 里的 `stage_report.json` → 立刻 FAIL（已红绿验证） |
 | D13 | 剔除黑名单在位 | `excluded_sources.json` + `stage_daily` 拦截，防已淘汰源从合集复活；僵尸站只能按精确 URL 拦，不能整域拦 | PASS | 断言清单存在、被 stage_daily 引用、每条都带 scope；把僵尸站改成 host 级立刻 FAIL（已红绿验证） |
@@ -283,3 +284,20 @@ python3 scripts/reorder.py --dry-run
 `cleaner.py`（成人源覆盖成 `成人书源` 之前）与 `organizer.py`（规范分组之前）两处都调用。
 
 **红绿验证**：摘掉 `organizer.py` 里的调用 → `organizer=False` → FAIL；还原 → PASS。
+
+
+### D16. 中间层不残留已进正式版的条目（本轮新增）
+
+**为什么加**：2026-11-18 中间层 370 条里，有 **120 条（32%）的 URL 已经在 `books.json` 里**。
+中间层本该只放"待确认的新候选"，却堆着一堆已经发布的源。
+
+两层根因：
+1. `stage_daily` 只往 pending 里加、**从不删**。提升后中间层副本不清理，永久累积。
+2. `clean_url` **不处理尾斜杠**——`https://www.shuqi.com` 与 `https://www.shuqi.com/`
+   归一化后仍是两个值，同一个站被当成两个源各进一次。**入库时的去重本身就失效了**。
+
+**断言**：`utils.url_key` 存在且真的去尾斜杠（按函数边界取函数体判断，不能按固定长度截——
+docstring 一长就把 `return` 行切到窗口外，第一版断言就是这样漏的）；`stage_daily` 全量用
+`url_key` 比对（不允许 `clean_url` 与 `url_key` 混用两套口径）；写盘前真的按 `formal_urls` 剔除。
+
+**红绿验证**：把 `url_key` 末尾的 `.rstrip("/")` 去掉 → `去斜杠=False` → FAIL；还原 → PASS。

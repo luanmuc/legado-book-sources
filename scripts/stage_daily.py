@@ -24,7 +24,7 @@ from contextlib import contextmanager
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from autocollect_core.utils import clean_url, load_json, dump_json, host_of  # noqa: E402
+from autocollect_core.utils import url_key, load_json, dump_json, host_of  # noqa: E402
 from autocollect_core.liveness import probe_many  # noqa: E402
 from autocollect_core.cleaner import filter_junk_sources  # noqa: E402
 
@@ -69,8 +69,8 @@ def main():
         log.error("正式版或中间层不是数组结构，拒绝写入（避免把数据格式写坏）")
         sys.exit(1)
 
-    formal_urls = {clean_url(s.get("bookSourceUrl") or "") for s in formal}
-    pending_urls = {clean_url(s.get("bookSourceUrl") or "") for s in pending}
+    formal_urls = {url_key(s.get("bookSourceUrl") or "") for s in formal}
+    pending_urls = {url_key(s.get("bookSourceUrl") or "") for s in pending}
 
     # 剔除黑名单（2026-11-15）：从正式版删掉的源，下次采集会从合集里重新抓回来，
     # 只比对"正式版+中间层"的闸门拦不住——实测优品PPT、奇漫影视、精华书阁僵尸站
@@ -82,7 +82,7 @@ def main():
     ex_items = excluded.get("items", []) if isinstance(excluded, dict) else []
     # scope=host：整站无关（PPT/网盘/档案馆/社交/音乐播客/有声/空壳），整个域名都拦
     # scope=url ：僵尸站，只拦被进站确认死掉的那条规则，不误伤同站其他规则
-    ex_urls = {clean_url(x.get("url") or "") for x in ex_items
+    ex_urls = {url_key(x.get("url") or "") for x in ex_items
                if x.get("url") and x.get("scope") == "url"}
     formal_hosts = {_host(s.get("bookSourceUrl")) for s in formal}
     ex_hosts = {_host(x.get("url")) for x in ex_items
@@ -95,7 +95,7 @@ def main():
     blocked = []
     seen = set()
     for s in cleaned:
-        u = clean_url(s.get("bookSourceUrl") or "")
+        u = url_key(s.get("bookSourceUrl") or "")
         if not u or u in formal_urls or u in pending_urls or u in seen:
             continue
         if u in ex_urls or _host(u) in ex_hosts:
@@ -141,10 +141,10 @@ def main():
 
     # 4. 追加进中间层（保留原顺序，不打乱已有条目）
     added = [item.get("source", item) if isinstance(item, dict) else item for item in kept]
-    existing_urls = {clean_url(s.get("bookSourceUrl") or "") for s in pending}
+    existing_urls = {url_key(s.get("bookSourceUrl") or "") for s in pending}
     final_added = []
     for s in added:
-        u = clean_url(s.get("bookSourceUrl") or "")
+        u = url_key(s.get("bookSourceUrl") or "")
         if u and u not in existing_urls:
             existing_urls.add(u)
             final_added.append(s)
@@ -158,10 +158,19 @@ def main():
         # 避免另一个进程在我们探活期间已经写入了同一批源（读-改-写覆盖）
         with pending_lock(args.pending):
             fresh = load_json(args.pending, []) or []
-            fresh_urls = {clean_url(x.get("bookSourceUrl") or "") for x in fresh}
+            # 清理：已经进了正式版的条目不该继续占着中间层。
+            # 原实现只往里加、从不删——实测 11-18 中间层 370 条里有 120 条（32%）
+            # 的 URL 已经在 books.json 里了，是历史提升留下的僵尸条目。
+            formal_urls = {url_key(s.get("bookSourceUrl") or "") for s in formal}
+            purged = [x for x in fresh if url_key(x.get("bookSourceUrl") or "") in formal_urls]
+            if purged:
+                fresh = [x for x in fresh if url_key(x.get("bookSourceUrl") or "") not in formal_urls]
+                log.info(f"中间层清理: 剔除 {len(purged)} 条已在正式版的残留条目")
+            result["purged_promoted"] = len(purged)
+            fresh_urls = {url_key(x.get("bookSourceUrl") or "") for x in fresh}
             really_new = []
             for x in final_added:
-                u = clean_url(x.get("bookSourceUrl") or "")
+                u = url_key(x.get("bookSourceUrl") or "")
                 if u and u not in fresh_urls:
                     fresh_urls.add(u)
                     really_new.append(x)

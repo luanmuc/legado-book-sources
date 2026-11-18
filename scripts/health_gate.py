@@ -40,8 +40,13 @@ except Exception:
     STATIC_SITE_HOSTS = ()
 
 
-def detect_template_dates(results, min_count=3):
+def detect_template_dates(results, min_count=3, min_days=None):
     """找出疑似模板假日期：同一批里同一个 sitemap lastmod 出现 ≥ min_count 次。
+
+    min_days：只统计"已经超过这个天数"的日期。模板判定的唯一目的是**防误删**，
+    而 days 很小的日期根本不可能触发删除，标成模板没有意义，还会把报告弄脏
+    （实测 2026-11-18 就有 2026-11-17 / 2026-11-18 两个新鲜日期被标进来）。
+
 
     sitemap 的 <lastmod> 未必是真实更新时间。实测：爱丽丝书屋 4 个镜像域名共用
     2024-08-19，而这 4 个站 HTTP 200、66KB 内容照常在服务；历史上还见过
@@ -50,8 +55,13 @@ def detect_template_dates(results, min_count=3):
     """
     cnt = {}
     for r in results:
-        if r.get("evidence") == "sitemap" and r.get("newest"):
-            cnt[r["newest"]] = cnt.get(r["newest"], 0) + 1
+        if r.get("evidence") != "sitemap" or not r.get("newest"):
+            continue
+        if min_days is not None:
+            d = r.get("days")
+            if d is None or d <= min_days:
+                continue          # 这个日期不可能触发删除，不参与模板判定
+        cnt[r["newest"]] = cnt.get(r["newest"], 0) + 1
     return {d for d, n in cnt.items() if n >= min_count}
 
 
@@ -135,7 +145,7 @@ def main():
 
     by_url = {r.get("url"): r for r in results}
 
-    template_dates = detect_template_dates(results)
+    template_dates = detect_template_dates(results, min_days=HARD_ZOMBIE_DAYS)
     if template_dates:
         log.warning(f"疑似模板日期（同批 ≥3 次，整组放行）：{sorted(template_dates)}")
 

@@ -118,6 +118,18 @@ class TestTemplateDate(unittest.TestCase):
         rs = [{"evidence": "home", "newest": "2024-08-19"}] * 5
         self.assertEqual(self.detect(rs), set())
 
+    def test_fresh_date_never_template(self):
+        """今天/昨天这种新鲜日期不可能触发删除，不该被标成模板
+
+        实测 2026-11-18 的 report 里混进了 2026-11-17 / 2026-11-18 两个日期，
+        它们 days 只有 0/1，本来就不删，标进报告只会误导复核。
+        """
+        rs = [{"evidence": "sitemap", "newest": "2026-11-18", "days": 0}] * 5
+        self.assertEqual(self.detect(rs, min_days=180), set())
+        # 同一批里老日期仍然要识别出来
+        rs2 = [{"evidence": "sitemap", "newest": "2024-08-19", "days": 820}] * 4
+        self.assertEqual(self.detect(rs2, min_days=180), {"2024-08-19"})
+
     def test_empty_and_missing_newest(self):
         rs = [{"evidence": "sitemap", "newest": None}, {"evidence": "sitemap"}]
         self.assertEqual(self.detect(rs), set())
