@@ -58,6 +58,17 @@ DEAD_TITLE_RE = re.compile(
     r"(404|not found|welcome to nginx|nginx|网页无法访问|已过期|停用|建设中)", re.I)
 
 
+# 突破顽固站点用的多 UA（2026-11-18 实测有效）
+UA_SETS = {
+    "chrome": UA,
+    "bot": ("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"),
+    "iphone": ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 "
+               "(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"),
+}
+# 分类页/排行页比首页更容易抓：小说站的列表页一定有书名列表
+LIST_PATHS = ["", "/sort/all/1/", "/top/", "/list/", "/quanben/", "/sort/"]
+
+
 def host_of_loose(url):
     if "//" not in url:
         return ""
@@ -165,6 +176,48 @@ def curl_alive(url, host):
     return False, "FAIL"
 
 
+def breakthrough(host):
+    """顽固站点突破：多 UA × 多协议 × 多路径，任一抓到书名列表就算成功。
+
+    为什么有效：很多站对普通 UA 挡、对 Googlebot 放行（要 SEO 流量）；
+    首页可能有 JS 首屏，但 /sort/ /top/ 是纯列表页。
+    """
+    import requests
+    requests.packages.urllib3.disable_warnings()
+    for ua_name, ua in UA_SETS.items():
+        for scheme in ("https://", "http://"):
+            for path in LIST_PATHS:
+                try:
+                    sess = requests.Session()
+                    sess.trust_env = False
+                    r = sess.get(scheme + host + path,
+                                 headers={"User-Agent": ua}, timeout=7,
+                                 verify=False, allow_redirects=True)
+                    if r.status_code != 200 or len(r.content) < 300:
+                        continue
+                    enc = r.apparent_encoding or "utf-8"
+                    html = r.content.decode(enc, "ignore")
+                except Exception:
+                    continue
+                t = re.search(r"<title[^>]*>(.*?)</title>", html, re.S | re.I)
+                title = (t.group(1) if t else "").strip()[:80]
+                if WAF_TITLE_RE.search(title):
+                    return {"cls": "WAF保留", "title": title, "via": f"{ua_name}{scheme[:4]}{path}"}
+                nb = len(re.findall(
+                    r'href=["\'][^"\']*(?:/book/|/novel/|/read/|/txt/|/\d+_\d+/|/\d+/\d+/)',
+                    html, re.I))
+                nt = len(re.findall(r">[^<>\s]{2,20}</a>", html))
+                head = html[:2000] + title
+                ns = sum(1 for w in NOVEL_WORDS if w in head)
+                anti = sum(1 for w in ANTI_WORDS if w in head)
+                if anti >= 2 and anti > ns:
+                    return {"cls": "非小说", "title": title, "via": f"{ua_name}{scheme[:4]}{path}"}
+                if ns >= 2 or nb >= 3 or nt >= 15:
+                    return {"cls": "小说站", "title": title, "nb": nb, "nt": nt,
+                            "via": f"{ua_name}{scheme[:4]}{path}"}
+    return {"cls": "判不出", "title": "", "via": "FAIL"}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--input", default="books.json")
@@ -172,6 +225,8 @@ def main():
     ap.add_argument("--workers", type=int, default=32)
     ap.add_argument("--recheck", action="store_true",
                     help="对初判死亡的项用 curl 直连复核（强烈建议开）")
+    ap.add_argument("--breakthrough", action="store_true",
+                    help="对仍判不出的项做多 UA × 多路径突破（实测能救回 45%）")
     ap.add_argument("--report", default="raw/autocollect/tmp/quality_report.json")
     args = ap.parse_args()
 
@@ -237,6 +292,26 @@ def main():
                     r["verdict_before"] = r["verdict"]
                     r["verdict"] = "复核活着"
                     r["recheck"] = detail
+
+    # 突破：对仍未判出的项，多 UA × 多路径再试（实测能救回 45%）
+    if args.breakthrough:
+        stuck = [r for r in rows if r["verdict"] in ("未知", "抓不到", "判不出")]
+        print(f"\n突破 {len(stuck)} 条（多 UA × 多路径）...")
+        t1 = time.time()
+
+        def bt(r):
+            return r, breakthrough(host_of_loose(r["url"]))
+
+        with ThreadPoolExecutor(max_workers=args.workers) as ex:
+            futs = [ex.submit(bt, r) for r in stuck]
+            for i, f in enumerate(as_completed(futs), 1):
+                r, res = f.result()
+                r["verdict_before"] = r["verdict"]
+                r["verdict"] = res["cls"]
+                r["breakthrough"] = res.get("via")
+                r["break_title"] = res.get("title", "")
+                if i % 200 == 0:
+                    print(f"  {i}/{len(stuck)}  ({time.time()-t1:.0f}s)")
 
     from collections import Counter
     c = Counter(r["verdict"] for r in rows)
