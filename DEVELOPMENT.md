@@ -489,3 +489,73 @@ JSON直链     https://www.yckceo.com/yuedu/shuyuan/json/id/{id}.json      （li
 - 对比时先确认两边是否都绕开了环境代理，否则结论会完全相反；
 - `fetch_url` / `probe_alive` / `_fetch_raw` 一律走 `utils._get_session()`，别再写 `requests.get`。
 
+
+## 2026-11-19：360 条逐条真浏览器进站 + 截图判定
+
+### 为什么加这一层
+
+四层体检用的是 HTTP 客户端。当站点做 TLS 指纹识别时，这一层会**系统性失效**：
+360 条被判"判不出"的源，TCP 全部连通（443:308 / 80:52），只是内容层拿不到。
+
+上 Chromium 逐条打开后立刻推翻：
+
+| 站点 | 脚本结论 | 截图实际 |
+|---|---|---|
+| `www.sobiquge.net` | HTTP 403 → 判不出 | 完整笔趣阁：分类导航 + 人气榜 + **172 个书链** |
+| `www.shumilou.co` | 无书链 → 空壳候选 | 完整书迷楼：封面墙 + 三栏分类书单 |
+
+**规则：403 / 超时 / 渲染超时都不能判死，判定以真浏览器渲染结果为准。**
+
+### 脚本
+
+`raw/autocollect/tmp/shot_render.py`
+- Playwright/Chromium，`executable_path=/usr/local/bin/chromium`
+- 90s 超时、8 并发、整页截图
+- 逐条落盘 `shots_meta.jsonl`（status / final_url / title / books / links / err）
+- 截图存 `shots/<idx>_<host>.png`
+- 360 条实测 **584s**
+
+### 结果分层
+
+| 判定 | 条数 | 依据 |
+|---|---|---|
+| A 可用 | 72 | 实测有书链，或 title/HTML 即小说网 |
+| B 死站 | 27 | 有"已变性质"硬证据 |
+| C 保留 | 103 | API 接口域名（首页空属正常）+ 反爬/网关 |
+| D 打不开 | 158 | 无死站证据，不下手删 |
+
+### 死站指纹（可直接判死）
+
+- `[域名] is for sale` / 域名出售页
+- `is registered at Namesilo/Namecheap` 停放页
+- 跳 `vinniebags.com/go/<id>`
+- 跳 `.xyz` 黑产域名（`ERR_INVALID_REDIRECT`）
+- 跳英文广告站（`thearticlebuzz.com`）
+- `HTTP Server Test Page` / `Welcome to OpenResty` / `Hello, world !`
+- title 直接写明是赌博/色情/电商/网盘/企业站
+- 停运公告（`book.tiexue.net`）
+
+### 不能判死（必须保留）
+
+1. 403 / 401 / 429 / 宝塔防火墙 / Cloudflare 挑战
+2. API 接口域名（`api.*` / `quickapi.*` / `/api/v1/`）
+3. 502 / 504 / 连接超时
+
+### `Loading https://xxx/?tr_uuid=`
+
+约 27KB 纯 JS 跳转壳，浏览器渲染完仍停在 Loading，curl 也只拿到这段壳。
+跳转目标多是广告落地页 → 按死站处理。
+
+### 直连复检
+
+代理污染判定。复检一律 `curl -sS --noproxy '*' -m 12 -k -L`。
+本轮 158 条"打不开"里直连救回 7 条：`quanben-xiaoshuo.com`、`quanwenyuedu.io`、
+`m.suixkan.com`、`m.yueyouxs.com`、`sma.yueyouxs.com`、`n.cmread.com`、`m.bqg222.com`。
+
+### 清理
+
+按 26 个域名删 26 条（`top.17k.com` 属 17K 大厂子域，按"大厂豁免"保留）；
+随后发现 4 条带 🎨/🔞/🚬 标记的成人特殊类被误删，**按"成人内容全保留"规则立即回补**。
+`1909 → 1883 → 1887`，customOrder 重排 1..1887。
+
+备份：`raw/autocollect/tmp/books_before_cut26.json`（1909 条）。
