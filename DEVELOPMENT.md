@@ -559,3 +559,13 @@ JSON直链     https://www.yckceo.com/yuedu/shuyuan/json/id/{id}.json      （li
 `1909 → 1883 → 1887`，customOrder 重排 1..1887。
 
 备份：`raw/autocollect/tmp/books_before_cut26.json`（1909 条）。
+
+### 2026-11-19 脚本固化
+
+- 新增 **`scripts/shot_check.py`**（由 `raw/autocollect/tmp/shot_render.py` 提升入库）：
+  真浏览器逐条进站 + 整页截图 + 自动初判 + `pending.json` 人工复核清单。
+  自动判定只认硬证据（有书链 / 死站指纹），其余一律进人工，不做猜测性删除。
+- `scripts/quality_check.py` 尾部新增：判不出的源自动落 `pending_for_browser.json`，
+  并打印下一棒命令 `shot_check.py --pending`，两级流水线打通。
+- **`excluded_sources.json` 补 22 条 / 21 个域名**：本轮删掉的死站若不在黑名单，
+  下次采集会从合集原样抓回来（`stage_daily` 靠它拦截）。这一步比删源本身更关键。

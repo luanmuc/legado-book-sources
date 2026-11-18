@@ -321,6 +321,16 @@ def main():
     dump_json(rows, args.report)
     print(f"\n明细已落盘 {args.report}")
 
+    # 判不出的源交给浏览器层：HTTP 客户端会被 TLS 指纹挡住，
+    # 但真浏览器能打开（实测 sobiquge.net 脚本 403、浏览器是完整小说站）。
+    # 下一棒：python3 scripts/shot_check.py --pending
+    pending = [r["url"] for r in rows if r["verdict"] in ("未知", "抓不到", "判不出")]
+    if pending:
+        _pend = os.path.join(os.path.dirname(args.report), "pending_for_browser.json")
+        dump_json(pending, _pend)
+        print(f"判不出 {len(pending)} 条 → {_pend}")
+        print("  下一步: python3 scripts/shot_check.py --pending   # 浏览器逐条截图复核")
+
 
 if __name__ == "__main__":
     main()
