@@ -68,7 +68,7 @@ def load_fragments():
 
 def cmd_clean(args):
     """流式合并+清洗去重（逐文件处理、checkpoint 可恢复），落盘 cleaned 文件"""
-    from autocollect_core.cleaner import is_non_novel, is_adult_source
+    from autocollect_core.cleaner import is_non_novel
     from autocollect_core.validators import check_rule_integrity
     from autocollect_core.utils import clean_url, get_domain
 
@@ -141,9 +141,12 @@ def cmd_clean(args):
 
     log.info(f"合并分片 {fragments} 个 → 域名去重后 {len(domain_map)} 个")
 
-    # 过滤非小说 + 规则完整性（成人内容豁免：成人漫画/影视等非小说类也保留）
-    novel = [s for s in domain_map.values() if not is_non_novel(s) or is_adult_source(s)]
-    log.info(f"过滤非小说后: {len(novel)} 个（成人内容已豁免保留）")
+    # 过滤非小说 + 规则完整性
+    # 2026-11-19 规则变更：取消成人源豁免。成人源若非小说站同样按 is_non_novel 剔除，
+    # 分组标签不再作为免死金牌（此前「成人书源」整组跳过非小说过滤，导致成人漫画、
+    # 视频站、企业站被混入书源库）。成人源只在「成人内容分级」意义上保留，不豁免质量判断。
+    novel = [s for s in domain_map.values() if not is_non_novel(s)]
+    log.info(f"过滤非小说后: {len(novel)} 个（已不再豁免成人源）")
     valid = [s for s in novel if check_rule_integrity(s)]
     log.info(f"规则完整性: 通过 {len(valid)} 个")
 

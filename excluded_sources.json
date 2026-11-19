@@ -34,7 +34,15 @@
   "97mv.cn",
   "9920102.com",
   "cxzz.com",
-  "xbiqugu.com"
+  "xbiqugu.com",
+  "nav.jijia-co.com",
+  "jcdf99.com",
+  "xsbiquge.net",
+  "m.592shuku.com",
+  "xn--drdgrjra-xx6n10qjm3s.cartoonav-01.top",
+  "po18po.com",
+  "yuzhaiwen.com",
+  "dmwx.org"
  ],
  "items": [
   {
@@ -699,6 +707,1222 @@
    "reason": "已变性质：xbiqugu.com is registere",
    "date": "2026-11-19",
    "batch": "360条进站核验",
+   "scope": "host"
+  },
+  {
+   "name": "闲看小说",
+   "url": "http://nav.jijia-co.com",
+   "reason": "用户逐条手动进站：不是小说站",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "host"
+  },
+  {
+   "name": "精彩东方",
+   "url": "https://www.jcdf99.com",
+   "reason": "用户逐条手动进站：不是小说站",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "host"
+  },
+  {
+   "name": "笔趣阁185",
+   "url": "https://www.xsbiquge.net",
+   "reason": "域名出售页（用户进站确认）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "host"
+  },
+  {
+   "name": "笔趣阁66",
+   "url": "https://103.188.121.74/h5",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "笔趣阁76",
+   "url": "https://m.bqg.fun",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "笔趣阁77",
+   "url": "https://m.bqg222.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "笔趣阁95",
+   "url": "https://m.xxbiqudu.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "笔趣阁98",
+   "url": "https://m.yuzhaiwen.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "笔趣阁102",
+   "url": "https://souxs.leeyegy.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "笔趣阁103",
+   "url": "https://wap.18biquge.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "笔趣阁120",
+   "url": "https://www.biqueg.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "笔趣阁122",
+   "url": "https://www.biquge.cc",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "笔趣阁149",
+   "url": "https://www.bqg.fun",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "笔趣阁157",
+   "url": "https://www.c66c.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "爱去言情",
+   "url": "https://www.asw229.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "中华典藏2",
+   "url": "https://www.zhonghuadiancang.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "丽图书屋",
+   "url": "https://litu100.xyz/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "乐文小说7",
+   "url": "https://www.lewen0001.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "乐文小说9",
+   "url": "https://www.xlewen.org/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "乐阅读小",
+   "url": "https://www.27k.net/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "书农小说",
+   "url": "http://www.yueleshow.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "书文小说2",
+   "url": "https://www.znxs.net",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "书斋书苑1",
+   "url": "https://sobooks.net/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "书网小说",
+   "url": "https://www.ukanshu.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "书苑书屋3",
+   "url": "https://mjjxs.net/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "书馆中文",
+   "url": "http://www.sgwaa.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "五六中万",
+   "url": "https://www.zw.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "仓库书屋",
+   "url": "https://cosck.cc",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "企鹅读书",
+   "url": "https://h5.reader.qq.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "全免小说1",
+   "url": "http://qmbook.taoyuewenhua.net/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "全免小说2",
+   "url": "https://www.quanmianxs.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "全本小说14",
+   "url": "https://www.qb5.tw/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "全本小说21",
+   "url": "https://www.quanben5.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "全本窝书",
+   "url": "https://m.quanbenwo.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "八一中文7",
+   "url": "https://m.zwduxs.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "凌晨看书",
+   "url": "https://m.lingchenkanshu.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "努努书坊1",
+   "url": "http://www.kanunu8.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "台湾小说1",
+   "url": "https://twkan.cc/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "听小说书2",
+   "url": "https://ts3.txs12.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "啵乐屋书",
+   "url": "http://m.90bole.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "四三中文",
+   "url": "https://www.zw43.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "天涯在线",
+   "url": "https://www.tianyabook.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "天籁小说2",
+   "url": "https://www.tianlai01.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "奇书小说",
+   "url": "https://www.qisxs.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "奇书网书4",
+   "url": "https://www.75qs.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "好客小说",
+   "url": "http://www.haokexs.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "好客文学",
+   "url": "http://www.haokewx.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "小说书城9",
+   "url": "https://www.uaa001.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "小说书库2",
+   "url": "http://m.uuxsw8.cc",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "小说书库3",
+   "url": "https://mnz.koroneko.co/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "小说小说2",
+   "url": "https://www.uaa.com/novel/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "小说网书4",
+   "url": "http://www.00shu.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "小说网书5",
+   "url": "http://www.31xs.net",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "小说网小2",
+   "url": "http://www.88xiaoshuo.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "小说网阅3",
+   "url": "https://www.00shu.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "小说阅读3",
+   "url": "https://search.17k.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "废文网书2",
+   "url": "https://www.sosadfun.org",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "废文网书3",
+   "url": "https://xn--pxtr7m.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "快书读书",
+   "url": "https://m.kuaishuku.net/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "思兔需要",
+   "url": "https://www.sto.cx",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "情色网小",
+   "url": "https://www.book18.org",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "我的小说",
+   "url": "https://www.wodexs.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "拷贝轻说",
+   "url": "https://www.mangacopy.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "文库阅读",
+   "url": "https://www.cpwenku.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "松鹤庭沐",
+   "url": "https://so.html5.qq.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "格格党书5",
+   "url": "https://m.23ggd.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "梦寻书院",
+   "url": "https://www.xinruipai.cn",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "梦幻小说3",
+   "url": "https://www.pan5.la/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "武林中文1",
+   "url": "https://m.50zww.net",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "淘小说书2",
+   "url": "https://tybook.taoyuewenhua.net",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "深夜看书",
+   "url": "https://www.shenyebook.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "源书库书",
+   "url": "https://www.yuanshuku.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "灯读文学1",
+   "url": "https://s30001.zhongyue001.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "灯读文学2",
+   "url": "https://s30007.zhongyue001.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "爱丽丝书4",
+   "url": "https://xn--vcsx64d.alicesw12.xyz/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "爱去小说1",
+   "url": "http://www.aiqu222.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "爱去小说3",
+   "url": "https://www.627txt.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "独步小说1",
+   "url": "https://www.dbxs123.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "独步小说2",
+   "url": "https://www.dubuxiaoshuo.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "猪猪小说",
+   "url": "https://gg.zzxsa.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "玉米小说",
+   "url": "https://m.telexh.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "电脑阅读",
+   "url": "http://www.60ks.net",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "番茄小说1",
+   "url": "https://fq-book.netsite.cc",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "番薯小说1",
+   "url": "https://g21.manmeng168.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "盗墓笔记2",
+   "url": "http://www.daomubiji.org/?yuedu",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "看书神网",
+   "url": "http://apitt.kanshushenapp.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "石榴书屋",
+   "url": "https://www.shiliushuwu.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "破天小说",
+   "url": "http://m.parto.cn",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "神书网书",
+   "url": "http://www.pi12345.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "笔下文学1",
+   "url": "http://www.bxwx.la",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "笔下文学5",
+   "url": "http://www.survey-smiles.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "笔下文学9",
+   "url": "https://www.bxwx.la/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "第一版主1",
+   "url": "http://7778877.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "第一版主13",
+   "url": "https://www.bz.cc",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "精品书城",
+   "url": "https://jingpinshucheng.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "红本小说",
+   "url": "https://www.hbzxs.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "红甘泉书",
+   "url": "https://www.hgq26.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "肉肉屋书1",
+   "url": "https://m.rourouwu10.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "胖子小说",
+   "url": "https://m.pzshen.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "蛋文库书",
+   "url": "https://danwenku.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "超凡小说2",
+   "url": "https://wap.pan.org",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "超星网站",
+   "url": "http://yz4.chaoxing.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "趣书吧手",
+   "url": "https://wap.39shuwu.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "趣书网书1",
+   "url": "https://www.qubook.net",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "趣书网书2",
+   "url": "https://www.qubook.org",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "酷我小说",
+   "url": "http://appi.kuwo.cn",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "醋溜儿文",
+   "url": "https://www.clwx666.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "铅笔小说",
+   "url": "https://www.qianbiwx.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "阅书小说2",
+   "url": "https://m.yueshu.la",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "阅友小说4",
+   "url": "https://goway.reader.yueyouxs.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "阅读小说1",
+   "url": "http://downnovel.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "阅读小说3",
+   "url": "https://re0zero.top",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "阅读小说5",
+   "url": "https://www.uaa.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "陶越文华",
+   "url": "https://qcbook.taoyuewenhua.net",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "雅谷中文",
+   "url": "http://www.eyagu.com/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "青豆小说",
+   "url": "https://www.qingdou.la/",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "韩书轩书",
+   "url": "http://m.yushuwu12.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "顶点小说12",
+   "url": "https://m.ytryx.com",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "鲤鱼乡书1",
+   "url": "https://www.liyuxiang.cc",
+   "reason": "用户逐条手动进站：打不开/要验证（143 条批量）",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "PO52🔞",
+   "url": "https://wap3g.po52.cc",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "PO脸红❤️",
+   "url": "https://m.po18bb.com",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "一起色🔞",
+   "url": "http://www.5217s.com",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "四四小说网🔞",
+   "url": "http://s4444.cc",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "成人小说网（上版发现页1链接写错，重传）",
+   "url": "https://crxs.me",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "笔趣客",
+   "url": "http://m.biquts.com",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "耽美文库",
+   "url": "https://wap.dmwenku.com",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "肉色屋②",
+   "url": "https://m.rousewu.info",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🌸耽美小说2",
+   "url": "https://www.dmxsw.org",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🎃爱腐文🎃",
+   "url": "https://jfwfd.com",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🎈海棠书屋",
+   "url": "https://www.beiyongzhan1.com",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🎨爱看韩漫🔞",
+   "url": "https://www.ikanhm.top",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🎨🔞喜漫漫画",
+   "url": "https://www.favcomic.com/",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🎨🔞污漫天堂",
+   "url": "https://wumtt.com/",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "👔 脸红心跳",
+   "url": "https://m.mpo18.com",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "📷🔞爱妹子",
+   "url": "https://xx.knit.bid/",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🔞 白马楼小说④",
+   "url": "https://www.baimalou123.com/",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🔞 笔趣阁",
+   "url": "http://m.liquge.com",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🔞古城小说",
+   "url": "http://m.ggccxs.com",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🔞御书小说",
+   "url": "https://m.yushuwu.mobi",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🔞海棠文学",
+   "url": "https://www.izhanshu.com",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🔴肉文NP[分页]",
+   "url": "https://www.rouwennp.club",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🚬 ⑱ 海棠书屋",
+   "url": "https://www.beiyongzhan.me",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🚬 八一中文⑲",
+   "url": "http://www.81zwx.com",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🚬 看小说",
+   "url": "https://m.read52.com",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🚬 笔趣阁",
+   "url": "https://www.liquge.com",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🚬 鲤鱼乡",
+   "url": "http://m.bimo123.com",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "🚭 色情001",
+   "url": "https://seqing001.com/",
+   "reason": "用户逐条手动进站：打不开/要验证",
+   "date": "2026-11-19",
+   "batch": "用户158条人工核验",
+   "scope": "url"
+  },
+  {
+   "name": "592书库",
+   "url": "http://m.592shuku.com",
+   "reason": "用户逐条手动进站：不是小说站",
+   "date": "2026-11-19",
+   "batch": "人工核验",
+   "scope": "host"
+  },
+  {
+   "name": "🎨🔞H禁漫画",
+   "url": "https://xn--drdgrjra-xx6n10qjm3s.cartoonav-01.top",
+   "reason": "用户逐条手动进站：不是小说站",
+   "date": "2026-11-19",
+   "batch": "人工核验",
+   "scope": "host"
+  },
+  {
+   "name": "🔞PO18文",
+   "url": "https://www.po18po.com/",
+   "reason": "用户逐条手动进站：不是小说站",
+   "date": "2026-11-19",
+   "batch": "人工核验",
+   "scope": "host"
+  },
+  {
+   "name": "🔞御宅文",
+   "url": "https://www.yuzhaiwen.com",
+   "reason": "用户逐条手动进站：不是小说站",
+   "date": "2026-11-19",
+   "batch": "人工核验",
+   "scope": "host"
+  },
+  {
+   "name": "🔞耽美小说",
+   "url": "https://www.dmwx.org",
+   "reason": "用户逐条手动进站：不是小说站",
+   "date": "2026-11-19",
+   "batch": "人工核验",
    "scope": "host"
   }
  ]

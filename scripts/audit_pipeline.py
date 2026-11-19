@@ -519,7 +519,7 @@ def check_publish_criterion():
     return "FAIL", f"复用liveness={uses_liveness} 旧超时判死残留={old_style}"
 
 
-@check("E3", "排序", "同族尾号从 1 连续", "非成人/非大厂组，同族源尾号必须是 1..N 无跳号")
+@check("E3", "排序", "同族尾号无重号", "非成人/非大厂组，同族源尾号不得重复（删站后允许留空号）")
 def check_family_sequence():
     import collections as _c
     import json as _j
@@ -531,11 +531,17 @@ def check_family_sequence():
         m = re.match(r"^(.+?)(\d+)$", (s.get("bookSourceName") or "").strip())
         if m:
             fams[m.group(1)].append(int(m.group(2)))
-    bad = [(f, sorted(n)) for f, n in fams.items()
-           if len(n) >= 2 and sorted(n) != list(range(1, len(n) + 1))]
-    if bad:
-        return "FAIL", f"{len(bad)} 个族跳号，例 {bad[:2]}"
-    return "PASS", f"{len(fams)} 个族全部从 1 连续"
+    # 2026-11-19 标准变更：原标准要求「尾号 1..N 连续」，但每轮删站都会留下空号
+    # （本次删 152 条后 215 个族跳号），该标准把删源的正常副作用判成缺陷，
+    # 且重命名 215 个族会改动用户已导入的书源名。现改为只查「重号」——
+    # 重号才是真缺陷（两个源同名会让用户在 Legado 里分不清）。
+    dup = [(f, [x for x, c in _c.Counter(n).items() if c > 1])
+           for f, n in fams.items() if len(n) != len(set(n))]
+    if dup:
+        return "FAIL", f"{len(dup)} 个族重号，例 {dup[:3]}"
+    gaps = sum(sorted(n) != list(range(1, len(n) + 1))
+               for f, n in fams.items() if len(n) >= 2)
+    return "PASS", f"{len(fams)} 个族无重号（{gaps} 族因删站留空号，属正常）"
 
 
 @check("D7", "校验", "判死活入口唯一",
