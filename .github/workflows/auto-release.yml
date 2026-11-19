@@ -35,7 +35,7 @@ jobs:
           python-version: '3.11'
 
       - name: 安装依赖
-        run: pip install requests beautifulsoup4 lxml
+        run: pip install requests beautifulsoup4 lxml pyyaml
 
       - name: 发版前审计门禁（FAIL 即中止）
         run: |
