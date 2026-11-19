@@ -35,9 +35,18 @@ jobs:
           python-version: '3.11'
 
       - name: 安装依赖
+        run: pip install requests beautifulsoup4 lxml
+
+      - name: 发版前审计门禁（FAIL 即中止）
         run: |
-          python3 -m pip install --quiet --upgrade pip
-          [ -f requirements.txt ] && pip install --quiet -r requirements.txt || true
+          set +e
+          python3 scripts/audit_pipeline.py
+          RC=$?
+          set -e
+          if [ $RC -ne 0 ]; then
+            echo "::error::审计未通过，拒绝发版"
+            exit 1
+          fi
 
       - name: 发版
         env:
