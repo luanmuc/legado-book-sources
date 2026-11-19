@@ -15904,5 +15904,1116 @@
     },
     "searchUrl": "https://m.mengyuanshucheng.com/search/result.html?searchkey={{key}}",
     "weight": 0
+  },
+  {
+    "bookSourceComment": "夜社 yesx.cc 多频道聚合源 v2（小说/视频/动漫/有声/漫画/写真/影视）\n【机制】全站响应被 <script>var a=\"BASE64\"</script> 包装，YS_dec 解码后 jsoup 解析。\n【模式联动】登录界面点频道按钮 → 写变量 + java.refreshExplore() 刷新发现页 → 发现页列表随模式切换；搜索/正文同步分发。\n【书源模式】小说=文本(type8)、视频/动漫/影视=视频(type4)、有声=音频(type32)、漫画/写真=图片(type64)，在 chapterList 动态设置。\n【正文】视频返回 m3u8 URL；音频=okhttp原生字节+AES/CBC/PKCS5Padding解密拼真TS返回JSON数组file://（261119根治3003/1004）；漫画/写真 <img> 逐张翻；小说文本段落。\n【线路】发布页 yesx.cc 口令 93743 → 8域名×6端口；测速用 getCallTime()（callTime 是方法引用坑），ms 回填各网址按钮。\n【风控】搜索 {{page}} 原生，不主动探测频率；各频道固定120本无分页控件。\n【校验】check_source 对动态 exploreUrl 会误报「发现失效」=校验器固有局限，以 debug 真机为准。\n【UA】桌面 Chrome。视频/音频须真机验证播放器拉 m3u8。",
+    "bookSourceGroup": "聚合,AI,R18",
+    "bookSourceName": "夜社聚合",
+    "bookSourceType": 0,
+    "bookSourceUrl": "https://yesx.cc",
+    "bookUrlPattern": "https?://[^/]+/(novel|detail|play)/\\d+(/\\d+/\\d+)?\\.html",
+    "customButton": false,
+    "customOrder": 1,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "@js:(function(){\nvar H='https://xn--a3sy5k4mjdhu-jm5tm10qooyeogza.taobaoyoumaia.com:7982';try{H=String(source.get('ys_line')||'')}catch(e){}if(!H||H==='null'||H==='undefined')H='https://xn--a3sy5k4mjdhu-jm5tm10qooyeogza.taobaoyoumaia.com:7982';var m='';try{m=String(source.getVariable()||'')}catch(e1){}if(!m||m==='null'||m==='undefined'){try{m=String(source.get('ys_mode')||'')}catch(e2){}}if(!m||m==='null'||m==='undefined')m='小说';\nif(m===\"小说\"){return `[{\"title\":\"全部小说\",\"url\":\"${H}/ntype/6.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},{\"title\":\"都市生活\",\"url\":\"${H}/ntype/25.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"学生校园\",\"url\":\"${H}/ntype/26.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"家庭乱伦\",\"url\":\"${H}/ntype/27.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"玄幻武侠\",\"url\":\"${H}/ntype/28.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"系统穿越\",\"url\":\"${H}/ntype/29.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"同人改编\",\"url\":\"${H}/ntype/30.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}}]`}\nif(m===\"视频\"){return `[{\"title\":\"全部视频\",\"url\":\"${H}/type/2.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},{\"title\":\"AI短剧\",\"url\":\"${H}/type/13.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"擦边短剧\",\"url\":\"${H}/type/36.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"国产视频\",\"url\":\"${H}/type/11.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"日本AV\",\"url\":\"${H}/type/12.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"欧美无码\",\"url\":\"${H}/type/14.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"韩国BJ\",\"url\":\"${H}/type/35.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}}]`}\nif(m===\"动漫\"){return `[{\"title\":\"全部动漫\",\"url\":\"${H}/type/1.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},{\"title\":\"同人作品\",\"url\":\"${H}/type/7.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"动画卡通\",\"url\":\"${H}/type/8.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"3D动漫\",\"url\":\"${H}/type/10.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"中文动漫\",\"url\":\"${H}/type/9.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"里番\",\"url\":\"${H}/type/32.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"泡面番\",\"url\":\"${H}/type/33.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"热血动漫\",\"url\":\"${H}/type/41.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}}]`}\nif(m===\"有声\"){return `[{\"title\":\"全部有声\",\"url\":\"${H}/type/3.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},{\"title\":\"有声小说\",\"url\":\"${H}/type/15.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"淫词艳曲\",\"url\":\"${H}/type/16.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"激情骚麦\",\"url\":\"${H}/type/17.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}}]`}\nif(m===\"漫画\"){return `[{\"title\":\"全部漫画\",\"url\":\"${H}/type/4.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},{\"title\":\"韩国H漫\",\"url\":\"${H}/type/18.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"日本H漫\",\"url\":\"${H}/type/19.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"3D漫画\",\"url\":\"${H}/type/31.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}}]`}\nif(m===\"写真\"){return `[{\"title\":\"全部写真\",\"url\":\"${H}/type/5.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},{\"title\":\"秀人系列\",\"url\":\"${H}/type/20.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"网红COS\",\"url\":\"${H}/type/22.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"机构套图\",\"url\":\"${H}/type/21.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"内购私拍\",\"url\":\"${H}/type/23.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"AI绘图\",\"url\":\"${H}/type/34.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"各国套图\",\"url\":\"${H}/type/24.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}}]`}\nif(m===\"影视\"){return `[{\"title\":\"影视\",\"url\":\"${H}/type/37.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},{\"title\":\"精彩电影\",\"url\":\"${H}/type/38.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"热门网剧\",\"url\":\"${H}/type/39.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"热门综艺\",\"url\":\"${H}/type/40.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"电影解说\",\"url\":\"${H}/type/43.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"精彩短剧\",\"url\":\"${H}/type/42.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}}]`}\nreturn `[{\"title\":\"全部小说\",\"url\":\"${H}/ntype/6.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}},{\"title\":\"都市生活\",\"url\":\"${H}/ntype/25.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"学生校园\",\"url\":\"${H}/ntype/26.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"家庭乱伦\",\"url\":\"${H}/ntype/27.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"玄幻武侠\",\"url\":\"${H}/ntype/28.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"系统穿越\",\"url\":\"${H}/ntype/29.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}},{\"title\":\"同人改编\",\"url\":\"${H}/ntype/30.html\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":0.4}}]`;})()",
+    "header": "{\"User-Agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\"}",
+    "jsLib": "/* ===== 夜社多模式工具（jsLib 纯函数，java/source/book 一律显式传参） ===== */\nvar YS_NL=String.fromCharCode(10), YS_Q=String.fromCharCode(34), YS_BS=String.fromCharCode(92,47);\nfunction YS_DEF(){return 'https://xn--a3sy5k4mjdhu-jm5tm10qooyeogza.taobaoyoumaia.com:7982'}\nfunction YS_get(S,k,d){var v='';try{v=String(S.get(k)||'')}catch(e){}if(!v||v=='null'||v=='undefined')v=d;return v}\nfunction YS_line(S){return YS_get(S,'ys_line',YS_DEF())}\nfunction YS_pick(S){return YS_line(S)}\nfunction YS_mode(S){\n  var a='';try{a=S.getVariable()}catch(e){}\n  a=String(a==null?'':a);\n  if(a==='null'||a==='undefined'||a===''){try{a=String(S.get('ys_mode')||'')}catch(e2){}}\n  if(a==='null'||a==='undefined'||a==='')a='小说';\n  return a;\n}\n/* 形态：text/video/audio/image */\nfunction YS_shape(m){\n  if(m==='小说')return 'text';\n  if(m==='漫画'||m==='写真')return 'image';\n  if(m==='有声')return 'audio';\n  return 'video';\n}\n/* 响应解码：<script>var a=\"BASE64\"</script> */\nfunction YS_dec(J,r){\n  var s=String(r==null?'':r);\n  try{var k=s.indexOf('var a=');if(k>=0){var q=s.indexOf(YS_Q,k+6),q2=s.indexOf(YS_Q,q+1);if(q>0&&q2>q){var b=s.substring(q+1,q2);if(b.length>100)return String(J.base64Decode(b))}}}catch(e){}\n  return s;\n}\nfunction YS_doc(J,r){return Packages.org.jsoup.Jsoup.parse(YS_dec(J,r))}\nfunction YS_txt(J,r,sel){try{var e=YS_doc(J,r).select(sel);return e.size()>0?String(e.get(0).text()):''}catch(e){return ''}}\nfunction YS_attr(J,r,sel,attr){try{var e=YS_doc(J,r).select(sel);return e.size()>0?String(e.get(0).attr(attr)||''):''}catch(e){return ''}}\nfunction YS_LIST(a){var l=new Packages.java.util.ArrayList();if(!a)return l;for(var i=0;i<a.length;i++)l.add(typeof a[i]==='string'?a[i]:JSON.stringify(a[i]));return l;}\nfunction YS_listJson(J,r,sel){\n  var arr=[];\n  try{\n    var els=YS_doc(J,r).select(sel);\n    for(var i=0;i<els.size();i++){\n      var a=els.get(i),ims=a.select('img'),cov='';\n      if(ims.size()>0){cov=String(ims.get(0).attr('data-original')||'');if(!cov)cov=String(ims.get(0).attr('src')||'');}\n      arr.push({name:String(a.select('div.module-poster-item-title').text()||''),\n        bookUrl:String(a.attr('href')||''),kind:String(a.select('div.type').text()||''),\n        cover:cov,wordCount:String(a.select('span.time').text()||'')});\n    }\n  }catch(e){}\n  return YS_LIST(arr);\n}\nfunction YS_noParen(t){var x=String(t==null?'':t),i=x.indexOf('(');return (i>0?x.substring(0,i):x).trim()}\nfunction YS_player(J,r){\n  var s=YS_dec(J,r),p=s.indexOf('player_aaaa');\n  if(p<0)return null;\n  var st=s.indexOf('{',p),dep=0,en=st;\n  for(var k=st;k<s.length&&k<st+6000;k++){var c=s.charAt(k);if(c=='{')dep++;else if(c=='}'){dep--;if(dep===0){en=k+1;break;}}}\n  if(en<=st)return null;\n  try{return JSON.parse(s.substring(st,en))}catch(e){return null}\n}\n/* 媒体直链：video/audio 正文返回纯 URL（交给 ExoPlayer/音频播放器） */\nfunction YS_mediaUrl(J,r){\n  var p=YS_player(J,r);\n  if(!p||!p.url)return '';\n  return String(p.url).split(YS_BS).join('/');\n}\n/* 图片正文：双引号 <img> */\nfunction YS_images(J,r){\n  var p=YS_player(J,r),out=[];\n  if(p&&p.url){var u=String(p.url).split(YS_BS).join('/');if(u)out.push('<img src=\"'+u+'\">');}\n  if(!out.length){\n    var d=YS_doc(J,r),sel='div.module-player-cartoon-list .list img, div.module-player-pics-list .list img, div.module-novel-detail .content img';\n    var imgs=d.select(sel);\n    for(var i=0;i<imgs.size();i++){var s=String(imgs.get(i).attr('data-original')||imgs.get(i).attr('src')||'');if(s)out.push('<img src=\"'+s+'\">');}\n  }\n  return out.join(YS_NL);\n}\n/* 音频播放（261119 终极正解·数据完整性修复）：m3u8 分片是 AES-128 加密伪装 .jpg(实为TS)。\n   ①★★ java.ajax/ajaxAll 把密文按字符串解码，非法字节变 U+FFFD 永久丢失（60片全中招）→\n      必须 okhttp3 原生 body.bytes() 拿无损 byte[]；②★★ 密文是 AES/CBC/PKCS5Padding\n      （分片尾部04/08 padding实锤），用 NoPadding 保留 padding 会让 TS 包错位→3003，\n      必须 PKCS5Padding 自动去 padding；③拼接成 mod188=0、188边界同步100%的真TS；\n      ④返回 JSON 数组 [\"file://...ts\"] 让 E 版走 DefaultDataSource（绕开1004）。\n   首次 okhttp 串行下载约34秒+缓存，二次命中秒开。 */\nfunction YS_rawBytes(url){\n  var C=Packages.okhttp3.OkHttpClient,R=Packages.okhttp3.Request;\n  var client=new C();\n  return client.newCall(new R.Builder().url(String(url)).build()).execute().body().bytes();\n}\nfunction YS_hex(b){var h=new Packages.java.math.BigInteger(1,b).toString(16);if(h.length%2)h='0'+h;return h==='0'?'':h;}\nfunction YS_cacheDir(J){\n  var pkg='',d='';\n  try{var tmp=String(Packages.java.lang.System.getProperty('java.io.tmpdir')||'');var ps=tmp.split(String.fromCharCode(47));pkg=ps[ps.length-2]}catch(e){}\n  if(pkg&&pkg.indexOf('.')>0)d='/storage/emulated/0/Android/data/'+pkg+'/cache';\n  if(!d){try{J.readFile('/')}catch(e0){var s=String(e0),q=s.indexOf(String.fromCharCode(47)+'storage'+String.fromCharCode(47)+'emulated');if(q>=0){var z=s.indexOf(String.fromCharCode(47)+'cache',q);if(z>q)d=s.substring(q,z+6)}}}\n  if(!d)d='/storage/emulated/0/Android/data/com.legado.app.release/cache';\n  return d;\n}\nfunction YS_audioLocal(J,r,title){\n  var h=YS_player(J,r);\n  if(!h||!h.url)return '';\n  var url=String(h.url).split(YS_BS).join('/');\n  try{\n    var m3=String(J.ajax(url));\n    var md5=String(J.digestHex(m3,'MD5'));\n    var ck='ysok_'+md5,cached='';\n    try{cached=String(source.get(ck)||'')}catch(e){}\n    if(cached&&cached.indexOf('file://')>=0)return cached;\n    var dir=url.substring(0,url.lastIndexOf('/')+1);\n    var origin=url.substring(0,url.indexOf('/',url.indexOf('//')+2));\n    var lines=m3.split(YS_NL),segs=[];\n    for(var i=0;i<lines.length;i++){var L=String(lines[i]).trim();if(L&&L.charAt(0)!=='#')segs.push(L.indexOf('http')===0?L:dir+L);}\n    if(!segs.length)return url;\n    var key=YS_rawBytes(origin+'/vod.key');\n    var iv=J.hexDecodeToByteArray('00000000000000000000000000000000');\n    var C=Packages.javax.crypto.Cipher,K=Packages.javax.crypto.spec.SecretKeySpec,V=Packages.javax.crypto.spec.IvParameterSpec;\n    var BAOS=Packages.java.io.ByteArrayOutputStream,bos=new BAOS(),ok=0;\n    for(var k=0;k<segs.length;k++){\n      try{\n        var cipher=YS_rawBytes(segs[k]);\n        var ci=C.getInstance('AES/CBC/PKCS5Padding');\n        ci.init(C.DECRYPT_MODE,new K(key,'AES'),new V(iv));\n        var plain=ci.doFinal(cipher);\n        bos.write(plain,0,plain.length);ok++;\n      }catch(e3){}\n    }\n    if(ok<segs.length)return url;\n    var all=bos.toByteArray();\n    if(!all.length||(all[0]&255)!==71||all.length%188!==0)return url;  // 0x47 + TS对齐\n    var hx=YS_hex(all);\n    var name='ysa_'+md5+'.ts';\n    var path=String(J.downloadFile(hx,name+',{\"type\":\"ts\"}'));\n    if(!path)return url;\n    var fp='file://'+YS_cacheDir(J)+path;\n    // ★两版关键：JSON 数组 → isJsonArray()=true → getMediaSource(DefaultDataSource 支持 file://)\n    var ret=JSON.stringify([fp]);\n    try{source.put(ck,ret)}catch(e4){}\n    return ret;\n  }catch(e5){}\n  return url;\n}\nfunction YS_novel(J,r){\n  var d=YS_doc(J,r),ps=d.select('div.module-novel-detail div.content p'),o=[];\n  for(var i=0;i<ps.size();i++){var t=String(ps.get(i).text()).trim();if(t)o.push('　　'+t);}\n  return o.join(YS_NL);\n}",
+    "lastUpdateTime": "1795097326864",
+    "loginUi": "[{\"name\": \"小说\", \"type\": \"button\", \"action\": \"YS_setMode('小说')\", \"viewName\": \"'小说'+(YS_curMode()==='小说'?'✅':'')\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.28}}, {\"name\": \"视频\", \"type\": \"button\", \"action\": \"YS_setMode('视频')\", \"viewName\": \"'视频'+(YS_curMode()==='视频'?'✅':'')\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.28}}, {\"name\": \"动漫\", \"type\": \"button\", \"action\": \"YS_setMode('动漫')\", \"viewName\": \"'动漫'+(YS_curMode()==='动漫'?'✅':'')\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.28}}, {\"name\": \"有声\", \"type\": \"button\", \"action\": \"YS_setMode('有声')\", \"viewName\": \"'有声'+(YS_curMode()==='有声'?'✅':'')\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.28}}, {\"name\": \"漫画\", \"type\": \"button\", \"action\": \"YS_setMode('漫画')\", \"viewName\": \"'漫画'+(YS_curMode()==='漫画'?'✅':'')\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.28}}, {\"name\": \"写真\", \"type\": \"button\", \"action\": \"YS_setMode('写真')\", \"viewName\": \"'写真'+(YS_curMode()==='写真'?'✅':'')\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.28}}, {\"name\": \"影视\", \"type\": \"button\", \"action\": \"YS_setMode('影视')\", \"viewName\": \"'影视'+(YS_curMode()==='影视'?'✅':'')\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.28}}, {\"name\": \"当前频道\", \"type\": \"button\", \"action\": \"YS_showMode()\", \"style\": {\"layout_flexGrow\": 1}}, {\"name\": \"发布页\", \"type\": \"text\", \"placeholder\": \"发布页(默认https://yesx.cc/)\"}, {\"name\": \"应用发布页\", \"type\": \"button\", \"action\": \"YS_setPub()\"}, {\"name\": \"一键取网址路线\", \"type\": \"button\", \"action\": \"YS_fetch()\"}, {\"name\": \"测速并自动选最快\", \"type\": \"button\", \"action\": \"YS_speed()\"}, {\"name\": \"检查线路状态\", \"type\": \"button\", \"action\": \"YS_status()\"}, {\"name\": \"恢复默认线路\", \"type\": \"button\", \"action\": \"YS_reset()\"}, {\"name\": \"切1号网址\", \"type\": \"button\", \"action\": \"YS_switch(1)\", \"viewName\": \"'切1号 '+(source.get('yssp1')||'')\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.45}}, {\"name\": \"切2号网址\", \"type\": \"button\", \"action\": \"YS_switch(2)\", \"viewName\": \"'切2号 '+(source.get('yssp2')||'')\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.45}}, {\"name\": \"切3号网址\", \"type\": \"button\", \"action\": \"YS_switch(3)\", \"viewName\": \"'切3号 '+(source.get('yssp3')||'')\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.45}}, {\"name\": \"切4号网址\", \"type\": \"button\", \"action\": \"YS_switch(4)\", \"viewName\": \"'切4号 '+(source.get('yssp4')||'')\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.45}}, {\"name\": \"切5号网址\", \"type\": \"button\", \"action\": \"YS_switch(5)\", \"viewName\": \"'切5号 '+(source.get('yssp5')||'')\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.45}}, {\"name\": \"切6号网址\", \"type\": \"button\", \"action\": \"YS_switch(6)\", \"viewName\": \"'切6号 '+(source.get('yssp6')||'')\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.45}}, {\"name\": \"切7号网址\", \"type\": \"button\", \"action\": \"YS_switch(7)\", \"viewName\": \"'切7号 '+(source.get('yssp7')||'')\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.45}}, {\"name\": \"切8号网址\", \"type\": \"button\", \"action\": \"YS_switch(8)\", \"viewName\": \"'切8号 '+(source.get('yssp8')||'')\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.45}}]",
+    "loginUrl": "/* ===== 夜社多模式 v2·登录面板（loginUrl 自包含） ===== */\nvar YS_DOMAINS=[\"xn--a3sy5k4mjdhu-jm5tm10qooyeogza.taobaoyoumaia.com\",\"xn--q7wcpfxvrk84-zq5t7294ce4scba.taobaoyoumaia.com\",\"xn--bz9tmu57qd2p-jz5tf24ff35cc3yi.taobaoyoumaia.com\",\"xn--un29d6wt4rjz-sq3tv92ulq0eewb.taobaoyoumaia.com\",\"xn--ag8dfem9t4qu-9l5sm1e4x2j87i.otter-garments.com\",\"xn--embp7a8xkrdh-e80uk68jxb2bnh0d.otter-garments.com\",\"xn--7gmev536r2zd-vv0tx13r8w9buw8e.otter-garments.com\",\"xn--8p76ftdukh5n-ft4swfojq711f.otter-garments.com\"];\nvar YS_PORTS=[\"7982\",\"7983\",\"7984\",\"7985\",\"7986\",\"7987\"];\nvar YS_DEF=\"https://xn--a3sy5k4mjdhu-jm5tm10qooyeogza.taobaoyoumaia.com:7982\";\nvar YS_NL=String.fromCharCode(10), YS_Q=String.fromCharCode(34);\nfunction YS_trim(x){var s=String(x==null?'':x),a=0,b=s.length-1;while(a<=b&&s.charAt(a)===' ')a++;while(b>=a&&s.charAt(b)===' ')b--;return s.substring(a,b+1)}\nfunction YS_T(s){try{java.toast(s)}catch(e){}try{java.longToast(s)}catch(e2){}}\nfunction YS_get(k,d){var v='';try{v=String(source.get(k)||'')}catch(e){}if(!v||v=='null'||v=='undefined')v=d;return v}\nfunction YS_cur(){return YS_get('ys_line',YS_DEF)}\nfunction YS_save(cur){try{source.put('ys_line',cur);source.put('ys_line_ts',String(Date.now()))}catch(e){}}\nfunction YS_refreshExplore(){\n  var ok=false;\n  try{java.refreshExplore();ok=true}catch(e){}\n  try{java.reUiView()}catch(e2){}\n  try{java.reLoginView()}catch(e3){}\n  return ok;\n}\n/* 模式：双通道 */\nfunction YS_curMode(){var a='';try{a=source.getVariable()}catch(e){}a=String(a==null?'':a);if(a==='null'||a==='undefined'||a==='')a='小说';return a}\nfunction YS_setMode(m){\n  var ok=false;try{source.setVariable(m);ok=true}catch(e){}\n  if(!ok){try{source.put('ys_mode',m);ok=true}catch(e2){}}\n  try{source.put('ys_mode',m)}catch(e3){}  // 双写保证各处可读\n  var tip=({ '小说':'文本', '视频':'视频', '动漫':'视频', '影视':'视频', '有声':'音频', '漫画':'图片', '写真':'图片' })[m]||m;\n  YS_T('✅ 已切到「'+m+'」('+tip+'模式)'+YS_NL+'发现页列表已联动刷新，请查看发现页');\n  YS_refreshExplore();return m;\n}\nfunction YS_showMode(){YS_T('ℹ 当前频道: '+YS_curMode()+YS_NL+'线路: '+YS_cur());return YS_curMode()}\n/* 线路运维 */\nfunction YS_tmo(){return ','+YS_Q+'timeout'+YS_Q+':9000'}\n/* 取路线：yesx.cc 发布页是明文 HTML，直接 ajax 读 domains/ports 常量 */\nfunction YS_parsePub(html){\n  var out=[],h=String(html||'');\n  var dk=h.indexOf('domains'),d1=h.indexOf(YS_Q,dk),d2=h.indexOf(YS_Q,d1+1);\n  var pk=h.indexOf('ports'),p1=h.indexOf(YS_Q,pk),p2=h.indexOf(YS_Q,p1+1);\n  var ds=(d1>0&&d2>d1)?h.substring(d1+1,d2):'',ps=(p1>0&&p2>p1)?h.substring(p1+1,p2):'';\n  if(!ds)ds=YS_DOMAINS.join(',');if(!ps)ps=YS_PORTS.join(',');\n  var da=ds.split(','),pa=ps.split(',');\n  for(var i=0;i<da.length;i++){var d=YS_trim(da[i]);if(!d)continue;for(var j=0;j<pa.length;j++){var p=YS_trim(pa[j]);if(p)out.push({host:d,port:p});}}\n  return out;\n}\nfunction YS_fetch(){\n  YS_T('⏳ 正在从发布页获取网址路线...');\n  var pub=YS_get('ys_pub','https://yesx.cc/'),html='';\n  try{html=String(java.ajax(pub))}catch(e){}\n  var lines=YS_parsePub(html),hosts=[],seen={};\n  for(var i=0;i<lines.length;i++){var d=lines[i].host;if(!seen[d]){seen[d]=1;hosts.push(d);}}\n  if(!hosts.length){YS_T('❌ 未取到网址，请检查发布页');return '';}\n  try{source.put('ys_hosts',hosts.join(','));source.put('ys_ports',YS_PORTS.join(','));source.put('ys_fetch_ts',String(Date.now()))}catch(e2){}\n  YS_T('✅ 已取到 '+hosts.length+' 个网址路线，点「测速」看各线路耗时');YS_refreshExplore();return hosts.length;\n}\n/* 测速：★callTime 是方法引用，必须用 getCallTime() 才是数字 */\nfunction YS_speed(){\n  YS_T('⏳ 测速 8 条线路中，约 10~30 秒...');\n  var hosts=YS_get('ys_hosts','').split(',');if(!hosts.length||!hosts[0])hosts=YS_DOMAINS.slice(0);\n  var urls=[];for(var i=0;i<hosts.length;i++)urls.push('https://'+hosts[i]+':'+YS_PORTS[0]+'/');\n  var res=[];try{res=java.ajaxAll(urls)}catch(e){}\n  var best=-1,bms=99999999,msgs=[];\n  for(var k=0;k<hosts.length;k++){\n    var ms='超时',ok=false,t=0;\n    try{\n      var r=res[k],body=String(r.body());\n      try{t=r.getCallTime()}catch(e1){try{t=Number(r.callTime())}catch(e2){}}  // ★修复：getCallTime()\n      if(body.length>20000){ok=true;ms=t+'ms';if(t>0&&t<bms){bms=t;best=k;}}\n    }catch(e3){}\n    try{source.put('yssp'+(k+1),ok?ms:'超时')}catch(e4){}\n    msgs.push((k+1)+'.'+hosts[k].substring(0,10)+' '+ms);\n  }\n  if(best>=0){var cur='https://'+hosts[best]+':'+YS_PORTS[0];YS_save(cur);try{source.put('yssp'+(best+1),'⚡'+(bms+'ms'))}catch(e5){}YS_T('✅ 最快'+(best+1)+'号 '+bms+'ms 已自动切换');}\n  else YS_T('⚠ 全部超时，请检查网络后重试');\n  YS_refreshExplore();return msgs.join(YS_NL);\n}\nfunction YS_switch(n){\n  var hosts=YS_get('ys_hosts','').split(',');if(!hosts.length||!hosts[0])hosts=YS_DOMAINS.slice(0);\n  var i=Number(n)-1;if(i<0||i>=hosts.length){YS_T('❌ 无效编号');return '';}\n  var cur='https://'+hosts[i]+':'+YS_PORTS[0];YS_save(cur);YS_T('✅ 已切到'+(i+1)+'号 '+hosts[i]);YS_refreshExplore();return cur;\n}\nfunction YS_setPub(){var v=String(result&&result.get?result.get('发布页'):'').trim();if(!v){YS_T('❌ 请填发布页');return '';}if(v.indexOf('http')!==0)v='https://'+v;try{source.put('ys_pub',v)}catch(e){}YS_T('✅ 发布页已设为 '+v);return v;}\nfunction YS_reset(){YS_save(YS_DEF);YS_T('↩️ 已恢复默认线路');YS_refreshExplore();return YS_DEF;}\nfunction YS_status(){\n  var ts=YS_get('ys_line_ts','0'),when='从未';if(ts&&ts!='0'){try{when=new Date(Number(ts)).toLocaleString()}catch(e){}}\n  YS_T('ℹ 频道: '+YS_curMode()+YS_NL+'线路: '+YS_cur()+YS_NL+'切换: '+when);return YS_cur();\n}\nfunction login(){YS_T('ℹ 点频道按钮切换模式，发现页自动联动');return true;}",
+    "respondTime": 180000,
+    "ruleBookInfo": {
+      "author": "@js:(function(){var d=YS_doc(java,result),ps=d.select('div.dinfo p'),t='';for(var i=0;i<ps.size();i++){var x=String(ps.get(i).text());if(x.indexOf('作者')===0){var a=x.split('：'),b=x.split(':');t=a.length>1?a[1]:(b.length>1?b[1]:'')}}return t.trim()})()",
+      "coverUrl": "@js:YS_attr(java,result,'div.module-image-info img','data-original')",
+      "intro": "@js:YS_txt(java,result,'div.blurb')",
+      "kind": "@js:(function(){var d=YS_doc(java,result),ps=d.select('div.dinfo p'),t='';for(var i=0;i<ps.size();i++){var x=String(ps.get(i).text());if(x.indexOf('分类')===0){var a=x.split('：'),b=x.split(':');t=a.length>1?a[1]:(b.length>1?b[1]:'')}}return t.trim()})()",
+      "lastChapter": "@js:(function(){var m=YS_mode(source);if(m==='小说'){var d=YS_doc(java,result),as=d.select('div.chpterlist a.link');return as.size()?YS_noParen(as.get(as.size()-1).text()):''}return ''})()",
+      "name": "@js:(function(){var t=YS_txt(java,result,'div.dinfo h1');if(t)return t;try{return String(Packages.org.jsoup.Jsoup.parse(YS_dec(java,result)).title()).split(' - ')[0]}catch(e){return ''}})()"
+    },
+    "ruleContent": {
+      "content": "@js:(function(){var m=YS_mode(source),sh=YS_shape(m),r=result;if(sh==='text')return YS_novel(java,r);if(sh==='image')return YS_images(java,r);if(sh==='audio')return YS_audioLocal(java,r,title);var u=YS_mediaUrl(java,r);return u?u:'地址获取失败，请刷新重试';})()",
+      "nextContentUrl": "@js:(function(){var m=YS_mode(source);if(m!=='漫画'&&m!=='写真')return null;var p=YS_player(java,result);if(!p||!p.link_next)return null;var u=String(p.link_next).split('\\/').join('/');return u?u:null;})()"
+    },
+    "ruleExplore": {
+      "bookList": "@js:YS_listJson(java,result,'a.module-poster-item')",
+      "bookUrl": "$.bookUrl",
+      "coverUrl": "$.cover",
+      "kind": "$.kind",
+      "name": "$.name",
+      "wordCount": "$.wordCount"
+    },
+    "ruleSearch": {
+      "bookList": "@js:YS_listJson(java,result,'a.module-poster-item')",
+      "bookUrl": "$.bookUrl",
+      "coverUrl": "$.cover",
+      "kind": "$.kind",
+      "name": "$.name",
+      "wordCount": "$.wordCount"
+    },
+    "ruleToc": {
+      "chapterList": "@js:(function(){var m=YS_mode(source),sh=YS_shape(m),d=YS_doc(java,result),as=d.select('div.chpterlist a.link'),o=[];for(var i=0;i<as.size();i++){o.push({name:YS_noParen(as.get(i).text()),url:String(as.get(i).attr('href')||'')})}if(!o.length){var u=String(baseUrl||'');o.push({name:sh==='text'?'正文':(sh==='image'?'全集':'播放'),url:u})}if(sh==='video')book.type=4;else if(sh==='audio')book.type=32;else if(sh==='image')book.type=64;else book.type=8;return YS_LIST(o)})()",
+      "chapterName": "$.name",
+      "chapterUrl": "$.url"
+    },
+    "searchUrl": "@js:(function(){var L='https://xn--a3sy5k4mjdhu-jm5tm10qooyeogza.taobaoyoumaia.com:7982',m='';try{L=String(source.get('ys_line')||'')}catch(e){}if(!L||L==='null'||L==='undefined')L='https://xn--a3sy5k4mjdhu-jm5tm10qooyeogza.taobaoyoumaia.com:7982';try{m=String(source.getVariable()||'')}catch(e1){}if(!m||m==='null'||m==='undefined'){try{m=String(source.get('ys_mode')||'')}catch(e2){}}if(!m||m==='null'||m==='undefined')m='小说';var t=m==='小说'?'6':(m==='视频'?'2':m==='动漫'?'1':m==='有声'?'3':m==='漫画'?'4':m==='写真'?'5':'2');return L+'/vod/search/tid/'+t+'/wd/'+key+'/'+page+'.html'})()",
+    "weight": 0,
+    "comment": "// 健康度:活跃 最后更新2026-11-19"
+  },
+  {
+    "ruleSearch": {
+      "bookList": "<js>(function(result){\n    try{\n        var doc = org.jsoup.Jsoup.parse(result);\n        var list = doc.select(\"div.layout.layui-row > div.list-group > div.list-group-item\");\n        return list;\n    }catch(e){\n      return [\"\"+e];\n    }\n})(result)</js>",
+      "name": "div.list-group-item > h5 > a@text",
+      "author": "p.content-txt > em@text",
+      "intro": ".content-txt@text",
+      "bookUrl": "div.list-group-item > h5 > a@href"
+    },
+    "ruleBookInfo": {
+      "name": ".ui_bg6@text",
+      "author": "div.novel_info > p > a.0@text",
+      "kind": "div.novel_info > p > a.1@text",
+      "wordCount": "div.novel_info > p.3@text",
+      "lastChapter": "div.novel_info > p > a.2@text",
+      "intro": ".jianjie@text",
+      "coverUrl": ".lazyload_book_cover.0@src",
+      "tocUrl": "div.tit.tabtitle > a@href"
+    },
+    "ruleToc": {
+      "chapterList": "div.warpper > div.mu_contain > ul.mulu_list > li",
+      "chapterName": "a@text",
+      "chapterUrl": "a@href"
+    },
+    "ruleContent": {
+      "content": ".read-content@tag.p@text"
+    },
+    "ruleExplore": {
+      "bookList": "div.webBody > div.wrap797 > div.clearfix.rec_rboxone > div.clearfix.rec_rullist > ul",
+      "name": "li.two > a@text",
+      "author": ".four@text",
+      "kind": "div > div > div > div@text",
+      "wordCount": ".five@text",
+      "lastChapter": "li.three > a@text",
+      "bookUrl": ".two a@href"
+    },
+    "bookSourceType": 0,
+    "bookSourceUrl": "https://www.alicesw5.homes",
+    "bookUrlPattern": "(https?://)?(www\\.)?alicesw5\\.homes",
+    "bookSourceName": "爱丽丝书屋 (ALICESW.COM)",
+    "searchUrl": "https://www.alicesw5.homes/search.html?q={{key}}&f=_all&sort=relevance&p={{page}}&serialize",
+    "exploreUrl": "[\n  {\n    \"title\": \"科幻\",\n    \"url\": \"https://www.alicesw5.homes/lists/71.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"经典\",\n    \"url\": \"https://www.alicesw5.homes/lists/79.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"奇幻\",\n    \"url\": \"https://www.alicesw5.homes/lists/75.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"系统\",\n    \"url\": \"https://www.alicesw5.homes/lists/69.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"武侠\",\n    \"url\": \"https://www.alicesw5.homes/lists/68.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"乱伦\",\n    \"url\": \"https://www.alicesw5.homes/lists/65.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"都市\",\n    \"url\": \"https://www.alicesw5.homes/lists/64.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"乡村\",\n    \"url\": \"https://www.alicesw5.homes/lists/63.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"同人\",\n    \"url\": \"https://www.alicesw5.homes/lists/73.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"玄幻\",\n    \"url\": \"https://www.alicesw5.homes/lists/62.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"校园\",\n    \"url\": \"https://www.alicesw5.homes/lists/61.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"穿越\",\n    \"url\": \"https://www.alicesw5.homes/lists/70.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"反差\",\n    \"url\": \"https://www.alicesw5.homes/lists/22.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"凌辱\",\n    \"url\": \"https://www.alicesw5.homes/lists/46.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"堕落\",\n    \"url\": \"https://www.alicesw5.homes/lists/18.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"纯爱\",\n    \"url\": \"https://www.alicesw5.homes/lists/19.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"萝莉\",\n    \"url\": \"https://www.alicesw5.homes/lists/48.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"熟女\",\n    \"url\": \"https://www.alicesw5.homes/lists/56.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"正太\",\n    \"url\": \"https://www.alicesw5.homes/lists/50.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"明星\",\n    \"url\": \"https://www.alicesw5.homes/lists/72.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"NTR\",\n    \"url\": \"https://www.alicesw5.homes/lists/54.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"媚黑\",\n    \"url\": \"https://www.alicesw5.homes/lists/53.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"调教\",\n    \"url\": \"https://www.alicesw5.homes/lists/58.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"言情\",\n    \"url\": \"https://www.alicesw5.homes/lists/59.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"百合\",\n    \"url\": \"https://www.alicesw5.homes/lists/47.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"重口\",\n    \"url\": \"https://www.alicesw5.homes/lists/21.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"其他\",\n    \"url\": \"https://www.alicesw5.homes/lists/57.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"总排行\",\n    \"url\": \"https://www.alicesw5.homes/other/rank_hits/order/hits.html\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"本月排行\",\n    \"url\": \"https://www.alicesw5.homes/other/rank_hits/order/hits_month.html\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"本周排行\",\n    \"url\": \"https://www.alicesw5.homes/other/rank_hits/order/hits_week.html\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"本日排行\",\n    \"url\": \"https://www.alicesw5.homes/other/rank_hits/order/hits_day.html\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"最新\",\n    \"url\": \"https://www.alicesw5.homes/all/order/update_time+desc.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  },\n  {\n    \"title\": \"原创\",\n    \"url\": \"https://www.alicesw5.homes/original.html?page={{page}}\",\n    \"style\": {\n      \"layout_flexGrow\": 2,\n      \"layout_flexShrink\": 1,\n      \"layout_flexBasisPercent\": -1.1\n    }\n  }\n]",
+    "header": "",
+    "loginCheckJs": "",
+    "bookSourceComment": "",
+    "lastUpdateTime": "1795104149421",
+    "comment": "// 健康度:僵尸 最后更新2024-08-19"
+  },
+  {
+    "bookSourceComment": "🔞玉兔资源 视频书源(bookSourceType:4)\n苹果CMS采集接口：https://apiyutu.com/api.php/provide/vod\n搜索影片→进入详情→点章节即可播放",
+    "bookSourceGroup": "成人书源",
+    "bookSourceName": "🔞玉兔资源",
+    "bookSourceType": 4,
+    "bookSourceUrl": "https://apiyutu.com",
+    "concurrentRate": "",
+    "customButton": false,
+    "customOrder": 3,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "@js:\nvar r=java.ajax(\"https://apiyutu.com/api.php/provide/vod/?ac=list&pg=1\");\nvar j=JSON.parse(r);\nvar cats=[{title:\"🎬 最新更新\",url:\"https://apiyutu.com/api.php/provide/vod/?ac=detail&pg={{page}}\"}];\nvar cls=j.class||[];\nif(cls.length){\n  cls.forEach(function(c){cats.push({title:c.type_name,url:\"https://apiyutu.com/api.php/provide/vod/?ac=detail&t=\"+c.type_id+\"&pg={{page}}\"});});\n}else{\n  var seen={};\n  (j.list||[]).forEach(function(v){var t=String(v.type_id),n=v.type_name;if(n&&!seen[t]){seen[t]=1;cats.push({title:n,url:\"https://apiyutu.com/api.php/provide/vod/?ac=detail&t=\"+t+\"&pg={{page}}\"});}});\n}\nJSON.stringify(cats);",
+    "header": "{\"User-Agent\": \"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36\", \"Accept-Encoding\": \"identity\"}",
+    "lastUpdateTime": 0,
+    "loginUrl": "",
+    "respondTime": 60000,
+    "ruleBookInfo": {
+      "author": "$.list[0].vod_actor",
+      "coverUrl": "$.list[0].vod_pic",
+      "intro": "$.list[0].vod_blurb",
+      "kind": "$.list[0].type_name,$.list[0].vod_area,$.list[0].vod_year",
+      "name": "$.list[0].vod_name"
+    },
+    "ruleContent": {
+      "content": "@js:baseUrl"
+    },
+    "ruleExplore": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://apiyutu.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleSearch": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://apiyutu.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_area,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleToc": {
+      "chapterList": "@js:\nvar resp=java.ajax(baseUrl);\nvar d=JSON.parse(resp).list[0];\nvar lines=String(d.vod_play_url||'').split('$$$');\nvar line=lines[0];\nfor(var i=0;i<lines.length;i++){if(lines[i].indexOf('m3u8')>-1){line=lines[i];break;}}\nvar arr=line.split('#').filter(function(x){return x.trim().length>0;});\nvar list=arr.map(function(u,i){\n  var idx=u.indexOf('$');\n  if(idx>0){return {name:u.substring(0,idx)||('第'+(i+1)+'集'),url:u.substring(idx+1)};}\n  return {name:'第'+(i+1)+'集',url:u.trim()};\n});\nlist;",
+      "chapterName": "name",
+      "chapterUrl": "url"
+    },
+    "searchUrl": "https://apiyutu.com/api.php/provide/vod/?ac=detail&wd={{key}}&pg={{page}}",
+    "weight": 0,
+    "comment": "// 健康度:活跃 最后更新2026-11-19"
+  },
+  {
+    "bookSourceComment": "🔞番号资源 视频书源(bookSourceType:4)\n苹果CMS采集接口：http://fhapi9.com/api.php/provide/vod\n搜索影片→进入详情→点章节即可播放",
+    "bookSourceGroup": "成人书源",
+    "bookSourceName": "🔞番号资源",
+    "bookSourceType": 4,
+    "bookSourceUrl": "http://fhapi9.com",
+    "concurrentRate": "",
+    "customButton": false,
+    "customOrder": 4,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "@js:\nvar r=java.ajax(\"http://fhapi9.com/api.php/provide/vod/?ac=list&pg=1\");\nvar j=JSON.parse(r);\nvar cats=[{title:\"🎬 最新更新\",url:\"http://fhapi9.com/api.php/provide/vod/?ac=detail&pg={{page}}\"}];\nvar cls=j.class||[];\nif(cls.length){\n  cls.forEach(function(c){cats.push({title:c.type_name,url:\"http://fhapi9.com/api.php/provide/vod/?ac=detail&t=\"+c.type_id+\"&pg={{page}}\"});});\n}else{\n  var seen={};\n  (j.list||[]).forEach(function(v){var t=String(v.type_id),n=v.type_name;if(n&&!seen[t]){seen[t]=1;cats.push({title:n,url:\"http://fhapi9.com/api.php/provide/vod/?ac=detail&t=\"+t+\"&pg={{page}}\"});}});\n}\nJSON.stringify(cats);",
+    "header": "{\"User-Agent\": \"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36\", \"Accept-Encoding\": \"identity\"}",
+    "lastUpdateTime": 0,
+    "loginUrl": "",
+    "respondTime": 60000,
+    "ruleBookInfo": {
+      "author": "$.list[0].vod_actor",
+      "coverUrl": "$.list[0].vod_pic",
+      "intro": "$.list[0].vod_blurb",
+      "kind": "$.list[0].type_name,$.list[0].vod_area,$.list[0].vod_year",
+      "name": "$.list[0].vod_name"
+    },
+    "ruleContent": {
+      "content": "@js:baseUrl"
+    },
+    "ruleExplore": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "http://fhapi9.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleSearch": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "http://fhapi9.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_area,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleToc": {
+      "chapterList": "@js:\nvar resp=java.ajax(baseUrl);\nvar d=JSON.parse(resp).list[0];\nvar lines=String(d.vod_play_url||'').split('$$$');\nvar line=lines[0];\nfor(var i=0;i<lines.length;i++){if(lines[i].indexOf('m3u8')>-1){line=lines[i];break;}}\nvar arr=line.split('#').filter(function(x){return x.trim().length>0;});\nvar list=arr.map(function(u,i){\n  var idx=u.indexOf('$');\n  if(idx>0){return {name:u.substring(0,idx)||('第'+(i+1)+'集'),url:u.substring(idx+1)};}\n  return {name:'第'+(i+1)+'集',url:u.trim()};\n});\nlist;",
+      "chapterName": "name",
+      "chapterUrl": "url"
+    },
+    "searchUrl": "http://fhapi9.com/api.php/provide/vod/?ac=detail&wd={{key}}&pg={{page}}",
+    "weight": 0,
+    "comment": "// 健康度:活跃 最后更新2026-11-19"
+  },
+  {
+    "bookSourceComment": "🔞老色逼资源 视频书源(bookSourceType:4)\n苹果CMS采集接口：https://apilsbzy1.com/api.php/provide/vod\n搜索影片→进入详情→点章节即可播放",
+    "bookSourceGroup": "成人书源",
+    "bookSourceName": "🔞老色逼资源",
+    "bookSourceType": 4,
+    "bookSourceUrl": "https://apilsbzy1.com",
+    "concurrentRate": "",
+    "customButton": false,
+    "customOrder": 5,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "@js:\nvar r=java.ajax(\"https://apilsbzy1.com/api.php/provide/vod/?ac=list&pg=1\");\nvar j=JSON.parse(r);\nvar cats=[{title:\"🎬 最新更新\",url:\"https://apilsbzy1.com/api.php/provide/vod/?ac=detail&pg={{page}}\"}];\nvar cls=j.class||[];\nif(cls.length){\n  cls.forEach(function(c){cats.push({title:c.type_name,url:\"https://apilsbzy1.com/api.php/provide/vod/?ac=detail&t=\"+c.type_id+\"&pg={{page}}\"});});\n}else{\n  var seen={};\n  (j.list||[]).forEach(function(v){var t=String(v.type_id),n=v.type_name;if(n&&!seen[t]){seen[t]=1;cats.push({title:n,url:\"https://apilsbzy1.com/api.php/provide/vod/?ac=detail&t=\"+t+\"&pg={{page}}\"});}});\n}\nJSON.stringify(cats);",
+    "header": "{\"User-Agent\": \"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36\", \"Accept-Encoding\": \"identity\"}",
+    "lastUpdateTime": 0,
+    "loginUrl": "",
+    "respondTime": 60000,
+    "ruleBookInfo": {
+      "author": "$.list[0].vod_actor",
+      "coverUrl": "$.list[0].vod_pic",
+      "intro": "$.list[0].vod_blurb",
+      "kind": "$.list[0].type_name,$.list[0].vod_area,$.list[0].vod_year",
+      "name": "$.list[0].vod_name"
+    },
+    "ruleContent": {
+      "content": "@js:baseUrl"
+    },
+    "ruleExplore": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://apilsbzy1.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleSearch": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://apilsbzy1.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_area,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleToc": {
+      "chapterList": "@js:\nvar resp=java.ajax(baseUrl);\nvar d=JSON.parse(resp).list[0];\nvar lines=String(d.vod_play_url||'').split('$$$');\nvar line=lines[0];\nfor(var i=0;i<lines.length;i++){if(lines[i].indexOf('m3u8')>-1){line=lines[i];break;}}\nvar arr=line.split('#').filter(function(x){return x.trim().length>0;});\nvar list=arr.map(function(u,i){\n  var idx=u.indexOf('$');\n  if(idx>0){return {name:u.substring(0,idx)||('第'+(i+1)+'集'),url:u.substring(idx+1)};}\n  return {name:'第'+(i+1)+'集',url:u.trim()};\n});\nlist;",
+      "chapterName": "name",
+      "chapterUrl": "url"
+    },
+    "searchUrl": "https://apilsbzy1.com/api.php/provide/vod/?ac=detail&wd={{key}}&pg={{page}}",
+    "weight": 0,
+    "comment": "// 健康度:活跃 最后更新2026-11-19"
+  },
+  {
+    "bookSourceComment": "🔞大奶子资源 视频书源(bookSourceType:4)\n苹果CMS采集接口：https://apidanaizi.com/api.php/provide/vod\n搜索影片→进入详情→点章节即可播放",
+    "bookSourceGroup": "成人书源",
+    "bookSourceName": "🔞大奶子资源",
+    "bookSourceType": 4,
+    "bookSourceUrl": "https://apidanaizi.com",
+    "concurrentRate": "",
+    "customButton": false,
+    "customOrder": 8,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "@js:\nvar r=java.ajax(\"https://apidanaizi.com/api.php/provide/vod/?ac=list&pg=1\");\nvar j=JSON.parse(r);\nvar cats=[{title:\"🎬 最新更新\",url:\"https://apidanaizi.com/api.php/provide/vod/?ac=detail&pg={{page}}\"}];\nvar cls=j.class||[];\nif(cls.length){\n  cls.forEach(function(c){cats.push({title:c.type_name,url:\"https://apidanaizi.com/api.php/provide/vod/?ac=detail&t=\"+c.type_id+\"&pg={{page}}\"});});\n}else{\n  var seen={};\n  (j.list||[]).forEach(function(v){var t=String(v.type_id),n=v.type_name;if(n&&!seen[t]){seen[t]=1;cats.push({title:n,url:\"https://apidanaizi.com/api.php/provide/vod/?ac=detail&t=\"+t+\"&pg={{page}}\"});}});\n}\nJSON.stringify(cats);",
+    "header": "{\"User-Agent\": \"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36\", \"Accept-Encoding\": \"identity\"}",
+    "lastUpdateTime": 0,
+    "loginUrl": "",
+    "respondTime": 60000,
+    "ruleBookInfo": {
+      "author": "$.list[0].vod_actor",
+      "coverUrl": "$.list[0].vod_pic",
+      "intro": "$.list[0].vod_blurb",
+      "kind": "$.list[0].type_name,$.list[0].vod_area,$.list[0].vod_year",
+      "name": "$.list[0].vod_name"
+    },
+    "ruleContent": {
+      "content": "@js:baseUrl"
+    },
+    "ruleExplore": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://apidanaizi.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleSearch": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://apidanaizi.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_area,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleToc": {
+      "chapterList": "@js:\nvar resp=java.ajax(baseUrl);\nvar d=JSON.parse(resp).list[0];\nvar lines=String(d.vod_play_url||'').split('$$$');\nvar line=lines[0];\nfor(var i=0;i<lines.length;i++){if(lines[i].indexOf('m3u8')>-1){line=lines[i];break;}}\nvar arr=line.split('#').filter(function(x){return x.trim().length>0;});\nvar list=arr.map(function(u,i){\n  var idx=u.indexOf('$');\n  if(idx>0){return {name:u.substring(0,idx)||('第'+(i+1)+'集'),url:u.substring(idx+1)};}\n  return {name:'第'+(i+1)+'集',url:u.trim()};\n});\nlist;",
+      "chapterName": "name",
+      "chapterUrl": "url"
+    },
+    "searchUrl": "https://apidanaizi.com/api.php/provide/vod/?ac=detail&wd={{key}}&pg={{page}}",
+    "weight": 0,
+    "comment": "// 健康度:无信号"
+  },
+  {
+    "bookSourceComment": "🔞乐播资源 视频书源(bookSourceType:4)\n苹果CMS采集接口：https://lbapi9.com/api.php/provide/vod\n搜索影片→进入详情→点章节即可播放",
+    "bookSourceGroup": "成人书源",
+    "bookSourceName": "🔞乐播资源",
+    "bookSourceType": 4,
+    "bookSourceUrl": "https://lbapi9.com",
+    "concurrentRate": "",
+    "customButton": false,
+    "customOrder": 10,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "@js:\nvar r=java.ajax(\"https://lbapi9.com/api.php/provide/vod/?ac=list&pg=1\");\nvar j=JSON.parse(r);\nvar cats=[{title:\"🎬 最新更新\",url:\"https://lbapi9.com/api.php/provide/vod/?ac=detail&pg={{page}}\"}];\nvar cls=j.class||[];\nif(cls.length){\n  cls.forEach(function(c){cats.push({title:c.type_name,url:\"https://lbapi9.com/api.php/provide/vod/?ac=detail&t=\"+c.type_id+\"&pg={{page}}\"});});\n}else{\n  var seen={};\n  (j.list||[]).forEach(function(v){var t=String(v.type_id),n=v.type_name;if(n&&!seen[t]){seen[t]=1;cats.push({title:n,url:\"https://lbapi9.com/api.php/provide/vod/?ac=detail&t=\"+t+\"&pg={{page}}\"});}});\n}\nJSON.stringify(cats);",
+    "header": "{\"User-Agent\": \"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36\", \"Accept-Encoding\": \"identity\"}",
+    "lastUpdateTime": 0,
+    "loginUrl": "",
+    "respondTime": 60000,
+    "ruleBookInfo": {
+      "author": "$.list[0].vod_actor",
+      "coverUrl": "$.list[0].vod_pic",
+      "intro": "$.list[0].vod_blurb",
+      "kind": "$.list[0].type_name,$.list[0].vod_area,$.list[0].vod_year",
+      "name": "$.list[0].vod_name"
+    },
+    "ruleContent": {
+      "content": "@js:baseUrl"
+    },
+    "ruleExplore": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://lbapi9.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleSearch": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://lbapi9.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_area,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleToc": {
+      "chapterList": "@js:\nvar resp=java.ajax(baseUrl);\nvar d=JSON.parse(resp).list[0];\nvar lines=String(d.vod_play_url||'').split('$$$');\nvar line=lines[0];\nfor(var i=0;i<lines.length;i++){if(lines[i].indexOf('m3u8')>-1){line=lines[i];break;}}\nvar arr=line.split('#').filter(function(x){return x.trim().length>0;});\nvar list=arr.map(function(u,i){\n  var idx=u.indexOf('$');\n  if(idx>0){return {name:u.substring(0,idx)||('第'+(i+1)+'集'),url:u.substring(idx+1)};}\n  return {name:'第'+(i+1)+'集',url:u.trim()};\n});\nlist;",
+      "chapterName": "name",
+      "chapterUrl": "url"
+    },
+    "searchUrl": "https://lbapi9.com/api.php/provide/vod/?ac=detail&wd={{key}}&pg={{page}}",
+    "weight": 0,
+    "comment": "// 健康度:活跃 最后更新2026-11-19"
+  },
+  {
+    "bookSourceComment": "🔞豆豆资源 视频书源(bookSourceType:4)\n苹果CMS采集接口：https://api.douapi.cc/api.php/provide/vod\n搜索影片→进入详情→点章节即可播放",
+    "bookSourceGroup": "成人书源",
+    "bookSourceName": "🔞豆豆资源",
+    "bookSourceType": 4,
+    "bookSourceUrl": "https://doudouzy.com",
+    "concurrentRate": "",
+    "customButton": false,
+    "customOrder": 11,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "@js:\nvar r=java.ajax(\"https://api.douapi.cc/api.php/provide/vod/?ac=list&pg=1\");\nvar j=JSON.parse(r);\nvar cats=[{title:\"🎬 最新更新\",url:\"https://api.douapi.cc/api.php/provide/vod/?ac=detail&pg={{page}}\"}];\nvar cls=j.class||[];\nif(cls.length){\n  cls.forEach(function(c){cats.push({title:c.type_name,url:\"https://api.douapi.cc/api.php/provide/vod/?ac=detail&t=\"+c.type_id+\"&pg={{page}}\"});});\n}else{\n  var seen={};\n  (j.list||[]).forEach(function(v){var t=String(v.type_id),n=v.type_name;if(n&&!seen[t]){seen[t]=1;cats.push({title:n,url:\"https://api.douapi.cc/api.php/provide/vod/?ac=detail&t=\"+t+\"&pg={{page}}\"});}});\n}\nJSON.stringify(cats);",
+    "header": "{\"User-Agent\": \"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36\", \"Accept-Encoding\": \"identity\"}",
+    "lastUpdateTime": 0,
+    "loginUrl": "",
+    "respondTime": 60000,
+    "ruleBookInfo": {
+      "author": "$.list[0].vod_actor",
+      "coverUrl": "$.list[0].vod_pic",
+      "intro": "$.list[0].vod_blurb",
+      "kind": "$.list[0].type_name,$.list[0].vod_area,$.list[0].vod_year",
+      "name": "$.list[0].vod_name"
+    },
+    "ruleContent": {
+      "content": "@js:baseUrl"
+    },
+    "ruleExplore": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://api.douapi.cc/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleSearch": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://api.douapi.cc/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_area,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleToc": {
+      "chapterList": "@js:\nvar resp=java.ajax(baseUrl);\nvar d=JSON.parse(resp).list[0];\nvar lines=String(d.vod_play_url||'').split('$$$');\nvar line=lines[0];\nfor(var i=0;i<lines.length;i++){if(lines[i].indexOf('m3u8')>-1){line=lines[i];break;}}\nvar arr=line.split('#').filter(function(x){return x.trim().length>0;});\nvar list=arr.map(function(u,i){\n  var idx=u.indexOf('$');\n  if(idx>0){return {name:u.substring(0,idx)||('第'+(i+1)+'集'),url:u.substring(idx+1)};}\n  return {name:'第'+(i+1)+'集',url:u.trim()};\n});\nlist;",
+      "chapterName": "name",
+      "chapterUrl": "url"
+    },
+    "searchUrl": "https://api.douapi.cc/api.php/provide/vod/?ac=detail&wd={{key}}&pg={{page}}",
+    "weight": 0,
+    "comment": "// 健康度:活跃 最后更新2026-11-19"
+  },
+  {
+    "bookSourceComment": "🔞CK资源 视频书源(bookSourceType:4)\n苹果CMS采集接口：https://ckzy.me/api.php/provide/vod\n搜索影片→进入详情→点章节即可播放",
+    "bookSourceGroup": "成人书源",
+    "bookSourceName": "🔞CK资源",
+    "bookSourceType": 4,
+    "bookSourceUrl": "https://ckzy.me",
+    "concurrentRate": "",
+    "customButton": false,
+    "customOrder": 15,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "@js:\nvar r=java.ajax(\"https://ckzy.me/api.php/provide/vod/?ac=list&pg=1\");\nvar j=JSON.parse(r);\nvar cats=[{title:\"🎬 最新更新\",url:\"https://ckzy.me/api.php/provide/vod/?ac=detail&pg={{page}}\"}];\nvar cls=j.class||[];\nif(cls.length){\n  cls.forEach(function(c){cats.push({title:c.type_name,url:\"https://ckzy.me/api.php/provide/vod/?ac=detail&t=\"+c.type_id+\"&pg={{page}}\"});});\n}else{\n  var seen={};\n  (j.list||[]).forEach(function(v){var t=String(v.type_id),n=v.type_name;if(n&&!seen[t]){seen[t]=1;cats.push({title:n,url:\"https://ckzy.me/api.php/provide/vod/?ac=detail&t=\"+t+\"&pg={{page}}\"});}});\n}\nJSON.stringify(cats);",
+    "header": "{\"User-Agent\": \"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36\", \"Accept-Encoding\": \"identity\"}",
+    "lastUpdateTime": 0,
+    "loginUrl": "",
+    "respondTime": 60000,
+    "ruleBookInfo": {
+      "author": "$.list[0].vod_actor",
+      "coverUrl": "$.list[0].vod_pic",
+      "intro": "$.list[0].vod_blurb",
+      "kind": "$.list[0].type_name,$.list[0].vod_area,$.list[0].vod_year",
+      "name": "$.list[0].vod_name"
+    },
+    "ruleContent": {
+      "content": "@js:baseUrl"
+    },
+    "ruleExplore": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://ckzy.me/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleSearch": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://ckzy.me/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_area,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleToc": {
+      "chapterList": "@js:\nvar resp=java.ajax(baseUrl);\nvar d=JSON.parse(resp).list[0];\nvar lines=String(d.vod_play_url||'').split('$$$');\nvar line=lines[0];\nfor(var i=0;i<lines.length;i++){if(lines[i].indexOf('m3u8')>-1){line=lines[i];break;}}\nvar arr=line.split('#').filter(function(x){return x.trim().length>0;});\nvar list=arr.map(function(u,i){\n  var idx=u.indexOf('$');\n  if(idx>0){return {name:u.substring(0,idx)||('第'+(i+1)+'集'),url:u.substring(idx+1)};}\n  return {name:'第'+(i+1)+'集',url:u.trim()};\n});\nlist;",
+      "chapterName": "name",
+      "chapterUrl": "url"
+    },
+    "searchUrl": "https://ckzy.me/api.php/provide/vod/?ac=detail&wd={{key}}&pg={{page}}",
+    "weight": 0,
+    "comment": "// 健康度:无信号"
+  },
+  {
+    "bookSourceComment": "🔞白嫖资源 视频书源(bookSourceType:4)\n苹果CMS采集接口：https://www.kxgav.com/api/json.php\n搜索影片→进入详情→点章节即可播放",
+    "bookSourceGroup": "成人书源",
+    "bookSourceName": "🔞白嫖资源",
+    "bookSourceType": 4,
+    "bookSourceUrl": "https://www.kxgav.com",
+    "concurrentRate": "",
+    "customButton": false,
+    "customOrder": 17,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "@js:\nvar r=java.ajax(\"https://www.kxgav.com/api/json.php?ac=list&pg=1\");\nvar j=JSON.parse(r);\nvar cats=[{title:\"🎬 最新更新\",url:\"https://www.kxgav.com/api/json.php?ac=detail&pg={{page}}\"}];\nvar cls=j.class||[];\nif(cls.length){\n  cls.forEach(function(c){cats.push({title:c.type_name,url:\"https://www.kxgav.com/api/json.php?ac=detail&t=\"+c.type_id+\"&pg={{page}}\"});});\n}else{\n  var seen={};\n  (j.list||[]).forEach(function(v){var t=String(v.type_id),n=v.type_name;if(n&&!seen[t]){seen[t]=1;cats.push({title:n,url:\"https://www.kxgav.com/api/json.php?ac=detail&t=\"+t+\"&pg={{page}}\"});}});\n}\nJSON.stringify(cats);",
+    "header": "{\"User-Agent\": \"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36\", \"Accept-Encoding\": \"identity\"}",
+    "lastUpdateTime": 0,
+    "loginUrl": "",
+    "respondTime": 60000,
+    "ruleBookInfo": {
+      "author": "$.list[0].vod_actor",
+      "coverUrl": "$.list[0].vod_pic",
+      "intro": "$.list[0].vod_blurb",
+      "kind": "$.list[0].type_name,$.list[0].vod_area,$.list[0].vod_year",
+      "name": "$.list[0].vod_name"
+    },
+    "ruleContent": {
+      "content": "@js:baseUrl"
+    },
+    "ruleExplore": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://www.kxgav.com/api/json.php?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleSearch": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://www.kxgav.com/api/json.php?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_area,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleToc": {
+      "chapterList": "@js:\nvar resp=java.ajax(baseUrl);\nvar d=JSON.parse(resp).list[0];\nvar lines=String(d.vod_play_url||'').split('$$$');\nvar line=lines[0];\nfor(var i=0;i<lines.length;i++){if(lines[i].indexOf('m3u8')>-1){line=lines[i];break;}}\nvar arr=line.split('#').filter(function(x){return x.trim().length>0;});\nvar list=arr.map(function(u,i){\n  var idx=u.indexOf('$');\n  if(idx>0){return {name:u.substring(0,idx)||('第'+(i+1)+'集'),url:u.substring(idx+1)};}\n  return {name:'第'+(i+1)+'集',url:u.trim()};\n});\nlist;",
+      "chapterName": "name",
+      "chapterUrl": "url"
+    },
+    "searchUrl": "https://www.kxgav.com/api/json.php?ac=detail&wd={{key}}&pg={{page}}",
+    "weight": 0,
+    "comment": "// 健康度:不可达"
+  },
+  {
+    "bookSourceComment": "🔞杏吧资源 视频书源(bookSourceType:4)\n苹果CMS采集接口：https://xingba222.com/api.php/provide/vod\n搜索影片→进入详情→点章节即可播放",
+    "bookSourceGroup": "成人书源",
+    "bookSourceName": "🔞杏吧资源",
+    "bookSourceType": 4,
+    "bookSourceUrl": "https://xingba111.com",
+    "concurrentRate": "",
+    "customButton": false,
+    "customOrder": 18,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "@js:\nvar r=java.ajax(\"https://xingba222.com/api.php/provide/vod/?ac=list&pg=1\");\nvar j=JSON.parse(r);\nvar cats=[{title:\"🎬 最新更新\",url:\"https://xingba222.com/api.php/provide/vod/?ac=detail&pg={{page}}\"}];\nvar cls=j.class||[];\nif(cls.length){\n  cls.forEach(function(c){cats.push({title:c.type_name,url:\"https://xingba222.com/api.php/provide/vod/?ac=detail&t=\"+c.type_id+\"&pg={{page}}\"});});\n}else{\n  var seen={};\n  (j.list||[]).forEach(function(v){var t=String(v.type_id),n=v.type_name;if(n&&!seen[t]){seen[t]=1;cats.push({title:n,url:\"https://xingba222.com/api.php/provide/vod/?ac=detail&t=\"+t+\"&pg={{page}}\"});}});\n}\nJSON.stringify(cats);",
+    "header": "{\"User-Agent\": \"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36\", \"Accept-Encoding\": \"identity\"}",
+    "lastUpdateTime": 0,
+    "loginUrl": "",
+    "respondTime": 60000,
+    "ruleBookInfo": {
+      "author": "$.list[0].vod_actor",
+      "coverUrl": "$.list[0].vod_pic",
+      "intro": "$.list[0].vod_blurb",
+      "kind": "$.list[0].type_name,$.list[0].vod_area,$.list[0].vod_year",
+      "name": "$.list[0].vod_name"
+    },
+    "ruleContent": {
+      "content": "@js:baseUrl"
+    },
+    "ruleExplore": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://xingba222.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleSearch": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://xingba222.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_area,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleToc": {
+      "chapterList": "@js:\nvar resp=java.ajax(baseUrl);\nvar d=JSON.parse(resp).list[0];\nvar lines=String(d.vod_play_url||'').split('$$$');\nvar line=lines[0];\nfor(var i=0;i<lines.length;i++){if(lines[i].indexOf('m3u8')>-1){line=lines[i];break;}}\nvar arr=line.split('#').filter(function(x){return x.trim().length>0;});\nvar list=arr.map(function(u,i){\n  var idx=u.indexOf('$');\n  if(idx>0){return {name:u.substring(0,idx)||('第'+(i+1)+'集'),url:u.substring(idx+1)};}\n  return {name:'第'+(i+1)+'集',url:u.trim()};\n});\nlist;",
+      "chapterName": "name",
+      "chapterUrl": "url"
+    },
+    "searchUrl": "https://xingba222.com/api.php/provide/vod/?ac=detail&wd={{key}}&pg={{page}}",
+    "weight": 0,
+    "comment": "// 健康度:无信号"
+  },
+  {
+    "bookSourceComment": "🔞极品资源 视频书源(bookSourceType:4)\n苹果CMS采集接口：https://jipinvip1.com/api.php/provide/vod\n搜索影片→进入详情→点章节即可播放",
+    "bookSourceGroup": "成人书源",
+    "bookSourceName": "🔞极品资源",
+    "bookSourceType": 4,
+    "bookSourceUrl": "https://jipinvip1.com",
+    "concurrentRate": "",
+    "customButton": false,
+    "customOrder": 20,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "@js:\nvar r=java.ajax(\"https://jipinvip1.com/api.php/provide/vod/?ac=list&pg=1\");\nvar j=JSON.parse(r);\nvar cats=[{title:\"🎬 最新更新\",url:\"https://jipinvip1.com/api.php/provide/vod/?ac=detail&pg={{page}}\"}];\nvar cls=j.class||[];\nif(cls.length){\n  cls.forEach(function(c){cats.push({title:c.type_name,url:\"https://jipinvip1.com/api.php/provide/vod/?ac=detail&t=\"+c.type_id+\"&pg={{page}}\"});});\n}else{\n  var seen={};\n  (j.list||[]).forEach(function(v){var t=String(v.type_id),n=v.type_name;if(n&&!seen[t]){seen[t]=1;cats.push({title:n,url:\"https://jipinvip1.com/api.php/provide/vod/?ac=detail&t=\"+t+\"&pg={{page}}\"});}});\n}\nJSON.stringify(cats);",
+    "header": "{\"User-Agent\": \"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36\", \"Accept-Encoding\": \"identity\"}",
+    "lastUpdateTime": 0,
+    "loginUrl": "",
+    "respondTime": 60000,
+    "ruleBookInfo": {
+      "author": "$.list[0].vod_actor",
+      "coverUrl": "$.list[0].vod_pic",
+      "intro": "$.list[0].vod_blurb",
+      "kind": "$.list[0].type_name,$.list[0].vod_area,$.list[0].vod_year",
+      "name": "$.list[0].vod_name"
+    },
+    "ruleContent": {
+      "content": "@js:baseUrl"
+    },
+    "ruleExplore": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://jipinvip1.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleSearch": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://jipinvip1.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_area,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleToc": {
+      "chapterList": "@js:\nvar resp=java.ajax(baseUrl);\nvar d=JSON.parse(resp).list[0];\nvar lines=String(d.vod_play_url||'').split('$$$');\nvar line=lines[0];\nfor(var i=0;i<lines.length;i++){if(lines[i].indexOf('m3u8')>-1){line=lines[i];break;}}\nvar arr=line.split('#').filter(function(x){return x.trim().length>0;});\nvar list=arr.map(function(u,i){\n  var idx=u.indexOf('$');\n  if(idx>0){return {name:u.substring(0,idx)||('第'+(i+1)+'集'),url:u.substring(idx+1)};}\n  return {name:'第'+(i+1)+'集',url:u.trim()};\n});\nlist;",
+      "chapterName": "name",
+      "chapterUrl": "url"
+    },
+    "searchUrl": "https://jipinvip1.com/api.php/provide/vod/?ac=detail&wd={{key}}&pg={{page}}",
+    "weight": 0,
+    "comment": "// 健康度:活跃 最后更新2026-11-20"
+  },
+  {
+    "bookSourceComment": "🔞大地资源 视频书源(bookSourceType:4,XML接口)\n接口：https://dadiapi.com/feifei",
+    "bookSourceGroup": "成人书源",
+    "bookSourceName": "🔞大地资源",
+    "bookSourceType": 4,
+    "bookSourceUrl": "https://dadizy11.com",
+    "customButton": false,
+    "customOrder": 22,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "@js:\nvar r=java.ajax(\"https://dadiapi.com/feifei?ac=list\");\nvar cats=[{title:\"🎬 最新更新\",url:\"https://dadiapi.com/feifei?ac=videolist&pg={{page}}\"}];\nvar re=/<ty id=\"(\\d+)\"[^>]*>([^<]+)<\\/ty>/g,m;\nwhile((m=re.exec(r))!==null){cats.push({title:m[2],url:\"https://dadiapi.com/feifei?ac=videolist&t=\"+m[1]+\"&pg={{page}}\"});}\nJSON.stringify(cats);",
+    "header": "{\"User-Agent\": \"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36\", \"Accept-Encoding\": \"identity\"}",
+    "lastUpdateTime": 0,
+    "respondTime": 60000,
+    "ruleBookInfo": {
+      "coverUrl": "tag.video@tag.pic@text",
+      "intro": "tag.video@tag.des@text",
+      "kind": "tag.video@tag.type@text",
+      "name": "tag.video@tag.name@text"
+    },
+    "ruleContent": {
+      "content": "@js:baseUrl"
+    },
+    "ruleExplore": {
+      "bookList": "tag.video",
+      "bookUrl": "@js:'https://dadiapi.com/feifei?ac=videolist&ids='+java.getString('tag.id@text')",
+      "coverUrl": "tag.pic@text",
+      "kind": "tag.type@text",
+      "lastChapter": "tag.last@text",
+      "name": "tag.name@text"
+    },
+    "ruleSearch": {
+      "bookList": "tag.video",
+      "bookUrl": "@js:'https://dadiapi.com/feifei?ac=videolist&ids='+java.getString('tag.id@text')",
+      "coverUrl": "tag.pic@text",
+      "kind": "tag.type@text",
+      "lastChapter": "tag.last@text",
+      "name": "tag.name@text"
+    },
+    "ruleToc": {
+      "chapterList": "@js:\nvar resp=java.ajax(baseUrl);\nvar list=[];\nvar re=/<dd[^>]*flag=\\\"([^\\\"]*)\\\"[^>]*>([\\s\\S]*?)<\\/dd>/g,m;\nvar i=0;\nwhile((m=re.exec(resp))!==null){i++;var u=m[2].replace(/<!\\[CDATA\\[|\\]\\]>/g,'').trim();var nm=u.split('$');var real=nm.length>1?nm[1]:nm[0];list.push({name:m[1]+' 第'+i+'集',url:real});}\nlist;",
+      "chapterName": "name",
+      "chapterUrl": "url"
+    },
+    "searchUrl": "https://dadiapi.com/feifei?ac=videolist&wd={{key}}&pg={{page}}",
+    "weight": 0,
+    "comment": "// 健康度:活跃 最后更新2026-11-19"
+  },
+  {
+    "bookSourceComment": "155资源站(155zy2.com)视频书源\n数据源为其官方采集接口 155api.com\n支持搜索、发现分类、在线播放视频(m3u8)\n使用方法：阅读APP → 我的 → 书源管理 → 右上角 → 网络导入/本地导入\n观看视频：搜索影片 → 进入详情 → 点击章节「在线播放」即可调用内置/外部播放器",
+    "bookSourceGroup": "成人书源",
+    "bookSourceName": "🔞155资源站",
+    "bookSourceType": 4,
+    "bookSourceUrl": "https://155zy2.com",
+    "customButton": false,
+    "customOrder": 23,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "@js:\nlet cats=[\n[\"🎬 最新更新\",\"https://155api.com/api.php/provide/vod/?ac=list&pg={{page}}\"],\n[\"无码专区\",1],[\"麻豆传媒\",2],[\"制服诱惑\",3],[\"三级伦理\",4],[\"AI换脸\",5],[\"中文字幕\",6],[\"卡通动漫\",7],[\"欧美系列\",8],[\"美女主播\",9],[\"国产自拍\",10],[\"熟女人妻\",11],[\"萝莉少女\",12],[\"女同性爱\",13],[\"多人群交\",14],[\"美乳巨乳\",15],[\"强奸乱伦\",16],[\"抖音视频\",33],[\"韩国主播\",34],[\"网红头条\",35],[\"网爆黑料\",36],[\"欧美无码\",37],[\"女优明星\",38],[\"SM调教\",39],[\"AV解说\",40]\n];\nJSON.stringify(cats.map(c=>({title:c[0],url:String(c[0]).startsWith(\"http\")?c[1]:(\"https://155api.com/api.php/provide/vod/?ac=detail&t=\"+c[1]+\"&pg={{page}}\")})));",
+    "header": "{\"User-Agent\": \"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36\"}",
+    "lastUpdateTime": 1795046377067,
+    "respondTime": 180000,
+    "ruleBookInfo": {
+      "author": "$.list[0].vod_actor",
+      "coverUrl": "$.list[0].vod_pic",
+      "intro": "$.list[0].vod_blurb",
+      "kind": "$.list[0].type_name,$.list[0].vod_area,$.list[0].vod_year",
+      "name": "$.list[0].vod_name"
+    },
+    "ruleContent": {
+      "content": "@js:baseUrl"
+    },
+    "ruleExplore": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://155api.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleSearch": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://155api.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_area,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleToc": {
+      "chapterList": "@js:\nvar resp=java.ajax(baseUrl);\nvar d=JSON.parse(resp).list[0];\nvar arr=d.vod_play_url.split(\"#\").filter(x=>x.indexOf(\"$\")>-1);\nvar list=arr.map(function(u){var p=u.split(\"$\");return {name:p[0],url:p[1]};});\nlist;",
+      "chapterName": "name",
+      "chapterUrl": "url"
+    },
+    "searchUrl": "https://155api.com/api.php/provide/vod/?ac=detail&wd={{key}}&pg={{page}}",
+    "weight": 0,
+    "comment": "// 健康度:活跃 最后更新2026-11-19"
+  },
+  {
+    "bookSourceComment": "听友FM 在线听书。音源地址需 webView 渲染获得。",
+    "bookSourceGroup": "有声 🔊",
+    "bookSourceName": "听友在线（优++）",
+    "bookSourceType": 1,
+    "bookSourceUrl": "https://tingyou.fm",
+    "bookUrlPattern": "https://tingyou\\.fm/albums/\\d+",
+    "concurrentRate": "1500",
+    "customButton": false,
+    "customOrder": 468,
+    "enabled": true,
+    "enabledCookieJar": false,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreScreen": "",
+    "exploreUrl": "[{\"title\": \"有声小说\", \"url\": \"\", \"style\": {\"layout_flexBasisPercent\": 1, \"layout_flexGrow\": 1}}, {\"title\": \"玄幻奇幻\", \"url\": \"https://tingyou.fm/?type=46&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"武侠小说\", \"url\": \"https://tingyou.fm/?type=11&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"言情通俗\", \"url\": \"https://tingyou.fm/?type=19&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"恐怖惊悚\", \"url\": \"https://tingyou.fm/?type=14&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"官场商战\", \"url\": \"https://tingyou.fm/?type=17&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"历史军事\", \"url\": \"https://tingyou.fm/?type=15&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"百家讲坛\", \"url\": \"https://tingyou.fm/?type=9&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"刑侦反腐\", \"url\": \"https://tingyou.fm/?type=16&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"有声文学\", \"url\": \"https://tingyou.fm/?type=10&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"人物纪实\", \"url\": \"https://tingyou.fm/?type=18&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"广播剧\", \"url\": \"https://tingyou.fm/?type=36&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"英文读物\", \"url\": \"https://tingyou.fm/?type=22&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"轻音清心\", \"url\": \"https://tingyou.fm/?type=23&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"二人转\", \"url\": \"https://tingyou.fm/?type=31&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"健康养生\", \"url\": \"https://tingyou.fm/?type=33&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"综艺娱乐\", \"url\": \"https://tingyou.fm/?type=34&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"头条\", \"url\": \"https://tingyou.fm/?type=40&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"戏曲\", \"url\": \"https://tingyou.fm/?type=38&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"脱口秀\", \"url\": \"https://tingyou.fm/?type=41&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"商业财经\", \"url\": \"https://tingyou.fm/?type=42&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"亲子教育\", \"url\": \"https://tingyou.fm/?type=43&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"教育培训\", \"url\": \"https://tingyou.fm/?type=44&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"时尚生活\", \"url\": \"https://tingyou.fm/?type=45&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"童话寓言\", \"url\": \"https://tingyou.fm/?type=20&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"相声小品\", \"url\": \"https://tingyou.fm/?type=21&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"未分类\", \"url\": \"https://tingyou.fm/?type=47&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"评书\", \"url\": \"\", \"style\": {\"layout_flexBasisPercent\": 1, \"layout_flexGrow\": 1}}, {\"title\": \"单田芳\", \"url\": \"https://tingyou.fm/?type=1&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"刘兰芳\", \"url\": \"https://tingyou.fm/?type=2&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"田连元\", \"url\": \"https://tingyou.fm/?type=3&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"袁阔成\", \"url\": \"https://tingyou.fm/?type=4&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"连丽如\", \"url\": \"https://tingyou.fm/?type=5&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"孙一\", \"url\": \"https://tingyou.fm/?type=8&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"王子封臣\", \"url\": \"https://tingyou.fm/?type=30&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"马长辉\", \"url\": \"https://tingyou.fm/?type=25&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"昊儒书场\", \"url\": \"https://tingyou.fm/?type=26&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"王军\", \"url\": \"https://tingyou.fm/?type=27&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"王玥波\", \"url\": \"https://tingyou.fm/?type=28&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"石连君\", \"url\": \"https://tingyou.fm/?type=29&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"粤语评书\", \"url\": \"https://tingyou.fm/?type=12&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"关永超\", \"url\": \"https://tingyou.fm/?type=35&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"张少佐\", \"url\": \"https://tingyou.fm/?type=6&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"田战义\", \"url\": \"https://tingyou.fm/?type=7&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}, {\"title\": \"其他评书\", \"url\": \"https://tingyou.fm/?type=13&sort=popular&page={{page}}\", \"style\": {\"layout_flexGrow\": 1, \"layout_flexBasisPercent\": 0.25}}]",
+    "header": "{\n  \"User-Agent\": \"Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36\",\n  \"Accept-Language\": \"zh-CN,zh;q=0.9\"\n}\n",
+    "jsLib": "// XChaCha20Poly1305 decrypt (pure-JS HChaCha20 + Java JCE ChaCha20-Poly1305)\nfunction ting_hchacha_run(state){\n  function qr(s,ai,bi,ci,di){\n    s[ai]=(s[ai]+s[bi])>>>0; s[di]=(((s[di]^s[ai])<<16)|((s[di]^s[ai])>>>16))>>>0;\n    s[ci]=(s[ci]+s[di])>>>0; s[bi]=(((s[bi]^s[ci])<<12)|((s[bi]^s[ci])>>>20))>>>0;\n    s[ai]=(s[ai]+s[bi])>>>0; s[di]=(((s[di]^s[ai])<<8)|((s[di]^s[ai])>>>24))>>>0;\n    s[ci]=(s[ci]+s[di])>>>0; s[bi]=(((s[bi]^s[ci])<<7)|((s[bi]^s[ci])>>>25))>>>0;\n  }\n  for(var i=0;i<10;i++){\n    qr(state,0,4,8,12); qr(state,1,5,9,13); qr(state,2,6,10,14); qr(state,3,7,11,15);\n    qr(state,0,5,10,15); qr(state,1,6,11,12); qr(state,2,7,8,13); qr(state,3,4,9,14);\n  }\n}\nfunction ting_hchacha(keyBytes, nonce16){\n  var s=[\n    0x61707865,0x3320646e,0x79622d32,0x6b206574,\n    keyBytes[0]|keyBytes[1]<<8|keyBytes[2]<<16|keyBytes[3]<<24,\n    keyBytes[4]|keyBytes[5]<<8|keyBytes[6]<<16|keyBytes[7]<<24,\n    keyBytes[8]|keyBytes[9]<<8|keyBytes[10]<<16|keyBytes[11]<<24,\n    keyBytes[12]|keyBytes[13]<<8|keyBytes[14]<<16|keyBytes[15]<<24,\n    keyBytes[16]|keyBytes[17]<<8|keyBytes[18]<<16|keyBytes[19]<<24,\n    keyBytes[20]|keyBytes[21]<<8|keyBytes[22]<<16|keyBytes[23]<<24,\n    keyBytes[24]|keyBytes[25]<<8|keyBytes[26]<<16|keyBytes[27]<<24,\n    keyBytes[28]|keyBytes[29]<<8|keyBytes[30]<<16|keyBytes[31]<<24,\n    nonce16[0]|nonce16[1]<<8|nonce16[2]<<16|nonce16[3]<<24,\n    nonce16[4]|nonce16[5]<<8|nonce16[6]<<16|nonce16[7]<<24,\n    nonce16[8]|nonce16[9]<<8|nonce16[10]<<16|nonce16[11]<<24,\n    nonce16[12]|nonce16[13]<<8|nonce16[14]<<16|nonce16[15]<<24,\n  ];\n  ting_hchacha_run(s);\n  var out=new Uint8Array(32);\n  var ws=[s[0],s[1],s[2],s[3],s[12],s[13],s[14],s[15]];\n  for(var i=0;i<8;i++){var w=ws[i];out[i*4]=w&255;out[i*4+1]=(w>>>8)&255;out[i*4+2]=(w>>>16)&255;out[i*4+3]=(w>>>24)&255;}\n  return out;\n}\nfunction __hex2bytes(hex){var len=hex.length;var out=new Uint8Array(len>>1);for(var i=0;i<out.length;i++){out[i]=parseInt(hex.slice(2*i,2*i+2),16);}return out;}\nfunction __toByteArr(u8){var ba=new Packages.java.io.ByteArrayOutputStream();for(var i=0;i<u8.length;i++){ba.write(u8[i]&255);}return ba.toByteArray();}\nfunction ting_decryptPayload(hexPayload, hexKey){\n  var k=__hex2bytes(hexKey);\n  var buf=__hex2bytes(hexPayload);\n  var nonce=new Uint8Array(24);\n  for(var i=0;i<24;i++){nonce[i]=buf[i+1];}\n  var ctArea=buf.subarray(25);\n  var ct=new Uint8Array(ctArea.length);\n  for(var j=0;j<ctArea.length;j++){ct[j]=ctArea[j];}\n  var ver=buf[0];\n  if(ver===2){ // reverse ct\n    var rev=new Uint8Array(ct.length);\n    for(var r=0;r<ct.length;r++){rev[r]=ct[ct.length-1-r];}\n    ct=rev;\n  }\n  var subkey=ting_hchacha(k, nonce.subarray(0,16));\n  var nonce12=new Uint8Array(12);\n  for(var n4=0;n4<8;n4++){nonce12[4+n4]=nonce[16+n4];}\n  var cipher=Packages.javax.crypto.Cipher.getInstance(\"ChaCha20-Poly1305\");\n  var sk=new Packages.javax.crypto.spec.SecretKeySpec(__toByteArr(subkey), \"ChaCha20\");\n  var gcm=new Packages.javax.crypto.spec.GCMParameterSpec(128, __toByteArr(nonce12));\n  cipher.init(javax.crypto.Cipher.DECRYPT_MODE, sk, gcm);\n  var pb=cipher.doFinal(__toByteArr(ct));\n  return new java.lang.String(pb, \"UTF-8\");\n}\n",
+    "lastUpdateTime": 1788254205287,
+    "respondTime": 180000,
+    "ruleBookInfo": {
+      "author": "meta[name=author]@content",
+      "coverUrl": "meta[property=og:image]@content",
+      "intro": "meta[name=description]@content",
+      "kind": "meta[name=album-status]@content",
+      "name": "meta[property=og:title]@content## - 听友FM.*",
+      "wordCount": "meta[name=chapter-count]@content##$##集"
+    },
+    "ruleContent": {
+      "content": "@webjs:(function(){var a=document.querySelector('.root-audio');if(a&&a.src&&a.src.indexOf('blob:')!==0){return a.src}var p=document.querySelector('.play-btn');if(p&&!window.__tyauto){window.__tyauto=1;p.click()}return null})()",
+      "title": "meta[property=og:title]@content"
+    },
+    "ruleExplore": {
+      "author": ".info .info-item:nth-of-type(5)@text##作者：",
+      "bookList": "@js:(function(){var ty=\"46\";var so=\"popular\";var p=1;try{var bu=String(baseUrl||\"\");var tm=bu.match(/[?&]type=(\\d+)/);if(tm)ty=tm[1];var sm=bu.match(/[?&]sort=([a-z]+)/);if(sm)so=sm[1];var pm=bu.match(/[?&]page=(\\d+)/);if(pm)p=parseInt(pm[1]);}catch(e){}var url=\"https://json.hgeuz.cn/tyfm/json_v1/types/\"+ty+\"/\"+so+\"/p\"+p;var raw=java.ajax(url);var m=String(raw).match(/\"payload\":\"([0-9a-f]+)\"/);if(!m)return [];var plain=ting_decryptPayload(m[1],\"ea9d9d4f9a983fe6f6382f29c7b46b8d6dc47abc6da36662e6ddff8c78902f65\");var data=JSON.parse(plain);var arr=data&&data.data?data.data:[];var out=[];for(var i=0;i<arr.length;i++){var a=arr[i];out.push({name:String(a.title),cover:String(a.cover_url),url:\"https://tingyou.fm/albums/\"+a.id});}return out;})()",
+      "bookUrl": "url",
+      "coverUrl": "cover",
+      "kind": ".info .info-item:nth-of-type(3)@text##分类：",
+      "name": "name",
+      "wordCount": ".info .info-item:nth-of-type(1)@text##期.*"
+    },
+    "ruleSearch": {
+      "author": ".info .info-item:nth-of-type(5)@text##作者：",
+      "bookList": "@js:(function(){var s=String(result);var m=s.match(/__NUXT_DATA__[^>]*>([\\s\\S]*?)<\\/script>/);if(!m)return [];var arr=JSON.parse(m[1]);var list=null;for(var i=0;i<arr.length;i++){var o=arr[i];if(o&&typeof o===\"object\"&&!(o instanceof Array)&&o.searchResults!==undefined){var sr=o.searchResults;var so=(typeof sr===\"number\")?arr[sr]:sr;if(so){var lk=so.list;list=(typeof lk===\"number\")?arr[lk]:lk;}break;}}if(!list||!list.length)return [];var out=[];var seen={};for(var j=0;j<list.length;j++){var ref=list[j];var co=(typeof ref===\"number\")?arr[ref]:ref;if(co&&typeof co===\"object\"){var id=arr[co.id];var t=arr[co.title];var c=arr[co.cover];if(id&&t&&c&&!seen[id]){seen[id]=1;out.push({name:String(t),cover:String(c),url:\"https://tingyou.fm/albums/\"+id});}}}return out;})()",
+      "bookUrl": "url",
+      "checkKeyWord": "狂龙",
+      "coverUrl": "cover",
+      "kind": ".info .info-item:nth-of-type(3)@text##分类：",
+      "name": "name",
+      "wordCount": ".info .info-item:nth-of-type(1)@text##期.*"
+    },
+    "ruleToc": {
+      "chapterList": "@js:(function(){var s=String(result);var m=s.match(/__NUXT_DATA__[^>]*>([\\s\\S]*?)<\\/script>/);if(!m)return [];var arr=[];try{arr=JSON.parse(m[1])}catch(e){return [];}var ci=-1;for(var i=0;i<arr.length;i++){var o=arr[i];if(o&&typeof o==='object'&&!(o instanceof Array)&&o.chapters!==undefined){ci=i;break;}}if(ci<0)return [];var crefs=arr[ci].chapters;var cr=(typeof crefs==='number')?arr[crefs]:crefs;if(!cr||!cr.length)return [];var out=[];var bm=String(baseUrl).match(/albums\\/(\\d+)/);var bid=bm?bm[1]:'';for(var j=0;j<cr.length;j++){var co=arr[cr[j]];if(co&&typeof co==='object'){out.push({name:String(arr[co.title]),url:'https://tingyou.fm/audios/'+bid+'/'+String(arr[co.index])});}}return out;})()",
+      "chapterName": "name",
+      "chapterUrl": "url"
+    },
+    "searchUrl": "https://tingyou.fm/search/result?keyword={{key}}&page={{page}},{\"retry\":5}",
+    "weight": 0
+  },
+  {
+    "bookSourceComment": "🔞黑料资源 视频书源(bookSourceType:4)\n苹果CMS采集接口：https://www.heiliaozyapi.com/api.php/provide/vod\n搜索影片→进入详情→点章节即可播放",
+    "bookSourceGroup": "成人书源",
+    "bookSourceName": "🔞黑料资源",
+    "bookSourceType": 4,
+    "bookSourceUrl": "https://heiliaozy.cc",
+    "concurrentRate": "",
+    "customButton": false,
+    "customOrder": 13,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "@js:\nvar r=java.ajax(\"https://www.heiliaozyapi.com/api.php/provide/vod/?ac=list&pg=1\");\nvar j=JSON.parse(r);\nvar cats=[{title:\"🎬 最新更新\",url:\"https://www.heiliaozyapi.com/api.php/provide/vod/?ac=detail&pg={{page}}\"}];\nvar cls=j.class||[];\nif(cls.length){\n  cls.forEach(function(c){cats.push({title:c.type_name,url:\"https://www.heiliaozyapi.com/api.php/provide/vod/?ac=detail&t=\"+c.type_id+\"&pg={{page}}\"});});\n}else{\n  var seen={};\n  (j.list||[]).forEach(function(v){var t=String(v.type_id),n=v.type_name;if(n&&!seen[t]){seen[t]=1;cats.push({title:n,url:\"https://www.heiliaozyapi.com/api.php/provide/vod/?ac=detail&t=\"+t+\"&pg={{page}}\"});}});\n}\nJSON.stringify(cats);",
+    "header": "{\"User-Agent\": \"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36\", \"Accept-Encoding\": \"identity\"}",
+    "lastUpdateTime": 0,
+    "loginUrl": "",
+    "respondTime": 60000,
+    "ruleBookInfo": {
+      "author": "$.list[0].vod_actor",
+      "coverUrl": "$.list[0].vod_pic",
+      "intro": "$.list[0].vod_blurb",
+      "kind": "$.list[0].type_name,$.list[0].vod_area,$.list[0].vod_year",
+      "name": "$.list[0].vod_name"
+    },
+    "ruleContent": {
+      "content": "@js:baseUrl"
+    },
+    "ruleExplore": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://www.heiliaozyapi.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleSearch": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://www.heiliaozyapi.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_area,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleToc": {
+      "chapterList": "@js:\nvar resp=java.ajax(baseUrl);\nvar d=JSON.parse(resp).list[0];\nvar lines=String(d.vod_play_url||'').split('$$$');\nvar line=lines[0];\nfor(var i=0;i<lines.length;i++){if(lines[i].indexOf('m3u8')>-1){line=lines[i];break;}}\nvar arr=line.split('#').filter(function(x){return x.trim().length>0;});\nvar list=arr.map(function(u,i){\n  var idx=u.indexOf('$');\n  if(idx>0){return {name:u.substring(0,idx)||('第'+(i+1)+'集'),url:u.substring(idx+1)};}\n  return {name:'第'+(i+1)+'集',url:u.trim()};\n});\nlist;",
+      "chapterName": "name",
+      "chapterUrl": "url"
+    },
+    "searchUrl": "https://www.heiliaozyapi.com/api.php/provide/vod/?ac=detail&wd={{key}}&pg={{page}}",
+    "weight": 0,
+    "comment": "// 健康度:不可达"
+  },
+  {
+    "bookSourceComment": "🔞黑料资源站 视频书源(bookSourceType:4)\n苹果CMS采集接口：https://heiliaozyapi.com/api.php/provide/vod\n搜索影片→进入详情→点章节即可播放",
+    "bookSourceGroup": "成人书源",
+    "bookSourceName": "🔞黑料资源站",
+    "bookSourceType": 4,
+    "bookSourceUrl": "https://heiliaozyapi.com",
+    "concurrentRate": "",
+    "customButton": false,
+    "customOrder": 21,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "@js:\nvar r=java.ajax(\"https://heiliaozyapi.com/api.php/provide/vod/?ac=list&pg=1\");\nvar j=JSON.parse(r);\nvar cats=[{title:\"🎬 最新更新\",url:\"https://heiliaozyapi.com/api.php/provide/vod/?ac=detail&pg={{page}}\"}];\nvar cls=j.class||[];\nif(cls.length){\n  cls.forEach(function(c){cats.push({title:c.type_name,url:\"https://heiliaozyapi.com/api.php/provide/vod/?ac=detail&t=\"+c.type_id+\"&pg={{page}}\"});});\n}else{\n  var seen={};\n  (j.list||[]).forEach(function(v){var t=String(v.type_id),n=v.type_name;if(n&&!seen[t]){seen[t]=1;cats.push({title:n,url:\"https://heiliaozyapi.com/api.php/provide/vod/?ac=detail&t=\"+t+\"&pg={{page}}\"});}});\n}\nJSON.stringify(cats);",
+    "header": "{\"User-Agent\": \"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36\", \"Accept-Encoding\": \"identity\"}",
+    "lastUpdateTime": 0,
+    "loginUrl": "",
+    "respondTime": 60000,
+    "ruleBookInfo": {
+      "author": "$.list[0].vod_actor",
+      "coverUrl": "$.list[0].vod_pic",
+      "intro": "$.list[0].vod_blurb",
+      "kind": "$.list[0].type_name,$.list[0].vod_area,$.list[0].vod_year",
+      "name": "$.list[0].vod_name"
+    },
+    "ruleContent": {
+      "content": "@js:baseUrl"
+    },
+    "ruleExplore": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://heiliaozyapi.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleSearch": {
+      "author": "$.vod_actor",
+      "bookList": "$.list[*]",
+      "bookUrl": "https://heiliaozyapi.com/api.php/provide/vod/?ac=detail&ids={{$.vod_id}}",
+      "coverUrl": "$.vod_pic",
+      "intro": "$.vod_blurb",
+      "kind": "$.type_name,$.vod_area,$.vod_year",
+      "lastChapter": "$.vod_time",
+      "name": "$.vod_name"
+    },
+    "ruleToc": {
+      "chapterList": "@js:\nvar resp=java.ajax(baseUrl);\nvar d=JSON.parse(resp).list[0];\nvar lines=String(d.vod_play_url||'').split('$$$');\nvar line=lines[0];\nfor(var i=0;i<lines.length;i++){if(lines[i].indexOf('m3u8')>-1){line=lines[i];break;}}\nvar arr=line.split('#').filter(function(x){return x.trim().length>0;});\nvar list=arr.map(function(u,i){\n  var idx=u.indexOf('$');\n  if(idx>0){return {name:u.substring(0,idx)||('第'+(i+1)+'集'),url:u.substring(idx+1)};}\n  return {name:'第'+(i+1)+'集',url:u.trim()};\n});\nlist;",
+      "chapterName": "name",
+      "chapterUrl": "url"
+    },
+    "searchUrl": "https://heiliaozyapi.com/api.php/provide/vod/?ac=detail&wd={{key}}&pg={{page}}",
+    "weight": 0,
+    "comment": "// 健康度:不可达"
+  },
+  {
+    "bookSourceGroup": "通常书源 📂,快速书源 ⚡",
+    "bookSourceName": "⚡📂亿软小说",
+    "bookSourceType": 0,
+    "bookSourceUrl": "http://m.iyruan.info",
+    "bookUrlPattern": "http://www.iyruan.info/article/\\d+.html",
+    "customOrder": 128,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "exploreUrl": "[{\"title\":\"玄幻小说\",\"url\":\"http://m.iyruan.info/sort/1/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},{\"title\":\"仙侠小说\",\"url\":\"http://m.iyruan.info/sort/2/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},{\"title\":\"都市小说\",\"url\":\"http://m.iyruan.info/sort/3/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},{\"title\":\"军史小说\",\"url\":\"http://m.iyruan.info/sort/4/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},{\"title\":\"网游小说\",\"url\":\"http://m.iyruan.info/sort/5/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},{\"title\":\"科幻小说\",\"url\":\"http://m.iyruan.info/sort/6/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}}]",
+    "lastUpdateTime": 1789964647324,
+    "loginUrl": "{\n  \"url\": \"null\"\n}",
+    "respondTime": 29078,
+    "ruleBookInfo": {
+      "author": "id.info@tag.p.0@text",
+      "coverUrl": "id.fmimg@img@src",
+      "intro": "id.intro@tag.p.0@text",
+      "kind": "id.info@tag.p.3@text&&\nid.info@tag.p.1@text##日 期：|类 别:",
+      "lastChapter": "id.info@tag.p.2@a@text##百度搜索.*",
+      "name": "id.info@tag.h1@text"
+    },
+    "ruleContent": {
+      "content": "id.content@html##<!--go--> |<!--over--> "
+    },
+    "ruleExplore": {
+      "author": "class.author@text",
+      "bookList": "class.article",
+      "bookUrl": "h6@a@href@js:'http://www.iyruan.info'+result",
+      "coverUrl": "img@src",
+      "intro": "class.simple@text",
+      "name": "h6@a@text"
+    },
+    "ruleSearch": {
+      "author": "tag.td.2@text",
+      "bookList": "class.grid@tag.tr!0",
+      "bookUrl": "tag.td.0@tag.a@href",
+      "coverUrl": "tag.td.0@tag.a@href@js:\r\nvar id = result.match(/\\/(\\d+)\\.?/)[1];\r\n'/files/article/image/'+parseInt(id/1000)+'/'+id+'/'+id+'s.jpg';",
+      "kind": "tag.td.4@text&&\ntag.td.5@text",
+      "lastChapter": "tag.td.1@tag.a@text##百度搜索.*",
+      "name": "tag.td.0@tag.a@text",
+      "wordCount": "tag.td.3@text"
+    },
+    "ruleToc": {
+      "chapterList": "id.list@tag.dd",
+      "chapterName": "tag.a@text",
+      "chapterUrl": "tag.a@href"
+    },
+    "searchUrl": "http://www.iyruan.info/modules/article/search.php?searchkey={{key}}",
+    "weight": 0
+  },
+  {
+    "bookSourceComment": "",
+    "bookSourceGroup": "小说·全本 📚",
+    "bookSourceName": "❤️亿软小说🎃",
+    "bookSourceType": 0,
+    "bookSourceUrl": "http://www.yiruan.info",
+    "customOrder": 6908,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "exploreUrl": "[{\"title\":\"榜单\",\"url\":\"\",\"style\":{\"layout_flexBasisPercent\":1,\"layout_flexGrow\":1}},{\"title\":\"周榜\",\"url\":\"/paihangbang/weekvisit/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.2,\"layout_flexGrow\":1}},{\"title\":\"月榜\",\"url\":\"/paihangbang/monthvisit/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.2,\"layout_flexGrow\":1}},{\"title\":\"总榜\",\"url\":\"/paihangbang/allvisit/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.2,\"layout_flexGrow\":1}},{\"title\":\"周推\",\"url\":\"/paihangbang/weekvote/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.2,\"layout_flexGrow\":1}},{\"title\":\"月推\",\"url\":\"/paihangbang/monthvote/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.2,\"layout_flexGrow\":1}},{\"title\":\"总推\",\"url\":\"/paihangbang/allvote/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.2,\"layout_flexGrow\":1}},{\"title\":\"收藏\",\"url\":\"/paihangbang/goodnum/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.2,\"layout_flexGrow\":1}},{\"title\":\"字数\",\"url\":\"/paihangbang/size/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.2,\"layout_flexGrow\":1}},{\"title\":\"最新\",\"url\":\"/paihangbang/postdate/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.2,\"layout_flexGrow\":1}},{\"title\":\"最近\",\"url\":\"/paihangbang/lastupdate/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.2,\"layout_flexGrow\":1}},{\"title\":\"新书\",\"url\":\"/paihangbang/goodnew/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.2,\"layout_flexGrow\":1}},{\"title\":\"全本\",\"url\":\"/wanjiexiaoshuo/{{page}}/\",\"style\":{\"layout_flexBasisPercent\":0.2,\"layout_flexGrow\":1}},{\"title\":\"分类\",\"url\":\"\",\"style\":{\"layout_flexBasisPercent\":1,\"layout_flexGrow\":1}},{\"title\":\"玄幻\",\"url\":\"/xuanhuan/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},{\"title\":\"修真\",\"url\":\"/xiuzhen/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},{\"title\":\"都市\",\"url\":\"/dushi/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},{\"title\":\"穿越\",\"url\":\"/chuanyue/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},{\"title\":\"网游\",\"url\":\"/wangyou/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},{\"title\":\"科幻\",\"url\":\"/kehuan/{{page}}.html\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}}]",
+    "lastUpdateTime": 1769593933054,
+    "respondTime": 1650,
+    "ruleBookInfo": {
+      "author": "id.info@p.0@text",
+      "coverUrl": "id.fmimg@img@src",
+      "intro": "id.intro@p.0@text##(^|[。！？]+[”」）】]?)##$1<br>",
+      "kind": "id.info@p.1:3@text##.*：|类 别:|小说|\\s..:.*",
+      "lastChapter": "id.info@a.0@text##正文卷.|正文.|VIP卷.|默认卷.|卷_|VIP章节.|免费章节.|章节目录.|最新章节.|[\\(（【].*?[求更票谢乐发订合补加架字修Kk].*?[】）\\)]",
+      "name": "id.info@h1@text"
+    },
+    "ruleContent": {
+      "content": "id.content@html",
+      "replaceRegex": "##最新网址.*"
+    },
+    "ruleExplore": {
+      "author": ".s4@text",
+      "bookList": ".l@li||.novelslistss@li",
+      "bookUrl": "a.0@href",
+      "coverUrl": "a.0@href##.+\\D((\\d+)\\d{3})\\D##/files/article/image/$2/$1/$1s.jpg###",
+      "kind": ".s1,.s7,.s5@text##\\[|\\]|小说",
+      "lastChapter": ".s3@text##正文卷.|正文.|VIP卷.|默认卷.|卷_|VIP章节.|免费章节.|章节目录.|最新章节.|[\\(（【].*?[求更票谢乐发订合补加架字修Kk].*?[】）\\)]",
+      "name": ".s2@text"
+    },
+    "ruleSearch": {
+      "author": "td.2@text",
+      "bookList": "tbody@tr!0",
+      "bookUrl": "a.0@href",
+      "coverUrl": "a.0@href##.+\\D((\\d+)\\d{3})\\D##/files/article/image/$2/$1/$1s.jpg###",
+      "kind": "td.5:4@text",
+      "lastChapter": "a.1@text##正文卷.|正文.|VIP卷.|默认卷.|卷_|VIP章节.|免费章节.|章节目录.|最新章节.|[\\(（【].*?[求更票谢乐发订合补加架字修Kk].*?[】）\\)]",
+      "name": "a.0@text",
+      "wordCount": "td.3@text"
+    },
+    "ruleToc": {
+      "chapterList": "id.list@dd@a",
+      "chapterName": "text##正文卷.|正文.|VIP卷.|默认卷.|卷_|VIP章节.|免费章节.|章节目录.|最新章节.|[\\(（【].*?[求更票谢乐发订合补加架字修Kk].*?[】）\\)]",
+      "chapterUrl": "href"
+    },
+    "searchUrl": "/modules/article/search.php,{\n  \"method\": \"post\",\n  \"body\": \"searchkey={{key}}\"\n}",
+    "weight": 0
+  },
+  {
+    "bookSourceComment": "",
+    "bookSourceGroup": "小说·全本 📚",
+    "bookSourceName": "👑 笔趣阁34",
+    "bookSourceType": 0,
+    "bookSourceUrl": "https://www.biquge34.net",
+    "bookUrlPattern": "http://www.50zw.mx/\\d+_\\d+/",
+    "customOrder": 5602,
+    "enabled": true,
+    "enabledCookieJar": false,
+    "enabledExplore": true,
+    "exploreUrl": "玄幻小说::/list/1_{{page}}.html\n修真小说::/list/2_{{page}}.html\n都市小说::/list/3_{{page}}.html\n历史小说::/list/4_{{page}}.html\n网游小说::/list/5_{{page}}.html\n科幻小说::/list/6_{{page}}.html\n恐怖小说::/list/7_{{page}}.html\n其他小说::/list/8_{{page}}.html\n完本小说::/full/{{page}}.html",
+    "lastUpdateTime": 1721623133549,
+    "loginUrl": "",
+    "respondTime": 1974,
+    "ruleBookInfo": {
+      "author": "",
+      "coverUrl": "",
+      "init": "",
+      "intro": "#bookIntro@html",
+      "kind": "",
+      "lastChapter": "p:nth-child(3) > a@text",
+      "name": "",
+      "wordCount": ""
+    },
+    "ruleContent": {
+      "content": "#htmlContent@html##一秒记住.*无弹窗免费阅读！|顶点小说网.*最新章节！|顶点小说.*|\\(?本章未?完.*|武林中文网.*|.*{{source.key}}.*|（未完待续）|{{chapter.title}}.*",
+      "nextContentUrl": "#linkNext@href",
+      "replaceRegex": ""
+    },
+    "ruleExplore": {
+      "author": "",
+      "bookList": "",
+      "bookUrl": "",
+      "coverUrl": "",
+      "intro": "",
+      "lastChapter": "",
+      "name": ""
+    },
+    "ruleSearch": {
+      "author": "td:nth-child(4)@text",
+      "bookList": "tr!0",
+      "bookUrl": "td:nth-child(2) > a@href",
+      "coverUrl": "td:nth-child(2) > a@href<js>\nvar id = result.match(/(\\d+)\\/?$/)[1];\nvar iid = parseInt(id/1000);\n'/files/article/image/'+iid+'/'+id+'/'+id+'s.jpg';\n</js>",
+      "kind": "{{@@.hidden-xs:nth-child(1)@text}}•{{@@td:nth-child(5)@text## .*}}",
+      "lastChapter": "",
+      "name": "td:nth-child(2)@text"
+    },
+    "ruleToc": {
+      "chapterList": ".col-md-3 > a",
+      "chapterName": "text##【求收藏！】|（.*）",
+      "chapterUrl": "href"
+    },
+    "searchUrl": "/modules/article/search.php?searchkey={{java.encodeURI(key, 'gbk')}}",
+    "weight": 0
   }
 ]
