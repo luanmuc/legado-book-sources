@@ -1,0 +1,45 @@
+name: 推送即自动发版
+
+# 2026-11-19：补上 push 触发的缺口。
+# 原本两个 workflow 只有 schedule + workflow_dispatch，改完 books.json 推送后
+# 什么都不会跑，Release 一直停在旧版本（v3.2.33 / 1887 源 vs 仓库 1735 源）。
+# 现在 books.json 或 clean_rules.json 一变就自动建 Release。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'books.json'
+      - 'clean_rules.json'
+  workflow_dispatch:      # 手动补发用
+
+permissions:
+  contents: write         # 建 Release + 上传 asset 需要写权限
+
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # 每日采集的摘要提交带 [skip ci]，不该触发发版
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: |
+          python3 -m pip install --quiet --upgrade pip
+          [ -f requirements.txt ] && pip install --quiet -r requirements.txt || true
+
+      - name: 发版
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/release_now.py
