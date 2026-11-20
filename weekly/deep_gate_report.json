@@ -1,8 +1,8 @@
 {
-  "checked": 40,
-  "alive": 16,
-  "zombie": 3,
-  "unknown": 21,
+  "checked": 36,
+  "alive": 17,
+  "zombie": 6,
+  "unknown": 13,
   "dropped": 0,
   "dropped_items": []
 }

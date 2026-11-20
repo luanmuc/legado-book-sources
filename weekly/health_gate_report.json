@@ -1,34 +1,45 @@
 {
   "gate": "health",
-  "input": 2215,
+  "input": 2217,
   "checked": 120,
-  "reachable": 77,
+  "reachable": 70,
   "with_sitemap": 29,
-  "hard_zombie": 3,
+  "hard_zombie": 5,
   "template_dates": [
-    "2021-08-12",
     "2024-08-19"
   ],
-  "dropped": 3,
+  "dropped": 5,
   "output": 2212,
   "dropped_items": [
     {
-      "name": "书本书 V2",
-      "url": "https://www.shubenshu.com",
-      "lastmod": "2026-02-11",
-      "days": 281
+      "name": "🦋 茂林小说",
+      "url": "https://m.maolin.cc",
+      "lastmod": "2015-11-01",
+      "days": 4037
+    },
+    {
+      "name": "📂去读书",
+      "url": "http://www.quduwx.net",
+      "lastmod": "2019-04-10",
+      "days": 2781
     },
     {
       "name": "📂精华书阁",
       "url": "https://m.jhsssd.com",
       "lastmod": "2022-07-13",
-      "days": 1590
+      "days": 1591
     },
     {
-      "name": "📂圣武书屋",
-      "url": "https://www.sswsk.com/",
-      "lastmod": "2017-07-02",
-      "days": 3427
+      "name": "书本书 V2",
+      "url": "https://www.shubenshu.com",
+      "lastmod": "2026-02-11",
+      "days": 282
+    },
+    {
+      "name": "精华书阁",
+      "url": "https://m.jhssd.com/",
+      "lastmod": "2022-07-13",
+      "days": 1591
     }
   ]
 }
