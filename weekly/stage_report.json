@@ -1,14 +1,14 @@
 {
-  "cleaned": 2212,
+  "cleaned": 2213,
   "formal": 1735,
-  "pending_before": 331,
-  "new_candidates": 218,
+  "pending_before": 332,
+  "new_candidates": 217,
   "blocked_by_blacklist": 191,
-  "alive": 45,
-  "added": 1,
-  "dead": 173,
-  "waf_or_unstable": 12,
+  "alive": 48,
+  "added": 4,
+  "dead": 169,
+  "waf_or_unstable": 16,
   "junk": 44,
-  "pending_after": 332,
+  "pending_after": 336,
   "purged_promoted": 0
 }
