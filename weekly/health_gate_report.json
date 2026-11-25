@@ -1,27 +1,45 @@
 {
   "gate": "health",
-  "input": 2219,
+  "input": 2225,
   "checked": 120,
   "reachable": 75,
-  "with_sitemap": 28,
-  "hard_zombie": 2,
+  "with_sitemap": 34,
+  "hard_zombie": 5,
   "template_dates": [
     "2024-08-19"
   ],
-  "dropped": 2,
-  "output": 2217,
+  "dropped": 5,
+  "output": 2220,
   "dropped_items": [
     {
       "name": "📂去读书",
       "url": "http://www.quduwx.net",
       "lastmod": "2019-04-10",
-      "days": 2785
+      "days": 2786
     },
     {
       "name": "📂精华书阁",
       "url": "https://m.jhsssd.com",
       "lastmod": "2022-07-13",
-      "days": 1595
+      "days": 1596
+    },
+    {
+      "name": "茶马小说 ",
+      "url": "https://www.chamabooks.net",
+      "lastmod": "2024-01-10",
+      "days": 1050
+    },
+    {
+      "name": "白色小说",
+      "url": "http://www.rulianshi.cc",
+      "lastmod": "2019-04-27",
+      "days": 2769
+    },
+    {
+      "name": "读书网",
+      "url": "https://www.dushu.com",
+      "lastmod": "2025-06-09",
+      "days": 534
     }
   ]
 }
