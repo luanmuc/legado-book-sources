@@ -1,31 +1,19 @@
 {
   "gate": "health",
-  "input": 2253,
+  "input": 2154,
   "checked": 120,
-  "reachable": 73,
-  "with_sitemap": 31,
-  "hard_zombie": 3,
+  "reachable": 62,
+  "with_sitemap": 25,
+  "hard_zombie": 1,
   "template_dates": [],
-  "dropped": 3,
-  "output": 2250,
+  "dropped": 1,
+  "output": 2153,
   "dropped_items": [
     {
       "name": "📂去读书",
       "url": "http://www.quduwx.net",
       "lastmod": "2019-04-10",
-      "days": 2788
-    },
-    {
-      "name": "📂精华书阁",
-      "url": "https://m.jhsssd.com",
-      "lastmod": "2022-07-13",
-      "days": 1598
-    },
-    {
-      "name": "📂茶马小说",
-      "url": "https://www.chamabooks.net",
-      "lastmod": "2024-01-10",
-      "days": 1052
+      "days": 2789
     }
   ]
 }
